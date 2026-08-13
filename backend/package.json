@@ -1,0 +1,20 @@
+{
+  "name": "crm-redetv-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed_dummy_data.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.5",
+    "@google/genai": "^2.3.0",
+    "google-auth-library": "^9.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "ws": "^8.16.0"
+  }
+}

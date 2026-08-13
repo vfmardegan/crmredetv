@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+local_dump.sql
+.env
+dist/
+build/
+*.log
+scratch/
+temp_restore.sql
+.gemini/

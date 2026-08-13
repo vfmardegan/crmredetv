@@ -1,0 +1,10 @@
+-- Migration to create usuarios table
+CREATE TABLE IF NOT EXISTS usuarios (
+  id SERIAL PRIMARY KEY,
+  google_id VARCHAR(255) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  nome VARCHAR(255) NOT NULL,
+  foto_url TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
