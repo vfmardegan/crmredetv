@@ -215,29 +215,8 @@ router.get("/bootstrap", async (req, res) => {
         .filter((k) => allowedExecIds.includes(k.executivo_id))
         .map((k) => k.client_id);
 
-      // 2. Filtrar Clientes (Anunciantes por segmento/key account e Agências vinculadas)
-      const allowedAdvertisers = clientsRes.rows.filter(
-        (c) =>
-          c.type === "Anunciante" &&
-          (allowedSegments.includes(c.segmento) || allowedKeyAccounts.includes(c.id))
-      );
-      const allowedAdvertiserIds = allowedAdvertisers.map((a) => a.id);
-
-      // Uma agência é incluída se estiver ligada a um anunciante da carteira do executivo
-      const allowedAgencyIds = linksRes.rows
-        .filter((l) => allowedAdvertiserIds.includes(l.advertiser_id))
-        .map((l) => l.agency_id);
-
-      filteredClients = clientsRes.rows.filter((c) => {
-        if (c.type === "Anunciante") {
-          return allowedAdvertiserIds.includes(c.id);
-        } else {
-          return allowedAgencyIds.includes(c.id);
-        }
-      });
-
-      const allowedClientIds = filteredClients.map((c) => c.id);
-      const allowedClientCodigos = filteredClients.map((c) => c.codigo).filter(Boolean);
+      // 2. Clientes e Agências: todos disponíveis para que executivos possam criar oportunidades para qualquer cliente/agência no pipeline
+      filteredClients = clientsRes.rows;
 
       // 3. Filtrar Oportunidades (de acordo com executivos autorizados via FK e nome)
       filteredOpps = oppsRes.rows.filter((o) =>
@@ -245,17 +224,17 @@ router.get("/bootstrap", async (req, res) => {
         allowedExecNames.includes(o.executivo)
       );
 
-      // 4. Filtrar Contatos
-      filteredContacts = contactsRes.rows.filter((c) => allowedClientIds.includes(c.client_id));
-      const allowedContactIds = filteredContacts.map((c) => c.id);
+      // 4. Contatos: todos disponíveis para seleção e vinculação na criação de oportunidades
+      filteredContacts = contactsRes.rows;
 
-      // 5. Filtrar Propostas
-      filteredProposals = proposalsRes.rows.filter((p) => allowedContactIds.includes(p.contact_id));
-
-      // 6. Filtrar Faturamento Efetivo
-      filteredFaturamento = faturamentoRes.rows.filter((f) =>
-        allowedClientCodigos.includes(f.cliente_codigo)
+      // 5. Filtrar Propostas vinculadas ao escopo de oportunidades do executivo
+      const allowedOppIds = new Set(filteredOpps.map((o) => o.id));
+      filteredProposals = proposalsRes.rows.filter((p) =>
+        !p.opportunity_id || allowedOppIds.has(p.opportunity_id)
       );
+
+      // 6. Faturamento Efetivo disponível para os relatórios da Visão Geral
+      filteredFaturamento = faturamentoRes.rows;
 
       // 7. Filtrar Metas
       filteredMetas = metasRes.rows.filter((m) => {
@@ -265,8 +244,8 @@ router.get("/bootstrap", async (req, res) => {
         return !m.segmento || allowedSegments.includes(m.segmento);
       });
 
-      // 8. Filtrar Executivos
-      filteredExecutivos = execRes.rows.filter((e) => allowedExecIds.includes(e.id));
+      // 8. Executivos: todos disponíveis para atribuição e filtros no pipeline
+      filteredExecutivos = execRes.rows;
     }
 
     if (perfil === "especialista") {

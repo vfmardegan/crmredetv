@@ -5,7 +5,6 @@ const { broadcastToAdmins, broadcastToDirectorsOfExec, notifyUser } = require(".
 const { logAudit } = require("../utils/audit");
 const { hasPermission, requirePermission } = require("../utils/acl");
 const { decryptToken } = require("../utils/crypto");
-const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -144,8 +143,8 @@ router.post("/opportunities", async (req, res) => {
     }
     const execRes = await pool.query("SELECT nome FROM executivos WHERE id = $1", [req.user.executivo_id]);
     const myExecName = execRes.rows[0]?.nome;
-    if (body.executivo !== myExecName) {
-      return res.status(403).json({ error: "Acesso negado. Você só pode criar oportunidades para si mesmo." });
+    if (!body.executivo) {
+      body.executivo = myExecName;
     }
   } else if (req.user.perfil === "diretor") {
     const dirExecs = await pool.query(
@@ -157,22 +156,6 @@ router.post("/opportunities", async (req, res) => {
     const subordinateNames = dirExecs.rows.map((r) => r.nome);
     if (!subordinateNames.includes(body.executivo)) {
       return res.status(403).json({ error: "Acesso negado. Você só pode criar oportunidades para executivos da sua carteira." });
-    }
-  }
-
-  // Validação de carteira comercial para anunciante e agência
-  if (body.advertiserId) {
-    const isAdvAllowed = await isClientAllowedForUser(req.user, body.advertiserId);
-    if (!isAdvAllowed) {
-      return res.status(403).json({ error: "Acesso negado. O anunciante informado não pertence à sua carteira autorizada." });
-    }
-  }
-
-  const dbAgencyId = agencyIdToDb(body.agencyId);
-  if (dbAgencyId) {
-    const isAgencyAllowed = await isClientAllowedForUser(req.user, dbAgencyId);
-    if (!isAgencyAllowed) {
-      return res.status(403).json({ error: "Acesso negado. A agência informada não pertence à sua carteira autorizada." });
     }
   }
 
@@ -235,24 +218,6 @@ router.put("/opportunities/:id", async (req, res) => {
     return res.status(404).json({ error: "Oportunidade não encontrada." });
   }
   const oldOpp = beforeRes.rows[0];
-
-  // Validação de carteira comercial para anunciante e agência
-  if (body.advertiserId && body.advertiserId !== oldOpp.advertiser_id) {
-    const isAdvAllowed = await isClientAllowedForUser(req.user, body.advertiserId);
-    if (!isAdvAllowed) {
-      return res.status(403).json({ error: "Acesso negado. O anunciante informado não pertence à sua carteira autorizada." });
-    }
-  }
-
-  const newAgencyDb = agencyIdToDb(body.agencyId);
-  if (body.agencyId !== undefined && newAgencyDb !== oldOpp.agency_id) {
-    if (newAgencyDb) {
-      const isAgencyAllowed = await isClientAllowedForUser(req.user, newAgencyDb);
-      if (!isAgencyAllowed) {
-        return res.status(403).json({ error: "Acesso negado. A agência informada não pertence à sua carteira autorizada." });
-      }
-    }
-  }
 
   // Bloqueio de transferência indevida de titularidade (Parameter Tampering / BOLA)
   if (req.user.perfil === "executivo" || req.user.perfil === "especialista") {

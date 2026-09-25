@@ -4,7 +4,6 @@ const { OAuth2Client } = require("google-auth-library");
 const { pool } = require("../db");
 const { requirePermission } = require("../utils/acl");
 const { decryptToken } = require("../utils/crypto");
-const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -80,10 +79,6 @@ router.post("/proposals", requirePermission("can_send_proposals"), async (req, r
     if (contactRes.rows.length === 0) {
       return res.status(404).json({ error: "Contato não encontrado." });
     }
-    const allowed = await isClientAllowedForUser(req.user, contactRes.rows[0].client_id);
-    if (!allowed) {
-      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
-    }
 
     const id = crypto.randomUUID();
     await pool.query(
@@ -132,11 +127,6 @@ router.post("/proposals/send", requirePermission("can_send_proposals"), async (r
     const contact = contactRes.rows[0];
     if (!contact.email) {
       return res.status(400).json({ error: "Este contato não possui e-mail cadastrado." });
-    }
-
-    const allowed = await isClientAllowedForUser(req.user, contact.client_id);
-    if (!allowed) {
-      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
     }
 
     // 2. Busca o título do template (se fornecido e existir no banco)
@@ -253,11 +243,6 @@ router.post("/emails/send", requirePermission("can_send_proposals"), async (req,
     const contact = contactRes.rows[0];
     if (!contact.email) {
       return res.status(400).json({ error: "Este contato não possui e-mail cadastrado." });
-    }
-
-    const allowed = await isClientAllowedForUser(req.user, contact.client_id);
-    if (!allowed) {
-      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
     }
 
     // 2. Verifica credenciais do Google para o usuário logado

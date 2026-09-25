@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const { pool } = require("../db");
 const { logAudit } = require("../utils/audit");
 const { requirePermission } = require("../utils/acl");
-const { getAllowedExecIds, isClientAllowedForUser } = require("../utils/portfolio");
+const { getAllowedExecIds } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -141,11 +141,6 @@ router.post("/contacts", requirePermission("can_edit_contacts"), async (req, res
   }
 
   try {
-    const allowed = await isClientAllowedForUser(req.user, req.body.clientId);
-    if (!allowed) {
-      return res.status(403).json({ error: "Acesso negado. A empresa informada não pertence à sua carteira autorizada." });
-    }
-
     const id = req.body.id || crypto.randomUUID();
     await pool.query(
       `insert into contacts
@@ -173,18 +168,6 @@ router.put("/contacts/:id", requirePermission("can_edit_contacts"), async (req, 
     const existingRes = await pool.query("SELECT client_id FROM contacts WHERE id = $1", [id]);
     if (existingRes.rows.length === 0) {
       return res.status(404).json({ error: "Contato não encontrado." });
-    }
-    const currentClientId = existingRes.rows[0].client_id;
-    const allowedCurrent = await isClientAllowedForUser(req.user, currentClientId);
-    if (!allowedCurrent) {
-      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
-    }
-
-    if (req.body.clientId && req.body.clientId !== currentClientId) {
-      const allowedNew = await isClientAllowedForUser(req.user, req.body.clientId);
-      if (!allowedNew) {
-        return res.status(403).json({ error: "Acesso negado. A nova empresa atribuída não pertence à sua carteira autorizada." });
-      }
     }
 
     const result = await pool.query(

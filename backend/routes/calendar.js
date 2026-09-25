@@ -4,7 +4,6 @@ const { OAuth2Client } = require("google-auth-library");
 const { pool } = require("../db");
 const { requirePermission } = require("../utils/acl");
 const { decryptToken } = require("../utils/crypto");
-const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -20,10 +19,6 @@ router.post("/calendar/event", requirePermission("can_schedule_meetings"), async
   }
 
   try {
-    const allowed = await isClientAllowedForUser(req.user, clientId);
-    if (!allowed) {
-      return res.status(403).json({ error: "Acesso negado. Este cliente não pertence à sua carteira autorizada." });
-    }
     // 1. Busca informações de tokens do Google do usuário logado
     const userRes = await pool.query(
       "SELECT google_refresh_token, google_access_token FROM usuarios WHERE id = $1",

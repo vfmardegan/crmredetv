@@ -1314,8 +1314,13 @@ export default function App() {
     const { clientId, briefing, proxima_acao } = transcriptionPreviewData;
     const advertiser = advertisers.find((a) => a.id === clientId);
     
+    const myExecName = user?.perfil === "executivo"
+      ? (executivos.find((e) => String(e.id) === String(user?.executivo_id))?.nome || user?.nome || "")
+      : "";
+
     setNewOppForm({
       ...emptyOppForm(),
+      executivo: myExecName,
       advertiserId: clientId || "",
       agencyId: (advertiser && advertiser.type === "Agência") ? advertiser.id : "",
       briefing: `Briefing gerado por IA a partir de gravação:\n\n${briefing}\n\nPróxima Ação:\n${proxima_acao}`,
@@ -2403,7 +2408,13 @@ export default function App() {
             {view === "pipeline" && (
               <button
                 onClick={() => {
-                  setNewOppForm(emptyOppForm());
+                  const myExecName = user?.perfil === "executivo"
+                    ? (executivos.find((e) => String(e.id) === String(user?.executivo_id))?.nome || user?.nome || "")
+                    : "";
+                  setNewOppForm({
+                    ...emptyOppForm(),
+                    executivo: myExecName,
+                  });
                   setShowNewOpportunity(true);
                 }}
                 className="flex items-center gap-1.5 text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-800"
@@ -3103,9 +3114,12 @@ export default function App() {
                 onClick={() => {
                   const { clientId, contactName } = pendingOppAfterProposal;
                   setPendingOppAfterProposal(null);
-                  const advertiser = advertisers.find((a) => a.id === clientId);
+                  const myExecName = user?.perfil === "executivo"
+                    ? (executivos.find((e) => String(e.id) === String(user?.executivo_id))?.nome || user?.nome || "")
+                    : "";
                   setNewOppForm({
                     ...emptyOppForm(),
+                    executivo: myExecName,
                     advertiserId: clientId || "",
                     agencyId: (advertiser && advertiser.type === "Agência") ? advertiser.id : "",
                     title: `Oportunidade - ${advertiser ? (advertiser.nomeFantasia || advertiser.razaoSocial || advertiser.name || "") : contactName}`,
