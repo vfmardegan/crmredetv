@@ -266,6 +266,21 @@ export default function DashboardTab({
         </ResponsiveContainer>
       </div>
 
+      {/* Tabela detalhada de todos os clientes com faturamento */}
+      <ClientBilledTable
+        advertisers={advertisers}
+        faturamentoEfetivo={faturamentoEfetivo}
+        executivos={executivos}
+        segmentoExecutivo={segmentoExecutivo}
+        executivoKeyAccounts={executivoKeyAccounts}
+        dashboardYear={dashboardYear}
+        dashboardMonths={dashboardMonths}
+        dashboardSegmentFilter={dashboardSegmentFilter}
+        dashboardAdvertiserFilter={dashboardAdvertiserFilter}
+        dashboardAgencyFilter={dashboardAgencyFilter}
+        dashboardExecutivoFilter={dashboardExecutivoFilter}
+      />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Pipeline Total" value={formatBRL(pipelineTotal)} sub={`${dashboardOpps.length} oportunidades`} />
         <KpiCard label="Em Desenvolvimento" value={formatBRL(emDesenvolvimentoValor)} sub={`${countByStage("Desenvolvimento")} oportunidades`} />
@@ -382,21 +397,6 @@ export default function DashboardTab({
           </table>
         </div>
       </div>
-
-      {/* Tabela detalhada de todos os clientes com faturamento */}
-      <ClientBilledTable
-        advertisers={advertisers}
-        faturamentoEfetivo={faturamentoEfetivo}
-        executivos={executivos}
-        segmentoExecutivo={segmentoExecutivo}
-        executivoKeyAccounts={executivoKeyAccounts}
-        dashboardYear={dashboardYear}
-        dashboardMonths={dashboardMonths}
-        dashboardSegmentFilter={dashboardSegmentFilter}
-        dashboardAdvertiserFilter={dashboardAdvertiserFilter}
-        dashboardAgencyFilter={dashboardAgencyFilter}
-        dashboardExecutivoFilter={dashboardExecutivoFilter}
-      />
     </div>
   );
 }
