@@ -12,7 +12,6 @@ import {
   ArrowDown,
   Download,
   Building2,
-  DollarSign,
 } from "lucide-react";
 
 export default function ClientBilledTable({
@@ -335,77 +334,49 @@ export default function ClientBilledTable({
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm flex flex-col gap-4 mt-2">
       {/* Cabeçalho do Card */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Building2 className="text-slate-600" size={20} />
-            <h3 className="text-base font-semibold text-slate-800">
-              Clientes com Faturamento Efetivo
-            </h3>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
-              {periodLabel}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Lista consolidada de clientes com faturamento apurado, afetada pelos filtros de segmento,
-            anunciante, executivo e período.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <Building2 className="text-slate-600" size={20} />
+          <h3 className="text-base font-semibold text-slate-800">
+            Clientes Ativos
+          </h3>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+            {periodLabel}
+          </span>
         </div>
 
-        {/* Indicadores rápidos de totais e busca */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 flex items-center gap-2">
-            <span className="text-xs text-slate-500">Clientes Faturados:</span>
-            <span className="text-xs font-bold text-slate-800 font-mono">
-              {filteredRows.length}
-            </span>
-          </div>
-
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 flex items-center gap-2">
-            <DollarSign className="text-emerald-600" size={14} />
-            <span className="text-xs text-emerald-700">Total Faturado:</span>
-            <span className="text-xs font-bold text-emerald-800 font-mono">
-              {formatBRL(totalGeral)}
-            </span>
+        {/* Busca e Exportação */}
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <div className="relative w-full sm:w-72">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Filtrar por nome, código ou segmento..."
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-400"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           <button
             onClick={handleExportCSV}
             title="Exportar tabela atual para CSV"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm whitespace-nowrap"
           >
             <Download size={13} className="text-slate-500" />
             Exportar CSV
           </button>
-        </div>
-      </div>
-
-      {/* Barra de Pesquisa Rápida */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filtrar por nome, código ou segmento..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-400"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        <div className="text-xs text-slate-500 hidden sm:block">
-          Exibindo <span className="font-semibold text-slate-700">{sortedRows.length}</span> registros (use a barra de rolagem para navegar)
         </div>
       </div>
 
