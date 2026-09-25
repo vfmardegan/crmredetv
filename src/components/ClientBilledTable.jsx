@@ -13,10 +13,6 @@ import {
   Download,
   Building2,
   DollarSign,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
 } from "lucide-react";
 
 export default function ClientBilledTable({
@@ -33,8 +29,6 @@ export default function ClientBilledTable({
   dashboardExecutivoFilter = [],
 }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [pageSize, setPageSize] = useState(20);
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState("total");
   const [sortDirection, setSortDirection] = useState("desc");
 
@@ -58,14 +52,6 @@ export default function ClientBilledTable({
   }, [advertisers]);
 
   // Mapeamentos de executivos e Key Accounts
-  const executivoNameById = useMemo(() => {
-    const map = {};
-    (executivos || []).forEach((e) => {
-      map[String(e.id)] = e.nome;
-    });
-    return map;
-  }, [executivos]);
-
   const keyAccountExecByCodigo = useMemo(() => {
     const map = {};
     Object.entries(executivoKeyAccounts || {}).forEach(([execId, kaIds]) => {
@@ -115,20 +101,6 @@ export default function ClientBilledTable({
     return set;
   }, [executivoFilterKeyAccountIds, clientByIdMap]);
 
-  const getExecutivoName = useMemo(() => {
-    return (client, cod) => {
-      const kaExecId = (client && keyAccountExecById[client.id]) || keyAccountExecByCodigo[cod];
-      if (kaExecId && executivoNameById[kaExecId]) {
-        return `${executivoNameById[kaExecId]} (Key Account)`;
-      }
-      const seg = client?.segmento;
-      if (seg && segmentoExecutivo?.[seg] && executivoNameById[segmentoExecutivo[seg]]) {
-        return executivoNameById[segmentoExecutivo[seg]];
-      }
-      return client?.executivo || "—";
-    };
-  }, [keyAccountExecById, keyAccountExecByCodigo, executivoNameById, segmentoExecutivo]);
-
   const yearPrefix = useMemo(() => `${dashboardYear}-`.toLowerCase(), [dashboardYear]);
   const monthsInScope = useMemo(
     () => (dashboardMonths && dashboardMonths.length > 0 ? dashboardMonths : MONTHS),
@@ -153,21 +125,13 @@ export default function ClientBilledTable({
       const monthPart = periodoLower.split("-")[1];
       if (!monthPart) return;
 
-      const monthName = MONTHS.find((m) => m.toLowerCase() === monthPart);
-      if (!monthName) return;
-
       const valor = Number(f.valor) || 0;
 
       if (!clientBilledData.has(cod)) {
-        const monthly = {};
-        MONTHS.forEach((m) => {
-          monthly[m] = 0;
-        });
-        clientBilledData.set(cod, { monthly, totalInScope: 0, totalYear: 0 });
+        clientBilledData.set(cod, { totalInScope: 0, totalYear: 0 });
       }
 
       const entry = clientBilledData.get(cod);
-      entry.monthly[monthName] += valor;
       entry.totalYear += valor;
       if (monthsInScopeSet.has(monthPart)) {
         entry.totalInScope += valor;
@@ -216,21 +180,18 @@ export default function ClientBilledTable({
         }
       }
 
-      const clientName = client?.razaoSocial || client?.name || `Cliente (${cod})`;
-      const nomeFantasia = client?.nomeFantasia || client?.name || "";
+      const nomeFantasia = client?.nomeFantasia || client?.razaoSocial || client?.name || `Cliente (${cod})`;
+      const razaoSocial = client?.razaoSocial || "";
       const segmento = client?.segmento || "Não identificado";
       const type = client?.type || "Anunciante";
-      const executivoName = getExecutivoName(client, cod);
 
       rows.push({
         id: client?.id || `unmapped-${cod}`,
         codigo: cod,
-        razaoSocial: clientName,
         nomeFantasia,
+        razaoSocial,
         type,
         segmento,
-        executivo: executivoName,
-        monthly: data.monthly,
         total: data.totalInScope,
         totalYear: data.totalYear,
       });
@@ -251,26 +212,24 @@ export default function ClientBilledTable({
     executivoFilterKeyAccountCodigos,
     executivoFilterKeyAccountIds,
     executivoFilterSegmentos,
-    getExecutivoName,
   ]);
 
-  // Filtragem por busca textual local (razão social, nome fantasia, código, executivo ou segmento)
+  // Filtragem por busca textual local (nome fantasia, razão social, código ou segmento)
   const filteredRows = useMemo(() => {
     if (!searchTerm.trim()) return billedClients;
     const term = searchTerm.trim().toLowerCase();
     return billedClients.filter((r) => {
       return (
         r.codigo.toLowerCase().includes(term) ||
-        r.razaoSocial.toLowerCase().includes(term) ||
         r.nomeFantasia.toLowerCase().includes(term) ||
+        r.razaoSocial.toLowerCase().includes(term) ||
         r.segmento.toLowerCase().includes(term) ||
-        r.executivo.toLowerCase().includes(term) ||
         r.type.toLowerCase().includes(term)
       );
     });
   }, [billedClients, searchTerm]);
 
-  // Ordenação das linhas
+  // Ordenação de todas as linhas
   const sortedRows = useMemo(() => {
     return [...filteredRows].sort((a, b) => {
       let valA, valB;
@@ -278,9 +237,6 @@ export default function ClientBilledTable({
       if (sortField === "total") {
         valA = a.total;
         valB = b.total;
-      } else if (MONTHS.includes(sortField)) {
-        valA = a.monthly[sortField] || 0;
-        valB = b.monthly[sortField] || 0;
       } else {
         valA = String(a[sortField] || "").toLowerCase();
         valB = String(b[sortField] || "").toLowerCase();
@@ -295,40 +251,17 @@ export default function ClientBilledTable({
     });
   }, [filteredRows, sortField, sortDirection]);
 
-  // Totais gerais do rodapé
-  const totals = useMemo(() => {
-    const monthlyTotals = {};
-    MONTHS.forEach((m) => {
-      monthlyTotals[m] = 0;
-    });
-    let grandTotal = 0;
-
-    sortedRows.forEach((r) => {
-      MONTHS.forEach((m) => {
-        monthlyTotals[m] += r.monthly[m] || 0;
-      });
-      grandTotal += r.total || 0;
-    });
-
-    return { monthlyTotals, grandTotal };
+  // Total geral para o rodapé
+  const totalGeral = useMemo(() => {
+    return sortedRows.reduce((acc, r) => acc + (r.total || 0), 0);
   }, [sortedRows]);
-
-  // Paginação
-  const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(sortedRows.length / pageSize));
-  const currentPageSafe = Math.min(currentPage, totalPages);
-
-  const displayedRows = useMemo(() => {
-    if (pageSize === "all") return sortedRows;
-    const start = (currentPageSafe - 1) * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [sortedRows, currentPageSafe, pageSize]);
 
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortDirection(field === "total" || MONTHS.includes(field) ? "desc" : "asc");
+      setSortDirection(field === "total" ? "desc" : "asc");
     }
   };
 
@@ -348,37 +281,31 @@ export default function ClientBilledTable({
     const headers = [
       "Ranking",
       "Código",
-      "Razão Social",
       "Nome Fantasia",
+      "Razão Social",
       "Tipo",
       "Segmento",
-      "Executivo",
-      ...MONTHS,
       `Total Faturado (${dashboardYear})`,
     ];
 
     const rows = sortedRows.map((r, idx) => [
       idx + 1,
       `"${r.codigo}"`,
-      `"${r.razaoSocial.replace(/"/g, '""')}"`,
       `"${r.nomeFantasia.replace(/"/g, '""')}"`,
+      `"${r.razaoSocial.replace(/"/g, '""')}"`,
       `"${r.type}"`,
       `"${r.segmento.replace(/"/g, '""')}"`,
-      `"${r.executivo.replace(/"/g, '""')}"`,
-      ...MONTHS.map((m) => (r.monthly[m] || 0).toFixed(2).replace(".", ",")),
       (r.total || 0).toFixed(2).replace(".", ","),
     ]);
 
     const totalsRow = [
       "TOTAL",
       "—",
+      `${sortedRows.length} clientes`,
       "—",
       "—",
       "—",
-      "—",
-      "—",
-      ...MONTHS.map((m) => (totals.monthlyTotals[m] || 0).toFixed(2).replace(".", ",")),
-      totals.grandTotal.toFixed(2).replace(".", ","),
+      totalGeral.toFixed(2).replace(".", ","),
     ];
 
     const csvContent =
@@ -425,10 +352,10 @@ export default function ClientBilledTable({
           </p>
         </div>
 
-        {/* Indicadores rápidos de totais */}
+        {/* Indicadores rápidos de totais e busca */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 flex items-center gap-2">
-            <span className="text-xs text-slate-500">Clientes Ativos:</span>
+            <span className="text-xs text-slate-500">Clientes Faturados:</span>
             <span className="text-xs font-bold text-slate-800 font-mono">
               {filteredRows.length}
             </span>
@@ -438,7 +365,7 @@ export default function ClientBilledTable({
             <DollarSign className="text-emerald-600" size={14} />
             <span className="text-xs text-emerald-700">Total Faturado:</span>
             <span className="text-xs font-bold text-emerald-800 font-mono">
-              {formatBRL(totals.grandTotal)}
+              {formatBRL(totalGeral)}
             </span>
           </div>
 
@@ -453,8 +380,8 @@ export default function ClientBilledTable({
         </div>
       </div>
 
-      {/* Barra de Ferramentas / Pesquisa interna e controles de paginação */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Barra de Pesquisa Rápida */}
+      <div className="flex items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
           <Search
             size={14}
@@ -463,11 +390,8 @@ export default function ClientBilledTable({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            placeholder="Filtrar por nome, código ou executivo..."
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filtrar por nome, código ou segmento..."
             className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all placeholder:text-slate-400"
           />
           {searchTerm && (
@@ -480,157 +404,62 @@ export default function ClientBilledTable({
           )}
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end text-xs text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <span>Exibir:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                const val = e.target.value === "all" ? "all" : Number(e.target.value);
-                setPageSize(val);
-                setCurrentPage(1);
-              }}
-              className="py-1 px-2 border border-slate-200 rounded-md bg-white text-xs text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-sky-500"
-            >
-              <option value={20}>20 linhas</option>
-              <option value={50}>50 linhas</option>
-              <option value={100}>100 linhas</option>
-              <option value="all">Todas as linhas</option>
-            </select>
-          </div>
-
-          {pageSize !== "all" && (
-            <div className="flex items-center gap-1">
-              <span>
-                {Math.min((currentPageSafe - 1) * pageSize + 1, sortedRows.length)}–
-                {Math.min(currentPageSafe * pageSize, sortedRows.length)} de {sortedRows.length}
-              </span>
-
-              <div className="flex items-center ml-2 border border-slate-200 rounded-md bg-white overflow-hidden shadow-sm">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPageSafe <= 1}
-                  className="p-1 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white"
-                  title="Primeira página"
-                >
-                  <ChevronsLeft size={14} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPageSafe <= 1}
-                  className="p-1 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white border-l border-slate-100"
-                  title="Página anterior"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <span className="px-2 font-mono text-[11px] font-semibold text-slate-700">
-                  {currentPageSafe}/{totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPageSafe >= totalPages}
-                  className="p-1 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white border-r border-slate-100"
-                  title="Próxima página"
-                >
-                  <ChevronRight size={14} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPageSafe >= totalPages}
-                  className="p-1 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white"
-                  title="Última página"
-                >
-                  <ChevronsRight size={14} />
-                </button>
-              </div>
-            </div>
-          )}
+        <div className="text-xs text-slate-500 hidden sm:block">
+          Exibindo <span className="font-semibold text-slate-700">{sortedRows.length}</span> registros (use a barra de rolagem para navegar)
         </div>
       </div>
 
-      {/* Container com 20 linhas visíveis e scroll lateral (overflow-x-auto) */}
+      {/* Janela de rolagem: ~15 linhas visíveis na tela inicial com scroll vertical e lateral */}
       <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-inner">
-        <div className="max-h-[820px] overflow-y-auto overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse whitespace-nowrap min-w-[1350px]">
-            {/* Cabeçalho Fixo (Sticky) */}
+        <div className="max-h-[590px] overflow-y-auto overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse whitespace-nowrap min-w-[700px]">
+            {/* Cabeçalho Fixo (Sticky Top) */}
             <thead className="sticky top-0 bg-slate-100 z-10 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
                 <th className="py-2.5 px-3 text-center w-12 text-slate-400 font-mono">#</th>
 
                 <th
                   onClick={() => handleSort("codigo")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors w-24"
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors w-24 text-center font-mono"
                 >
                   Código {getSortIcon("codigo")}
                 </th>
 
                 <th
-                  onClick={() => handleSort("razaoSocial")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors min-w-[240px]"
-                >
-                  Razão Social {getSortIcon("razaoSocial")}
-                </th>
-
-                <th
                   onClick={() => handleSort("nomeFantasia")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors min-w-[180px]"
+                  className="py-2.5 px-4 cursor-pointer hover:bg-slate-200 transition-colors min-w-[260px]"
                 >
                   Nome Fantasia {getSortIcon("nomeFantasia")}
                 </th>
 
                 <th
                   onClick={() => handleSort("type")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors text-center w-24"
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors text-center w-28"
                 >
                   Tipo {getSortIcon("type")}
                 </th>
 
                 <th
                   onClick={() => handleSort("segmento")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors min-w-[170px]"
+                  className="py-2.5 px-4 cursor-pointer hover:bg-slate-200 transition-colors min-w-[200px]"
                 >
                   Segmento {getSortIcon("segmento")}
                 </th>
 
                 <th
-                  onClick={() => handleSort("executivo")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors min-w-[190px]"
-                >
-                  Executivo {getSortIcon("executivo")}
-                </th>
-
-                {/* Colunas Mensais */}
-                {MONTHS.map((m) => {
-                  const isInScope = monthsInScopeSet.has(m.toLowerCase());
-                  return (
-                    <th
-                      key={m}
-                      onClick={() => handleSort(m)}
-                      className={`py-2.5 px-3 text-right cursor-pointer hover:bg-slate-200 transition-colors w-28 ${
-                        isInScope ? "text-slate-800 font-bold bg-sky-50/50" : "text-slate-500 font-normal"
-                      }`}
-                      title={isInScope ? `Mês incluído no período` : `Mês fora do período filtrado`}
-                    >
-                      {m} {getSortIcon(m)}
-                    </th>
-                  );
-                })}
-
-                {/* Coluna Total */}
-                <th
                   onClick={() => handleSort("total")}
-                  className="py-2.5 px-4 text-right cursor-pointer bg-slate-200/80 hover:bg-slate-200 transition-colors min-w-[140px] text-slate-900 font-bold"
+                  className="py-2.5 px-5 text-right cursor-pointer bg-slate-200/80 hover:bg-slate-200 transition-colors min-w-[160px] text-slate-900 font-bold"
                 >
-                  Total Período {getSortIcon("total")}
+                  Total Faturado {getSortIcon("total")}
                 </th>
               </tr>
             </thead>
 
-            {/* Corpo da Tabela */}
+            {/* Corpo da Tabela com todos os registros */}
             <tbody className="divide-y divide-slate-100">
-              {displayedRows.length === 0 ? (
+              {sortedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7 + MONTHS.length + 1} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Building2 className="mx-auto mb-2 text-slate-300" size={32} />
                     <p className="font-medium text-slate-600">
                       Nenhum cliente com faturamento encontrado para os filtros selecionados.
@@ -641,121 +470,69 @@ export default function ClientBilledTable({
                   </td>
                 </tr>
               ) : (
-                displayedRows.map((row, idx) => {
-                  const rowRank =
-                    pageSize === "all" ? idx + 1 : (currentPageSafe - 1) * pageSize + idx + 1;
-                  return (
-                    <tr
-                      key={row.id}
-                      className="hover:bg-sky-50/40 transition-colors text-slate-600 group"
-                    >
-                      <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">
-                        {rowRank}
-                      </td>
+                sortedRows.map((row, idx) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-sky-50/50 transition-colors text-slate-600 group"
+                  >
+                    <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">
+                      {idx + 1}
+                    </td>
 
-                      <td className="py-2 px-3 font-mono text-slate-500 font-medium">
-                        {row.codigo}
-                      </td>
+                    <td className="py-2 px-3 text-center font-mono text-slate-500 font-medium">
+                      {row.codigo}
+                    </td>
 
-                      <td className="py-2 px-3 font-medium text-slate-800">
-                        <span title={row.razaoSocial} className="line-clamp-1">
-                          {row.razaoSocial}
+                    <td className="py-2 px-4 font-medium text-slate-800">
+                      <div className="flex flex-col">
+                        <span title={row.nomeFantasia} className="line-clamp-1 font-semibold text-slate-900">
+                          {row.nomeFantasia}
                         </span>
-                      </td>
+                        {row.razaoSocial && row.razaoSocial !== row.nomeFantasia && (
+                          <span title={row.razaoSocial} className="line-clamp-1 text-[11px] text-slate-400 font-normal">
+                            {row.razaoSocial}
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
-                      <td className="py-2 px-3 text-slate-600">
-                        <span title={row.nomeFantasia} className="line-clamp-1">
-                          {row.nomeFantasia || "—"}
-                        </span>
-                      </td>
+                    <td className="py-2 px-3 text-center">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                          row.type === "Agência"
+                            ? "bg-violet-50 text-violet-700 border-violet-200"
+                            : "bg-sky-50 text-sky-700 border-sky-200"
+                        }`}
+                      >
+                        {row.type}
+                      </span>
+                    </td>
 
-                      <td className="py-2 px-3 text-center">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                            row.type === "Agência"
-                              ? "bg-violet-50 text-violet-700 border-violet-200"
-                              : "bg-sky-50 text-sky-700 border-sky-200"
-                          }`}
-                        >
-                          {row.type}
-                        </span>
-                      </td>
+                    <td className="py-2 px-4 text-slate-600">
+                      <span className="line-clamp-1">{row.segmento}</span>
+                    </td>
 
-                      <td className="py-2 px-3 text-slate-600">
-                        <span className="line-clamp-1">{row.segmento}</span>
-                      </td>
-
-                      <td className="py-2 px-3 text-slate-700">
-                        <span
-                          className={`line-clamp-1 ${
-                            row.executivo.includes("Key Account") ? "font-semibold text-purple-700" : ""
-                          }`}
-                        >
-                          {row.executivo}
-                        </span>
-                      </td>
-
-                      {/* Valores por mês */}
-                      {MONTHS.map((m) => {
-                        const val = row.monthly[m] || 0;
-                        const isInScope = monthsInScopeSet.has(m.toLowerCase());
-                        return (
-                          <td
-                            key={m}
-                            className={`py-2 px-3 text-right font-mono ${
-                              val > 0
-                                ? isInScope
-                                  ? "text-slate-800 font-medium bg-sky-50/20"
-                                  : "text-slate-600"
-                                : "text-slate-300"
-                            }`}
-                          >
-                            {val !== 0 ? formatBRL(val) : "—"}
-                          </td>
-                        );
-                      })}
-
-                      {/* Total no período */}
-                      <td className="py-2 px-4 text-right font-mono font-bold text-emerald-700 bg-slate-50/70 group-hover:bg-emerald-50/30 transition-colors">
-                        {formatBRL(row.total)}
-                      </td>
-                    </tr>
-                  );
-                })
+                    <td className="py-2 px-5 text-right font-mono font-bold text-emerald-700 bg-slate-50/60 group-hover:bg-emerald-50/30 transition-colors text-xs">
+                      {formatBRL(row.total)}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
 
-            {/* Rodapé Fixo com Totais (Sticky) */}
+            {/* Rodapé Fixo com Totais (Sticky Bottom) */}
             {sortedRows.length > 0 && (
               <tfoot className="sticky bottom-0 bg-slate-100 z-10 font-bold text-slate-800 border-t-2 border-slate-300 shadow-sm">
                 <tr>
                   <td className="py-2.5 px-3 text-center text-slate-400 font-mono">Σ</td>
-                  <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
-                    {sortedRows.length} itens
+                  <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-500">
+                    {sortedRows.length} clientes
                   </td>
-                  <td colSpan={5} className="py-2.5 px-3 text-left font-bold text-slate-800">
+                  <td colSpan={3} className="py-2.5 px-4 text-left font-bold text-slate-800">
                     TOTAL DO PERÍODO SELECIONADO
                   </td>
-
-                  {/* Totais mensais */}
-                  {MONTHS.map((m) => {
-                    const monthTotal = totals.monthlyTotals[m] || 0;
-                    const isInScope = monthsInScopeSet.has(m.toLowerCase());
-                    return (
-                      <td
-                        key={m}
-                        className={`py-2.5 px-3 text-right font-mono text-xs ${
-                          isInScope ? "text-slate-900 bg-sky-100/50 font-bold" : "text-slate-600"
-                        }`}
-                      >
-                        {monthTotal !== 0 ? formatBRL(monthTotal) : "—"}
-                      </td>
-                    );
-                  })}
-
-                  {/* Total Geral */}
-                  <td className="py-2.5 px-4 text-right font-mono text-sm font-extrabold text-emerald-800 bg-emerald-100/70 border-l border-emerald-200">
-                    {formatBRL(totals.grandTotal)}
+                  <td className="py-2.5 px-5 text-right font-mono text-sm font-extrabold text-emerald-800 bg-emerald-100/70 border-l border-emerald-200">
+                    {formatBRL(totalGeral)}
                   </td>
                 </tr>
               </tfoot>
