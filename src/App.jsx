@@ -2492,6 +2492,10 @@ export default function App() {
               specialProductRows={specialProductRows}
               specialProductTotals={specialProductTotals}
               userPerfil={user.perfil}
+              advertisers={advertisers}
+              faturamentoEfetivo={faturamentoEfetivo}
+              segmentoExecutivo={segmentoExecutivo}
+              executivoKeyAccounts={executivoKeyAccounts}
             />
           )}
 

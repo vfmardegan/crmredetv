@@ -27,6 +27,7 @@ import { MultiSelectFilterButton } from "./UI/Filters";
 import { MetaGauge } from "./UI/MetaGauge";
 import { ResultadoTooltip, ResultadoMensalTooltip, StageStackTooltip } from "./UI/Tooltips";
 import { KpiCard } from "./UI/KpiCard";
+import ClientBilledTable from "./ClientBilledTable";
 
 const STAGE_CHART_COLORS = {
   "Desenvolvimento": "#94a3b8",
@@ -83,7 +84,11 @@ export default function DashboardTab({
   digitalProductTotals,
   specialProductRows,
   specialProductTotals,
-  userPerfil
+  userPerfil,
+  advertisers = [],
+  faturamentoEfetivo = [],
+  segmentoExecutivo = {},
+  executivoKeyAccounts = {},
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -377,6 +382,21 @@ export default function DashboardTab({
           </table>
         </div>
       </div>
+
+      {/* Tabela detalhada de todos os clientes com faturamento */}
+      <ClientBilledTable
+        advertisers={advertisers}
+        faturamentoEfetivo={faturamentoEfetivo}
+        executivos={executivos}
+        segmentoExecutivo={segmentoExecutivo}
+        executivoKeyAccounts={executivoKeyAccounts}
+        dashboardYear={dashboardYear}
+        dashboardMonths={dashboardMonths}
+        dashboardSegmentFilter={dashboardSegmentFilter}
+        dashboardAdvertiserFilter={dashboardAdvertiserFilter}
+        dashboardAgencyFilter={dashboardAgencyFilter}
+        dashboardExecutivoFilter={dashboardExecutivoFilter}
+      />
     </div>
   );
 }
