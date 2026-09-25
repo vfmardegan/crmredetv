@@ -38,7 +38,6 @@ const PERMISSIONS = {
     "can_edit_opportunities"
   ],
   especialista: [
-    "can_view_dashboard",
     "can_view_pipeline",
     "can_view_planning",
     "can_edit_planning",
@@ -51,6 +50,7 @@ const PERMISSIONS = {
     "can_view_dashboard",
     "can_view_pipeline",
     "can_view_clients",
+    "can_edit_clients",
     "can_send_proposals",
     "can_schedule_meetings",
     "can_view_contacts",

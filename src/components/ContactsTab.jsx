@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { formatCelular } from "../utils/helpers";
 
 export default function ContactsTab({
@@ -11,17 +11,47 @@ export default function ContactsTab({
   selectedContactId,
   setSelectedContactId,
   setSelectedAdvertiserId,
-  openSendCustomEmail
+  openSendCustomEmail,
+  openEditContact,
+  currentUser,
+  onDeleteContact,
+  goToAdvertiser,
+  setView,
 }) {
   const selectedContact = contacts.find((c) => c.id === selectedContactId);
   const selectedContactClient = selectedContact ? advertisers.find((a) => a.id === selectedContact.clientId) : null;
+
+  const [visibleCount, setVisibleCount] = React.useState(50);
+  const [localSearch, setLocalSearch] = React.useState(contactSearch);
+
+  // Sincroniza estado local com o pai se alterado externamente
+  React.useEffect(() => {
+    setLocalSearch(contactSearch);
+  }, [contactSearch]);
+
+  // Debounce de 250ms para digitação 100% fluida sem travar o teclado
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localSearch !== contactSearch) {
+        setContactSearch(localSearch);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [localSearch, contactSearch, setContactSearch]);
+
+  // Reseta a paginação para 50 sempre que houver busca por texto
+  React.useEffect(() => {
+    setVisibleCount(50);
+  }, [contactSearch]);
+
+  const visibleContacts = filteredContacts.slice(0, visibleCount);
 
   return (
     <div className="flex flex-col gap-3">
       <input
         type="text"
-        value={contactSearch}
-        onChange={(e) => setContactSearch(e.target.value)}
+        value={localSearch}
+        onChange={(e) => setLocalSearch(e.target.value)}
         placeholder="Buscar por nome, empresa ou agência..."
         className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
       />
@@ -31,7 +61,7 @@ export default function ContactsTab({
             {contacts.length === 0 ? "Nenhum contato cadastrado ainda." : `Nenhum contato encontrado para "${contactSearch}".`}
           </div>
         )}
-        {filteredContacts.map((c) => {
+        {visibleContacts.map((c) => {
           const client = advertisers.find((a) => a.id === c.clientId);
           return (
             <button
@@ -58,7 +88,7 @@ export default function ContactsTab({
                   )}
                 </div>
                 <div className="text-xs text-slate-500 mt-1">
-                  {c.cargo}{c.cargo && client ? " · " : ""}{client ? client.name : "Cliente não vinculado"}
+                  {c.cargo}{c.cargo && client ? " · " : ""}{client ? (client.nomeFantasia || client.razaoSocial || client.name) : "Cliente não vinculado"}
                 </div>
               </div>
               <div className="text-right">
@@ -69,6 +99,23 @@ export default function ContactsTab({
           );
         })}
       </div>
+
+      {filteredContacts.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600">
+          <div>
+            Exibindo <strong className="text-slate-900">{visibleContacts.length}</strong> de <strong className="text-slate-900">{filteredContacts.length.toLocaleString('pt-BR')}</strong> contatos
+          </div>
+          {visibleCount < filteredContacts.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + 50)}
+              className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5"
+            >
+              <span>Carregar mais 50</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {selectedContact && (
         <div
@@ -94,18 +141,46 @@ export default function ContactsTab({
                   {selectedContact.cargo}{selectedContact.cargo && selectedContact.departamento ? " · " : ""}{selectedContact.departamento}
                 </div>
               </div>
-              <button onClick={() => setSelectedContactId(null)} className="text-slate-400 hover:text-slate-700">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {openEditContact && (
+                  <button
+                    type="button"
+                    onClick={() => openEditContact(selectedContact)}
+                    className="text-xs border border-slate-200 text-slate-600 px-2.5 py-1.5 rounded-md hover:bg-slate-50 font-medium"
+                  >
+                    Editar
+                  </button>
+                )}
+                {currentUser?.perfil === "admin" && onDeleteContact && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteContact(selectedContact.id)}
+                    className="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
+                    title="Excluir cadastro (Apenas Administrador)"
+                  >
+                    <Trash2 size={13} />
+                    <span>Excluir</span>
+                  </button>
+                )}
+                <button onClick={() => setSelectedContactId(null)} className="text-slate-400 hover:text-slate-700 ml-1">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {selectedContactClient && (
               <button
+                type="button"
                 onClick={() => {
-                  setSelectedContactId(null);
-                  setSelectedAdvertiserId(selectedContactClient.id);
+                  if (typeof goToAdvertiser === "function") {
+                    goToAdvertiser(selectedContactClient.id);
+                  } else {
+                    setSelectedContactId(null);
+                    setSelectedAdvertiserId(selectedContactClient.id);
+                    if (typeof setView === "function") setView("advertisers");
+                  }
                 }}
-                className="text-xs text-rose-600 hover:text-rose-700 mb-4 block"
+                className="text-xs text-rose-600 hover:text-rose-700 mb-4 block hover:underline transition-colors"
               >
                 Ver cliente: {selectedContactClient.name} →
               </button>

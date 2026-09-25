@@ -55,9 +55,10 @@ export function ResultadoTooltip({ active, payload, label }) {
   if (items.length === 0) return null;
   const nameMap = { Pipeline: "Pipeline", AProduzir: "GAP" };
   const totalGap = items.reduce((s, i) => s + (i.value || 0), 0);
+  const displayGap = totalGap > 0 ? -totalGap : totalGap;
   return (
     <div className="bg-white border border-slate-200 rounded-md shadow-sm px-3 py-2 flex flex-col gap-1">
-      <div className="text-xs text-slate-500 font-medium border-b border-slate-100 pb-1 mb-0.5">GAP: {formatBRL(totalGap)}</div>
+      <div className="text-xs text-slate-500 font-medium border-b border-slate-100 pb-1 mb-0.5">GAP: {formatBRL(displayGap)}</div>
       {items.map((item) => (
         <div key={item.dataKey} className="flex items-center gap-2 text-xs">
           <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />

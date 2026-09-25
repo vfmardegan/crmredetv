@@ -2,6 +2,9 @@ const express = require("express");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { pool } = require("../db");
+const { requirePermission } = require("../utils/acl");
+const { decryptToken } = require("../utils/crypto");
+const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -9,7 +12,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // POST /api/v1/calendar/event — cria evento na agenda (Google Calendar ou Bypass)
-router.post("/calendar/event", async (req, res) => {
+router.post("/calendar/event", requirePermission("can_schedule_meetings"), async (req, res) => {
   const { clientId, title, date, time, duration, description, guests } = req.body;
 
   if (!clientId || !title || !date || !time) {
@@ -17,6 +20,10 @@ router.post("/calendar/event", async (req, res) => {
   }
 
   try {
+    const allowed = await isClientAllowedForUser(req.user, clientId);
+    if (!allowed) {
+      return res.status(403).json({ error: "Acesso negado. Este cliente não pertence à sua carteira autorizada." });
+    }
     // 1. Busca informações de tokens do Google do usuário logado
     const userRes = await pool.query(
       "SELECT google_refresh_token, google_access_token FROM usuarios WHERE id = $1",
@@ -33,8 +40,8 @@ router.post("/calendar/event", async (req, res) => {
       try {
         const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
         oauth2Client.setCredentials({
-          refresh_token: userTokens.google_refresh_token,
-          access_token: userTokens.google_access_token
+          refresh_token: decryptToken(userTokens.google_refresh_token),
+          access_token: decryptToken(userTokens.google_access_token)
         });
 
         // Garante token atualizado
@@ -100,7 +107,7 @@ router.post("/calendar/event", async (req, res) => {
 
   } catch (err) {
     console.error("Erro ao agendar compromisso:", err);
-    res.status(500).json({ error: "Erro interno do servidor ao agendar compromisso: " + err.message });
+    res.status(500).json({ error: "Erro interno do servidor ao agendar compromisso." });
   }
 });
 

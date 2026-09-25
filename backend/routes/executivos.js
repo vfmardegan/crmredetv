@@ -12,14 +12,41 @@ router.post("/executivos", async (req, res) => {
     return res.status(403).json({ error: "Acesso negado. Esta operação exige a permissão: can_assign_carteira" });
   }
 
-  const { nome } = req.body;
+  const { nome, email } = req.body;
   if (!nome || !nome.trim()) {
     return res.status(400).json({ error: "Nome é obrigatório." });
   }
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: "E-mail é obrigatório." });
+  }
+
+  const nomeClean = nome.trim();
+  const emailClean = email.toLowerCase().trim();
   const id = crypto.randomUUID();
+
   try {
-    await pool.query("insert into executivos (id, nome) values ($1, $2)", [id, nome.trim()]);
-    res.status(201).json({ id });
+    // 1. Cria executivo
+    await pool.query("INSERT INTO executivos (id, nome) VALUES ($1, $2)", [id, nomeClean]);
+
+    // 2. Cria ou vincula usuário em usuarios
+    const checkUser = await pool.query("SELECT id FROM usuarios WHERE email = $1", [emailClean]);
+    if (checkUser.rows.length > 0) {
+      await pool.query("UPDATE usuarios SET executivo_id = $1, nome = $2 WHERE email = $3", [id, nomeClean, emailClean]);
+    } else {
+      await pool.query(
+        "INSERT INTO usuarios (google_id, email, nome, perfil, executivo_id) VALUES ($1, $2, $3, 'executivo', $4)",
+        [emailClean, emailClean, nomeClean, id]
+      );
+    }
+
+    await logAudit(
+      req.user.id,
+      req.user.email,
+      "create_executivo",
+      `Criou executivo "${nomeClean}" (${emailClean}) com perfil associado`
+    );
+
+    res.status(201).json({ id, nome: nomeClean, email: emailClean });
   } catch (err) {
     console.error("Erro em POST /executivos:", err);
     res.status(500).json({ error: "Não foi possível salvar o executivo." });

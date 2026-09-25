@@ -17,7 +17,7 @@ export function ClientSearchField({ label, type, advertisers, valueId, onSelect,
 
   return (
     <div className="relative">
-      <label className="text-xs text-slate-500 mb-1 block">
+      <label className="text-xs text-slate-700 font-medium mb-1 block">
         {label} {required && <span className="text-rose-500">*</span>}
       </label>
       {selected ? (
@@ -111,7 +111,7 @@ export function MultiClientSearchField({ label, type, advertisers, selectedIds, 
 
   return (
     <div>
-      <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+      <label className="text-xs text-slate-700 font-medium mb-1 block">{label}</label>
       {selectedItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-1.5">
           {selectedItems.map((a) => (
@@ -185,7 +185,7 @@ export function ContactSearchField({ label, options, valueId, onSelect, onCreate
 
   return (
     <div className="relative">
-      <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+      <label className="text-xs text-slate-700 font-medium mb-1 block">{label}</label>
       {selected ? (
         <div className="flex items-center justify-between border border-slate-200 rounded-md px-3 py-2 text-sm bg-slate-50">
           <span className="text-slate-700">{selected.name} — {selected.cargo} ({selected.ownerName})</span>
@@ -264,7 +264,7 @@ export function AnyClientSearchField({ label, advertisers, valueId, onSelect, on
 
   return (
     <div className="relative">
-      <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+      <label className="text-xs text-slate-700 font-medium mb-1 block">{label}</label>
       {selected ? (
         <div className="flex items-center justify-between border border-slate-200 rounded-md px-3 py-2 text-sm bg-slate-50">
           <span className="text-slate-700">{selected.name} <span className="text-slate-400">({selected.type})</span></span>

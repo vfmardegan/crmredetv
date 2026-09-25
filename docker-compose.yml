@@ -1,18 +1,25 @@
 version: '3.8'
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # Servidor Web (Nginx)
   web:
     image: nginx:alpine
     container_name: crm-web-v2
     restart: always
+    logging: *default-logging
     ports:
       - "8011:80"                      # Mapeia a porta externa 8011 para a 80 (HTTP) do Nginx
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
+      - ./dist:/usr/share/nginx/html:ro
     depends_on:
-      - crm-app-v2
       - crm-api-v2
 
   # Frontend (React/Vite)
@@ -20,6 +27,7 @@ services:
     image: node:20-alpine
     container_name: crm-frontend-v2
     restart: always
+    logging: *default-logging
     environment:
       - NODE_ENV=development
       - PORT=8000
@@ -37,10 +45,16 @@ services:
     image: node:20-alpine
     container_name: crm-api-v2
     restart: always
+    logging: *default-logging
     environment:
       - API_PORT=8001
       - DATABASE_URL=postgresql://postgres:redetv@db-v2:5432/crm_redetv
+      - JWT_SECRET=${JWT_SECRET:-crm_redetv_secret_key_prod_default_2026}
+      - ALLOWED_DOMAINS=${ALLOWED_DOMAINS:-redetv.com.br}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ALLOW_DEV_MOCK_LOGIN=${ALLOW_DEV_MOCK_LOGIN:-false}
     volumes:
       - ./backend:/usr/src/app
     working_dir: /usr/src/app
@@ -54,10 +68,11 @@ services:
     image: postgres:15-alpine
     container_name: crm-db-v2
     restart: always
+    logging: *default-logging
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=redetv
-      - POSTGRES_DB=crm_redetv
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-redetv}
+      - POSTGRES_DB=${POSTGRES_DB:-crm_redetv}
     volumes:
       - ./crm-redetv-schema-completo.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
       - crm-db-data-v2:/var/lib/postgresql/data

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { X, ExternalLink } from "lucide-react";
 import {
   PLANNING_TYPES,
   PLANNING_STATUSES,
@@ -7,6 +7,7 @@ import {
   formatDate
 } from "../utils/helpers";
 import { DeadlineSignal } from "./UI/DeadlineSignal";
+import { MultiSelectFilterButton } from "./UI/Filters";
 
 export default function PlanningTab({
   planningGroups,
@@ -14,7 +15,8 @@ export default function PlanningTab({
   updatePlanningField,
   updateOpportunityProducts,
   allProducts,
-  responsaveis
+  responsaveis,
+  goToOpportunityInPipeline
 }) {
   const [selectedOpp, setSelectedOpp] = useState(null);
   const [tempProducts, setTempProducts] = useState([]);
@@ -24,6 +26,8 @@ export default function PlanningTab({
   const [specialExpanded, setSpecialExpanded] = useState(false);
   const [openResponsavelOppId, setOpenResponsavelOppId] = useState(null);
   const [responsavelSearch, setResponsavelSearch] = useState("");
+  const [planningSearch, setPlanningSearch] = useState("");
+  const [responsavelFilter, setResponsavelFilter] = useState([]);
 
   // Fallbacks estáticos se allProducts for vazio
   const tvProducts = (allProducts?.televisao?.length > 0 ? allProducts.televisao : [
@@ -42,6 +46,15 @@ export default function PlanningTab({
     'Bezona','Eleições 2026','Liga Monstro','Liga Universitária'
   ]).slice().sort((a,b) => a.localeCompare(b, 'pt-BR'));
 
+  // Lista de responsáveis únicos para filtro
+  const allOppsInGroups = (planningGroups || []).flatMap((g) => g.rows || []);
+  const responsavelNamesFromProp = (responsaveis || []).map((r) => (typeof r === "string" ? r : (r.nome || r.name || "")));
+  const responsavelNamesFromOpps = allOppsInGroups.flatMap((o) => (o.responsavel || "").split(",").map((x) => x.trim()));
+  const availableResponsavelOptions = Array.from(new Set([...responsavelNamesFromProp, ...responsavelNamesFromOpps]))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"))
+    .map((name) => ({ value: name, label: name }));
+
   // Helper de formatação de milhar
   const formatThousandsBR = (val) => String(val).replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
@@ -58,8 +71,43 @@ export default function PlanningTab({
       return nextProducts;
     });
   }
+
+  const query = planningSearch.trim().toLowerCase();
+
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-5">
+      {/* Barra de Filtros e Busca do Planejamento */}
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            value={planningSearch}
+            onChange={(e) => setPlanningSearch(e.target.value)}
+            placeholder="Buscar no planejamento (oportunidade, executivo, agência, anunciante)..."
+            className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-72 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shadow-sm"
+          />
+          <MultiSelectFilterButton
+            label="Responsável"
+            options={availableResponsavelOptions}
+            selected={responsavelFilter}
+            onChange={setResponsavelFilter}
+            searchPlaceholder="Buscar responsável..."
+          />
+          {(planningSearch || responsavelFilter.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                setPlanningSearch("");
+                setResponsavelFilter([]);
+              }}
+              className="text-xs text-rose-600 hover:text-rose-700 font-medium px-2 py-1 bg-rose-50 rounded-md border border-rose-100"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse whitespace-nowrap">
           <thead>
@@ -86,26 +134,77 @@ export default function PlanningTab({
               "Entregue": "bg-emerald-50 text-emerald-800 border-emerald-200",
               "Finalizado": "bg-slate-100 text-slate-800 border-slate-300",
             };
+
+            const filteredRows = group.rows.filter((opp) => {
+              // Filtro por Responsável selecionado
+              if (responsavelFilter.length > 0) {
+                const oppResps = (opp.responsavel || "").split(",").map((x) => x.trim()).filter(Boolean);
+                const matchResp = oppResps.some((r) => responsavelFilter.includes(r));
+                if (!matchResp) return false;
+              }
+
+              // Filtro por Texto da busca
+              if (query) {
+                const adv = advertisers.find((a) => a.id === opp.advertiserId);
+                const ag = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
+                
+                const titleMatch = (opp.title || "").toLowerCase().includes(query);
+                const execMatch = (opp.executivo || "").toLowerCase().includes(query);
+                const respMatch = (opp.responsavel || "").toLowerCase().includes(query);
+                const statusMatch = (opp.status || "").toLowerCase().includes(query);
+                const advMatch = adv ? (
+                  (adv.nomeFantasia || "").toLowerCase().includes(query) ||
+                  (adv.razaoSocial || "").toLowerCase().includes(query)
+                ) : false;
+                const agMatch = ag ? (
+                  (ag.nomeFantasia || "").toLowerCase().includes(query) ||
+                  (ag.razaoSocial || "").toLowerCase().includes(query)
+                ) : false;
+
+                if (!titleMatch && !execMatch && !respMatch && !statusMatch && !advMatch && !agMatch) {
+                  return false;
+                }
+              }
+
+              return true;
+            });
+
             return (
               <tbody key={group.label}>
                 <tr>
                   <td colSpan={14} className="pt-4 pb-0 pl-0">
                     <div className={"text-sm font-bold uppercase tracking-wide px-3 py-2 rounded-md border " + headerStyles[group.label]}>
-                      {group.label} <span className="font-normal normal-case text-xs">({group.rows.length})</span>
+                      {group.label} <span className="font-normal normal-case text-xs">({filteredRows.length})</span>
                     </div>
                   </td>
                 </tr>
-                {group.rows.length === 0 && (
+                {filteredRows.length === 0 && (
                   <tr>
-                    <td colSpan={14} className="py-2 text-slate-300">Nenhuma oportunidade nesta categoria.</td>
+                    <td colSpan={14} className="py-2 text-slate-300">
+                      {query ? "Nenhuma oportunidade encontrada para a busca." : "Nenhuma oportunidade nesta categoria."}
+                    </td>
                   </tr>
                 )}
-                {group.rows.map((o) => {
+                {filteredRows.map((o) => {
                   const agency = o.agencyId && o.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === o.agencyId) : null;
                   const advertiser = advertisers.find((a) => a.id === o.advertiserId);
                   return (
                     <tr key={o.id} className="border-b border-slate-50 text-slate-600 align-top">
-                      <td className="py-2 pr-3 text-slate-700 font-medium">{o.title}</td>
+                      <td className="py-2 pr-3 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof goToOpportunityInPipeline === "function") {
+                              goToOpportunityInPipeline(o.id);
+                            }
+                          }}
+                          className="text-left text-slate-800 hover:text-rose-600 hover:underline flex items-center gap-1.5 group cursor-pointer transition-colors"
+                          title="Abrir oportunidade no pipeline"
+                        >
+                          <span className="font-medium group-hover:text-rose-600 transition-colors">{o.title}</span>
+                          <ExternalLink size={12} className="text-slate-400 group-hover:text-rose-600 opacity-60 group-hover:opacity-100 transition-all shrink-0" />
+                        </button>
+                      </td>
                       <td className="py-2 px-3 text-slate-700">{o.executivo || "—"}</td>
                       <td className="py-2 px-3">{agency ? agency.name : "Cliente Direto"}</td>
                       <td className="py-2 px-3">{advertiser ? advertiser.name : "—"}</td>

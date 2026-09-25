@@ -20,6 +20,7 @@ export default function ExecutivosTab({
   setExpandedClientsId,
   computeClientRowForExecutivo,
   advertisers,
+  executivoKeyAccounts = {},
   currentUser,
 }) {
   const [users, setUsers] = useState([]);
@@ -92,18 +93,6 @@ export default function ExecutivosTab({
             </button>
           ))}
         </div>
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              setNewExecutivoForm({ nome: "" });
-              setShowNewExecutivo(true);
-            }}
-            className="flex items-center gap-1.5 text-sm bg-slate-900 text-white px-3 py-1.5 rounded-md hover:bg-slate-800"
-          >
-            <Plus size={15} /> Novo Executivo
-          </button>
-        )}
       </div>
 
       {executivos.length === 0 && (
@@ -116,8 +105,8 @@ export default function ExecutivosTab({
         const kpis = computeExecutivoKpis(executivo);
         const isEditing = editingCarteiraId === executivo.id;
 
-        // Anunciantes Key Account vinculados a este executivo
-        const linkedKeyAccounts = advertisers.filter((a) => keyAccounts.includes(a.id));
+        const currentKeyAccountIds = isEditing ? keyAccounts : (executivoKeyAccounts[executivo.id] || []);
+        const linkedKeyAccounts = advertisers.filter((a) => currentKeyAccountIds.includes(a.id));
 
         return (
           <div key={executivo.id} className="bg-white rounded-lg border border-slate-200 p-5">
@@ -125,15 +114,10 @@ export default function ExecutivosTab({
               <div>
                 <div className="font-medium text-slate-800 flex items-center gap-2">
                   {executivo.nome}
+                  {executivo.email && <span className="text-xs font-normal text-slate-400">({executivo.email})</span>}
                   {users.some(u => u.executivo_id === executivo.id) && (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Usuário Ativo" />
                   )}
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {kpis.segmentos.length === 0
-                    ? "Nenhum segmento na carteira ainda"
-                    : `Carteira: ${kpis.segmentos.join(", ")}`}
-                  {linkedKeyAccounts.length > 0 && ` · Key-Accounts: ${linkedKeyAccounts.map(k => k.name).join(", ")}`}
                 </div>
               </div>
               {isAdmin && (
@@ -209,7 +193,7 @@ export default function ExecutivosTab({
                           type="text"
                           value={keyAccountSearch}
                           onChange={(e) => setKeyAccountSearch(e.target.value)}
-                          placeholder="Buscar anunciante para adicionar..."
+                          placeholder="Buscar cliente (anunciante ou agência)..."
                           className="w-full bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 pl-8 text-xs focus:outline-none focus:border-slate-300"
                         />
                       </div>
@@ -217,13 +201,12 @@ export default function ExecutivosTab({
                         {advertisers
                           .filter(
                             (a) =>
-                              a.type === "Anunciante" &&
                               !keyAccounts.includes(a.id) &&
                               a.name.toLowerCase().includes(keyAccountSearch.toLowerCase())
                           )
                           .map((a) => (
                             <div key={a.id} className="flex items-center justify-between p-1.5 hover:bg-slate-50 rounded text-xs">
-                              <span>{a.name} <span className="text-[10px] text-slate-400">({a.segmento})</span></span>
+                              <span>{a.name} <span className="text-[10px] text-slate-400">({a.type} · {a.segmento || "Geral"})</span></span>
                               <button
                                 type="button"
                                 onClick={() => addKeyAccount(a.id)}
@@ -259,7 +242,11 @@ export default function ExecutivosTab({
             )}
 
             <div className="grid grid-cols-3 gap-3 mb-3">
-              <KpiCard label="Meta" value={formatBRL(kpis.meta)} sub={`${kpis.segmentos.length} segmento(s)`} />
+              <KpiCard
+                label="Meta"
+                value={formatBRL(kpis.meta)}
+                sub={`${kpis.segmentos.length} segmento(s) · ${linkedKeyAccounts.length} Key Account(s)`}
+              />
               <KpiCard label="Faturamento" value={formatBRL(kpis.faturamento)} sub={`${executivoYear}`} />
               <KpiCard
                 label="GAP"
@@ -272,93 +259,36 @@ export default function ExecutivosTab({
               <KpiCard label="Pipeline" value={formatBRL(kpis.pipeline)} sub="Frio 0% + Morno 10% + Quente 70%" />
             </div>
 
-            <div>
-              <button
-                type="button"
-                onClick={() => setExpandedClientsId(expandedClientsId === executivo.id ? null : executivo.id)}
-                className="flex items-center gap-1 text-xs font-medium text-slate-500 mb-2 hover:text-slate-800"
-              >
-                Clientes da carteira ({kpis.clientesDaCarteira.length})
-                {expandedClientsId === executivo.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-
-              {expandedClientsId !== executivo.id && (
-                <div className="flex flex-wrap gap-1.5">
-                  {kpis.clientesDaCarteira.length === 0 && (
-                    <div className="text-xs text-slate-350">Nenhum cliente nos segmentos desta carteira.</div>
-                  )}
-                  {kpis.clientesDaCarteira.map((c) => (
-                    <span key={c.id} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
-                      {c.name}
-                    </span>
-                  ))}
+            <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
+              <div>
+                <div className="text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                  Segmentos da Carteira ({kpis.segmentos.length})
                 </div>
-              )}
+                <div className="flex flex-wrap gap-1.5">
+                  {kpis.segmentos.length === 0 ? (
+                    <div className="text-xs text-slate-400">Nenhum segmento associado a este executivo.</div>
+                  ) : (
+                    kpis.segmentos.map((seg) => (
+                      <span key={seg} className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 font-medium">
+                        {seg}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
 
-              {expandedClientsId === executivo.id && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse whitespace-nowrap">
-                    <thead>
-                      <tr className="text-slate-500 border-b border-slate-200 text-left">
-                        <th className="py-2 pr-3 font-medium">Cliente</th>
-                        <th className="py-2 px-3 font-medium text-right">Faturamento</th>
-                        <th className="py-2 px-3 font-medium text-right">Valor Total das Oportunidades</th>
-                        <th className="py-2 pl-3 font-medium text-right">Pipeline</th>
-                      </tr>
-                    </thead>
-                    {kpis.clientesDaCarteira.length === 0 && (
-                      <tbody>
-                        <tr>
-                          <td colSpan={4} className="py-3 text-slate-300">Nenhum cliente nos segmentos desta carteira.</td>
-                        </tr>
-                      </tbody>
-                    )}
-                    {kpis.segmentos.map((seg, segIdx) => {
-                      const headerPalette = [
-                        "bg-sky-50 text-sky-800 border-sky-200",
-                        "bg-violet-50 text-violet-800 border-violet-200",
-                        "bg-amber-50 text-amber-800 border-amber-200",
-                        "bg-emerald-50 text-emerald-800 border-emerald-200",
-                        "bg-rose-50 text-rose-800 border-rose-200",
-                      ];
-                      const clientesDoSegmento = kpis.clientesDaCarteira.filter((c) => c.segmento === seg);
-                      if (clientesDoSegmento.length === 0) return null;
-                      const rows = clientesDoSegmento.map((c) => ({ client: c, ...computeClientRowForExecutivo(c, executivoYear) }));
-                      const subtotal = rows.reduce(
-                        (acc, r) => ({
-                          faturamento: acc.faturamento + r.faturamento,
-                          valorTotalOportunidades: acc.valorTotalOportunidades + r.valorTotalOportunidades,
-                          pipeline: acc.pipeline + r.pipeline,
-                        }),
-                        { faturamento: 0, valorTotalOportunidades: 0, pipeline: 0 }
-                      );
-                      return (
-                        <tbody key={seg}>
-                          <tr>
-                            <td colSpan={4} className="pt-3 pb-0">
-                              <div className={"text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-md border " + headerPalette[segIdx % headerPalette.length]}>
-                                {seg}
-                              </div>
-                            </td>
-                          </tr>
-                          {rows.map((r) => (
-                            <tr key={r.client.id} className="border-b border-slate-50 text-slate-600">
-                              <td className="py-1.5 pr-3 text-slate-700">{r.client.name}</td>
-                              <td className="py-1.5 px-3 text-right font-mono">{formatBRL(r.faturamento)}</td>
-                              <td className="py-1.5 px-3 text-right font-mono">{formatBRL(r.valorTotalOportunidades)}</td>
-                              <td className="py-1.5 pl-3 text-right font-mono">{formatBRL(r.pipeline)}</td>
-                            </tr>
-                          ))}
-                          <tr className="border-b border-slate-200 font-medium text-slate-800">
-                            <td className="py-1.5 pr-3">Total {seg}</td>
-                            <td className="py-1.5 px-3 text-right font-mono">{formatBRL(subtotal.faturamento)}</td>
-                            <td className="py-1.5 px-3 text-right font-mono">{formatBRL(subtotal.valorTotalOportunidades)}</td>
-                            <td className="py-1.5 pl-3 text-right font-mono">{formatBRL(subtotal.pipeline)}</td>
-                          </tr>
-                        </tbody>
-                      );
-                    })}
-                  </table>
+              {linkedKeyAccounts.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                    Key-Accounts Corporativos ({linkedKeyAccounts.length})
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {linkedKeyAccounts.map((k) => (
+                      <span key={k.id} className="text-xs bg-amber-50 text-amber-800 px-2.5 py-1 rounded-md border border-amber-200 font-medium">
+                        {k.name}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

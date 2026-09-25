@@ -1,0 +1,4 @@
+﻿Tipo;Razao_Social;Nome_Fantasia;CNPJ;Codigo_ERP;Segmento;Executivo_Email;Agencia_Vinculada_Nome;Contato_Nome;Contato_Cargo;Contato_Email;Contato_Telefone
+Agência;WMcCann Publicidade Ltda;WMcCann;60.579.703/0001-48;AG-001;Publicidade;bruno.camargo@redetv.com.br;;Mariana Souza;Diretora de Mídia;mariana.souza@wmccann.com.br;(11) 98765-4321
+Anunciante;JBS S.A.;Friboi / Seara;02.916.265/0001-60;ANC-001;Alimentos;bruno.camargo@redetv.com.br;WMcCann;Carlos Alberto;Gerente de Marketing;carlos.alberto@jbs.com.br;(11) 99887-1122
+Anunciante;Ambev S.A.;Ambev;07.526.557/0001-00;ANC-002;Bebidas;silvia.szekely@redetv.com.br;Africa Creative;Fernanda Lima;Head de Mídia;fernanda.lima@ambev.com.br;(11) 97654-3210

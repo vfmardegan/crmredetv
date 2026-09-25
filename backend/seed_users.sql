@@ -19,6 +19,7 @@ VALUES
   ('seed_neto',                 'neto@redetv.com.br',              'Neto',                 '', 'admin'),
   ('seed_nicolle.carvalho',     'nicolle.carvalho@redetv.com.br',  'Nicolle Carvalho',     '', 'diretor'),
   ('seed_silvia.szekely',       'silvia.szekely@redetv.com.br',    'Sílvia Szekely',       '', 'executivo'),
+  ('seed_bruno.camargo',        'bruno.camargo@redetv.com.br',     'Bruno Camargo',        '', 'executivo'),
   ('seed_andre.barcellos',      'andre.barcellos@redetv.com.br',   'André Barcellos',      '', 'especialista'),
   ('seed_tarco',                'tarco@redetv.com.br',             'Talita Arco',          '', 'especialista')
 ON CONFLICT (email) DO UPDATE

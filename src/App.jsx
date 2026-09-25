@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   GitBranch,
@@ -12,7 +12,10 @@ import {
   Loader2,
   Bell,
   Sparkles,
-  Shield
+  Shield,
+  CheckCircle2,
+  AlertTriangle,
+  Pencil
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -48,6 +51,7 @@ import {
   toggleArrayValue,
   toggleMultiWithNone,
   segMatches,
+  normalizeSegmentName,
   hasPermission,
   uid,
   getClientInactivityStatus,
@@ -61,14 +65,23 @@ import {
   AnyClientSearchField
 } from "./components/UI/SearchFields";
 
-import DashboardTab from "./components/DashboardTab";
-import PipelineKanbanTab from "./components/PipelineKanbanTab";
-import PlanningTab from "./components/PlanningTab";
-import AdvertisersTab from "./components/AdvertisersTab";
-import ContactsTab from "./components/ContactsTab";
-import ProposalsTab from "./components/ProposalsTab";
-import ExecutivosTab from "./components/ExecutivosTab";
-import AccessTab from "./components/AccessTab";
+const DashboardTab = React.lazy(() => import("./components/DashboardTab"));
+const PipelineKanbanTab = React.lazy(() => import("./components/PipelineKanbanTab"));
+const PlanningTab = React.lazy(() => import("./components/PlanningTab"));
+const AdvertisersTab = React.lazy(() => import("./components/AdvertisersTab"));
+const ContactsTab = React.lazy(() => import("./components/ContactsTab"));
+const ProposalsTab = React.lazy(() => import("./components/ProposalsTab"));
+const ExecutivosTab = React.lazy(() => import("./components/ExecutivosTab"));
+const AccessTab = React.lazy(() => import("./components/AccessTab"));
+
+function TabLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-slate-400 gap-3">
+      <Loader2 className="animate-spin text-rose-500" size={32} />
+      <span className="text-xs font-medium text-slate-400">Carregando visualização...</span>
+    </div>
+  );
+}
 import AudioRecorder from "./components/AudioRecorder";
 import NewAdvertiserModal from "./components/Modals/NewAdvertiserModal";
 import NewContactModal from "./components/Modals/NewContactModal";
@@ -154,9 +167,17 @@ export default function App() {
   const [contacts, setContacts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [allProducts, setAllProducts] = useState({ televisao: TV_PRODUCTS, digital: DIGITAL_PRODUCTS, especiais: SPECIAL_PROJECTS });
+  const [proposalTemplates, setProposalTemplates] = useState(PROPOSAL_TEMPLATES);
   const [contactDaysFilter, setContactDaysFilter] = useState("all");
-
-  const [view, setView] = useState("dashboard");
+  const [pipelineSearch, setPipelineSearch] = useState("");
+  const [view, setView] = useState(() => {
+    try {
+      const stored = localStorage.getItem("crm_user_profile");
+      const usr = stored ? JSON.parse(stored) : null;
+      if (usr && !hasPermission(usr.perfil, "can_view_dashboard")) return "pipeline";
+    } catch (e) {}
+    return "dashboard";
+  });
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -166,13 +187,15 @@ export default function App() {
   const [showQuickCreateClient, setShowQuickCreateClient] = useState(false);
   const [pendingContactClient, setPendingContactClient] = useState(false);
   const [editingClientId, setEditingClientId] = useState(null);
+  const [editingContactId, setEditingContactId] = useState(null);
   const [faturamentoEfetivo, setFaturamentoEfetivo] = useState(seedFaturamentoEfetivo);
   const [monthlyMetas, setMonthlyMetas] = useState(seedMetas);
   const [executivos, setExecutivos] = useState(seedExecutivos);
   const [segmentoExecutivo, setSegmentoExecutivo] = useState(seedSegmentoExecutivo);
   const [showNewExecutivo, setShowNewExecutivo] = useState(false);
-  const [newExecutivoForm, setNewExecutivoForm] = useState({ nome: "" });
+  const [newExecutivoForm, setNewExecutivoForm] = useState({ nome: "", email: "" });
   const [editingCarteiraId, setEditingCarteiraId] = useState(null);
+  const [executivoKeyAccounts, setExecutivoKeyAccounts] = useState({});
   const [expandedClientsId, setExpandedClientsId] = useState(null);
   const [executivoYear, setExecutivoYear] = useState(2026);
   const [quickCreateType, setQuickCreateType] = useState("Anunciante");
@@ -206,6 +229,8 @@ export default function App() {
   const [sendProposalSubject, setSendProposalSubject] = useState("");
   const [sendProposalBody, setSendProposalBody] = useState("");
   const [sendingProposal, setSendingProposal] = useState(false);
+  const [pendingOppAfterProposal, setPendingOppAfterProposal] = useState(null); // { contactName, clientId }
+  const [editingOppId, setEditingOppId] = useState(null);
 
   const [showSendCustomEmail, setShowSendCustomEmail] = useState(false);
   const [sendCustomEmailContactId, setSendCustomEmailContactId] = useState("");
@@ -234,6 +259,14 @@ export default function App() {
   const [highlightedOppId, setHighlightedOppId] = useState(null);
   const [selectedOppId, setSelectedOppId] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
+
+  useEffect(() => {
+    if (user && !hasPermission(user.perfil, "can_view_dashboard") && view === "dashboard") {
+      setView("pipeline");
+    }
+  }, [user, view]);
 
   const [newAdvForm, setNewAdvForm] = useState({
     type: "Anunciante",
@@ -262,6 +295,26 @@ export default function App() {
     filhos: "",
   });
 
+  const reloadBootstrapData = async () => {
+    try {
+      const parsed = await apiGet("/bootstrap");
+      const normalizedAdvertisers = (parsed.advertisers || []).map(normalizeAdvertiser);
+      setAdvertisers(normalizedAdvertisers);
+      setOpportunities((parsed.opportunities || []).map(normalizeOpportunity));
+      setProposals(parsed.proposals || []);
+      setFaturamentoEfetivo(Array.isArray(parsed.faturamentoEfetivo) ? parsed.faturamentoEfetivo : []);
+      setMonthlyMetas(parsed.monthlyMetas && typeof parsed.monthlyMetas === "object" ? parsed.monthlyMetas : {});
+      setExecutivos(Array.isArray(parsed.executivos) ? parsed.executivos : []);
+      setSegmentoExecutivo(parsed.segmentoExecutivo && typeof parsed.segmentoExecutivo === "object" ? parsed.segmentoExecutivo : {});
+      setExecutivoKeyAccounts(parsed.executivoKeyAccounts && typeof parsed.executivoKeyAccounts === "object" ? parsed.executivoKeyAccounts : {});
+      setContacts((parsed.contacts || []).map(normalizeContact));
+      setResponsaveis(Array.isArray(parsed.responsaveis) ? parsed.responsaveis : []);
+    } catch (e) {
+      console.error("Falha ao carregar dados da API:", e);
+      setErrorMsg("Não foi possível carregar os dados do servidor. Tente recarregar a página.");
+    }
+  };
+
   useEffect(() => {
     if (!token) {
       setLoaded(true);
@@ -269,24 +322,8 @@ export default function App() {
     }
     setLoaded(false);
     (async () => {
-      try {
-        const parsed = await apiGet("/bootstrap");
-        const normalizedAdvertisers = (parsed.advertisers || []).map(normalizeAdvertiser);
-        setAdvertisers(normalizedAdvertisers);
-        setOpportunities((parsed.opportunities || []).map(normalizeOpportunity));
-        setProposals(parsed.proposals || []);
-        setFaturamentoEfetivo(Array.isArray(parsed.faturamentoEfetivo) ? parsed.faturamentoEfetivo : []);
-        setMonthlyMetas(parsed.monthlyMetas && typeof parsed.monthlyMetas === "object" ? parsed.monthlyMetas : {});
-        setExecutivos(Array.isArray(parsed.executivos) ? parsed.executivos : []);
-        setSegmentoExecutivo(parsed.segmentoExecutivo && typeof parsed.segmentoExecutivo === "object" ? parsed.segmentoExecutivo : {});
-        setContacts((parsed.contacts || []).map(normalizeContact));
-        setResponsaveis(Array.isArray(parsed.responsaveis) ? parsed.responsaveis : []);
-      } catch (e) {
-        console.error("Falha ao carregar dados da API:", e);
-        setErrorMsg("Não foi possível carregar os dados do servidor. Tente recarregar a página.");
-      } finally {
-        setLoaded(true);
-      }
+      await reloadBootstrapData();
+      setLoaded(true);
     })();
   }, [token]);
 
@@ -304,6 +341,17 @@ export default function App() {
       })
       .catch(() => { /* usa fallback estático */ });
   }, [token]);
+
+  // Carrega propostas padrão do backend
+  function loadProposalTemplates() {
+    if (!token) return;
+    apiGet("/proposal-templates")
+      .then((rows) => {
+        if (rows && rows.length > 0) setProposalTemplates(rows);
+      })
+      .catch(() => { /* usa fallback estático PROPOSAL_TEMPLATES */ });
+  }
+  useEffect(() => { loadProposalTemplates(); }, [token]);
 
   // Carrega notificações passadas no boot
   useEffect(() => {
@@ -323,12 +371,8 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
 
-    let socketUrl;
-    if (window.location.protocol === "https:") {
-      socketUrl = `wss://${window.location.host}/api/v1/ws?token=${token}`;
-    } else {
-      socketUrl = `ws://${window.location.hostname}:8001/api/v1/ws?token=${token}`;
-    }
+    const wsProto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socketUrl = `${wsProto}//${window.location.host}/api/v1/ws?token=${token}`;
 
     let ws = new WebSocket(socketUrl);
 
@@ -391,6 +435,59 @@ export default function App() {
     return () => clearTimeout(t);
   }, [highlightedOppId, view]);
 
+  // Listener global da tecla Escape para fechar modais/drawers hierarquicamente ([A11Y-001])
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        if (showQuickCreateClient) {
+          closeQuickCreateClient();
+        } else if (showTranscriptionPreview) {
+          setShowTranscriptionPreview(false);
+          setTranscriptionPreviewData(null);
+        } else if (showSendProposal) {
+          setShowSendProposal(false);
+        } else if (pendingOppAfterProposal) {
+          setPendingOppAfterProposal(null);
+        } else if (showSendCustomEmail) {
+          setShowSendCustomEmail(false);
+        } else if (showScheduleMeeting) {
+          setShowScheduleMeeting(false);
+        } else if (showNewOpportunity) {
+          setShowNewOpportunity(false);
+          setEditingOppId(null);
+        } else if (showNewAdvertiser) {
+          closeNewAdvertiser();
+        } else if (showNewContact) {
+          closeNewContact();
+        } else if (showNotificationsDropdown) {
+          setShowNotificationsDropdown(false);
+        } else if (selectedOppId) {
+          setSelectedOppId(null);
+        } else if (selectedAdvertiserId) {
+          setSelectedAdvertiserId(null);
+        } else if (selectedContactId) {
+          setSelectedContactId(null);
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    showQuickCreateClient,
+    showTranscriptionPreview,
+    showSendProposal,
+    pendingOppAfterProposal,
+    showSendCustomEmail,
+    showScheduleMeeting,
+    showNewOpportunity,
+    showNewAdvertiser,
+    showNewContact,
+    showNotificationsDropdown,
+    selectedOppId,
+    selectedAdvertiserId,
+    selectedContactId,
+  ]);
+
   function handleLogout() {
     localStorage.removeItem("crm_session_token");
     localStorage.removeItem("crm_user_profile");
@@ -402,8 +499,39 @@ export default function App() {
   function goToOpportunityInPipeline(oppId) {
     setSelectedAdvertiserId(null);
     setSelectedContactId(null);
+    setPipelineSearch("");
+    const targetOpp = opportunities.find((o) => o.id === oppId);
+    if (targetOpp) {
+      if (monthFilter.length > 0 && !(targetOpp.periodMonths || []).some((m) => monthFilter.includes(m))) {
+        setMonthFilter([]);
+      }
+      if (segmentFilter.length > 0) {
+        const adv = advertisers.find((a) => a.id === targetOpp.advertiserId);
+        if (!adv || !segMatches(segmentFilter, adv.segmento)) {
+          setSegmentFilter([]);
+        }
+      }
+      if (agencyFilter.length > 0 && !agencyFilter.includes(targetOpp.agencyId)) {
+        setAgencyFilter([]);
+      }
+      if (productFilter.length > 0 && !(targetOpp.products || []).some((p) => productFilter.includes(p))) {
+        setProductFilter([]);
+      }
+    }
     setView("pipeline");
     setHighlightedOppId(oppId);
+  }
+
+  function goToContact(contactId) {
+    setSelectedAdvertiserId(null);
+    setSelectedContactId(contactId);
+    setView("contacts");
+  }
+
+  function goToAdvertiser(clientId) {
+    setSelectedContactId(null);
+    setSelectedAdvertiserId(clientId);
+    setView("advertisers");
   }
 
   function updateStage(oppId, newStage) {
@@ -679,6 +807,84 @@ export default function App() {
   function closeNewContact() {
     setShowNewContact(false);
     setPendingOppContact(false);
+    setEditingContactId(null);
+  }
+
+  function openEditContact(contact) {
+    setNewContactForm({
+      name: contact.name || "",
+      clientId: contact.clientId || "",
+      cargo: contact.cargo || "",
+      departamento: contact.departamento || "",
+      nivelDecisao: contact.nivelDecisao || "",
+      celular: contact.celular || "",
+      email: contact.email || "",
+      esportes: contact.esportes || [],
+      esportesOutro: contact.esportesOutro || "",
+      hobbies: contact.hobbies || [],
+      hobbiesOutro: contact.hobbiesOutro || "",
+      timeCoracao: contact.timeCoracao || "",
+      filhos: contact.filhos === null || contact.filhos === undefined ? "" : contact.filhos,
+    });
+    setEditingContactId(contact.id);
+    setSelectedContactId(null);
+    setShowNewContact(true);
+  }
+
+  function handleDeleteClient(clientId) {
+    if (user?.perfil !== "admin") {
+      setErrorMsg("Apenas administradores podem excluir cadastros de clientes.");
+      return;
+    }
+    const targetClient = advertisers.find((a) => a.id === clientId);
+    const clientName = targetClient ? (targetClient.nomeFantasia || targetClient.razaoSocial || targetClient.name) : "este cliente";
+
+    if (!window.confirm(`Tem certeza que deseja excluir permanentemente o cadastro de "${clientName}"?\n\nEsta ação não poderá ser desfeita.`)) {
+      return;
+    }
+
+    setAdvertisers((prev) => prev.filter((a) => a.id !== clientId));
+    setShowNewAdvertiser(false);
+    setEditingClientId(null);
+    setSelectedAdvertiserId(null);
+
+    apiDelete(`/clients/${clientId}`)
+      .then(() => {
+        setSuccessMsg(`Cliente "${clientName}" excluído com sucesso.`);
+        setTimeout(() => setSuccessMsg(""), 4000);
+      })
+      .catch((err) => {
+        console.error("Erro ao excluir cliente:", err);
+        setErrorMsg(err.message || "Não foi possível excluir o cliente no servidor.");
+      });
+  }
+
+  function handleDeleteContact(contactId) {
+    if (user?.perfil !== "admin") {
+      setErrorMsg("Apenas administradores podem excluir cadastros de contatos.");
+      return;
+    }
+    const targetContact = contacts.find((c) => c.id === contactId);
+    const contactName = targetContact ? targetContact.name : "este contato";
+
+    if (!window.confirm(`Tem certeza que deseja excluir permanentemente o cadastro de "${contactName}"?\n\nEsta ação não poderá ser desfeita.`)) {
+      return;
+    }
+
+    setContacts((prev) => prev.filter((c) => c.id !== contactId));
+    setShowNewContact(false);
+    setEditingContactId(null);
+    setSelectedContactId(null);
+
+    apiDelete(`/contacts/${contactId}`)
+      .then(() => {
+        setSuccessMsg(`Contato "${contactName}" excluído com sucesso.`);
+        setTimeout(() => setSuccessMsg(""), 4000);
+      })
+      .catch((err) => {
+        console.error("Erro ao excluir contato:", err);
+        setErrorMsg(err.message || "Não foi possível excluir o contato no servidor.");
+      });
   }
 
   function openQuickCreateClient(type, prefillName, targetField) {
@@ -699,16 +905,20 @@ export default function App() {
 
   async function addExecutivo(e) {
     e.preventDefault();
-    const nome = newExecutivoForm.nome.trim();
-    if (!nome) return;
+    const nome = (newExecutivoForm.nome || "").trim();
+    const email = (newExecutivoForm.email || "").trim();
+    if (!nome || !email) {
+      setErrorMsg("Informe o nome e o e-mail do executivo.");
+      return;
+    }
     setShowNewExecutivo(false);
-    setNewExecutivoForm({ nome: "" });
+    setNewExecutivoForm({ nome: "", email: "" });
     try {
-      const { id } = await apiPost("/executivos", { nome });
-      setExecutivos((prev) => [...prev, { id, nome }]);
+      const res = await apiPost("/executivos", { nome, email });
+      setExecutivos((prev) => [...prev, { id: res.id, nome: res.nome || nome, email: res.email || email }]);
     } catch (err) {
       console.error(err);
-      setErrorMsg("Não foi possível salvar o executivo no servidor.");
+      setErrorMsg(err.message || "Não foi possível salvar o executivo no servidor.");
     }
   }
 
@@ -786,6 +996,39 @@ export default function App() {
   function addContact(e) {
     e.preventDefault();
     if (!newContactForm.name.trim() || !newContactForm.clientId) return;
+
+    if (editingContactId) {
+      const cId = editingContactId;
+      const updatedContact = {
+        id: cId,
+        ...newContactForm,
+        name: newContactForm.name.trim(),
+        filhos: newContactForm.filhos === "" ? "" : Number(newContactForm.filhos) || 0,
+      };
+      setContacts((prev) => prev.map((c) => (c.id === cId ? updatedContact : c)));
+      setEditingContactId(null);
+      setNewContactForm({
+        name: "",
+        clientId: "",
+        cargo: "",
+        departamento: "",
+        nivelDecisao: "",
+        celular: "",
+        email: "",
+        hobbies: [],
+        hobbiesOutro: "",
+        esportes: [],
+        esportesOutro: "",
+        timeCoracao: "",
+        filhos: "",
+      });
+      setShowNewContact(false);
+      apiPut(`/contacts/${cId}`, updatedContact).catch((err) => {
+        console.error(err);
+        setErrorMsg("Não foi possível atualizar o contato no servidor.");
+      });
+      return;
+    }
     const contact = {
       id: uid(),
       ...newContactForm,
@@ -819,7 +1062,33 @@ export default function App() {
     });
   }
 
-  function addOpportunity(e) {
+  function openEditOpportunity(oppId) {
+    const opp = opportunities.find((o) => o.id === oppId);
+    if (!opp) return;
+    setEditingOppId(opp.id);
+    const hasPlanningRequest = Boolean(opp.briefing || opp.deliveryDate || opp.stage === "Desenvolvimento");
+    setNewOppForm({
+      title: opp.title || "",
+      executivo: opp.executivo || "",
+      agencyId: opp.agencyId || "",
+      advertiserId: opp.advertiserId || "",
+      contactId: opp.contactId || "",
+      products: opp.products || [],
+      value: opp.value !== undefined && opp.value !== null ? String(opp.value) : "",
+      periodMonths: opp.periodMonths || [],
+      briefing: opp.briefing || "",
+      createdAt: opp.createdAt || todayStr(),
+      deliveryDate: opp.deliveryDate || "",
+      expectedCloseDate: opp.expectedCloseDate || "",
+      productValues: opp.productValues || {},
+      stage: opp.stage || "Prospecção",
+      solicitarPlanejamento: hasPlanningRequest,
+      attachments: opp.attachments || [],
+    });
+    setShowNewOpportunity(true);
+  }
+
+  async function addOpportunity(e) {
     e.preventDefault();
     setErrorMsg("");
     if (!newOppForm.title.trim()) {
@@ -851,17 +1120,28 @@ export default function App() {
       setErrorMsg("Selecione ao menos um mês para o período.");
       return;
     }
-    if (!newOppForm.briefing.trim()) {
-      setErrorMsg("Preencha o briefing para o planejamento comercial.");
-      return;
+
+    if (newOppForm.solicitarPlanejamento) {
+      if (!newOppForm.briefing.trim()) {
+        setErrorMsg("Preencha o briefing ao solicitar proposta ao planejamento.");
+        return;
+      }
+      if (!newOppForm.deliveryDate) {
+        setErrorMsg("Preencha a data de entrega desejada.");
+        return;
+      }
+    } else {
+      if (!newOppForm.expectedCloseDate) {
+        setErrorMsg("Preencha a previsão de fechamento.");
+        return;
+      }
     }
-    if (!newOppForm.deliveryDate || !newOppForm.expectedCloseDate) {
-      setErrorMsg("Preencha a data de entrega e a previsão de fechamento.");
-      return;
-    }
-    const opp = {
-      id: uid(),
-      stage: "Desenvolvimento",
+
+    const targetStage = newOppForm.solicitarPlanejamento
+      ? "Desenvolvimento"
+      : (newOppForm.temperatura || "Morno");
+
+    const payload = {
       title: newOppForm.title.trim(),
       executivo: newOppForm.executivo.trim(),
       agencyId: newOppForm.agencyId || null,
@@ -870,24 +1150,31 @@ export default function App() {
       products: newOppForm.products,
       value: Number(newOppForm.value) || 0,
       periodMonths: newOppForm.periodMonths,
-      briefing: newOppForm.briefing.trim(),
+      briefing: newOppForm.solicitarPlanejamento ? newOppForm.briefing.trim() : (newOppForm.briefing || ""),
       createdAt: newOppForm.createdAt,
-      deliveryDate: newOppForm.deliveryDate,
-      expectedCloseDate: newOppForm.expectedCloseDate,
-      responsavel: "",
-      tipo: "Novo",
-      versao: 1,
-      status: "Pendente",
-      observacao: "",
-      planDeliveryDate: "",
+      deliveryDate: newOppForm.solicitarPlanejamento ? newOppForm.deliveryDate : "",
+      expectedCloseDate: newOppForm.expectedCloseDate || newOppForm.deliveryDate || todayStr(),
+      stage: targetStage,
+      attachments: newOppForm.attachments || [],
     };
-    setOpportunities((prev) => [...prev, opp]);
-    setNewOppForm(emptyOppForm());
-    setShowNewOpportunity(false);
-    apiPost("/opportunities", opp).catch((err) => {
+
+    try {
+      if (editingOppId) {
+        await apiPut(`/opportunities/${editingOppId}`, payload);
+      } else {
+        await apiPost("/opportunities", payload);
+      }
+      const bootData = await apiGet("/bootstrap");
+      if (bootData && bootData.opportunities) {
+        setOpportunities(bootData.opportunities);
+      }
+      setNewOppForm(emptyOppForm());
+      setShowNewOpportunity(false);
+      setEditingOppId(null);
+    } catch (err) {
       console.error(err);
-      setErrorMsg("Não foi possível salvar a oportunidade no servidor.");
-    });
+      setErrorMsg("Não foi possível salvar a oportunidade no servidor: " + (err.message || ""));
+    }
   }
 
   async function deleteOpportunity(oppId) {
@@ -1040,8 +1327,8 @@ export default function App() {
   }
 
   function openSendProposal(templateId, contactId) {
-    const targetTemplateId = templateId || (PROPOSAL_TEMPLATES.length > 0 ? PROPOSAL_TEMPLATES[0].id : "");
-    const template = PROPOSAL_TEMPLATES.find((t) => t.id === targetTemplateId);
+    const targetTemplateId = templateId || (proposalTemplates.length > 0 ? proposalTemplates[0].id : "");
+    const template = proposalTemplates.find((t) => t.id === targetTemplateId);
     const targetContactId = contactId || "";
     setSendProposalTemplateId(targetTemplateId);
     setSendProposalContactId(targetContactId);
@@ -1063,19 +1350,34 @@ export default function App() {
   }
 
   async function sendProposalEmail() {
-    const template = PROPOSAL_TEMPLATES.find((t) => t.id === sendProposalTemplateId);
+    const template = proposalTemplates.find((t) => t.id === sendProposalTemplateId);
     const contact = contacts.find((c) => c.id === sendProposalContactId);
     if (!template || !contact) return;
 
     setSendingProposal(true);
     setErrorMsg("");
 
+    const attachmentsList = [];
+    if (template.pdfDataUri) {
+      attachmentsList.push({
+        base64: template.pdfDataUri,
+        filename: template.pdfFileName || "proposta.pdf"
+      });
+    }
+    if (template.xlsDataUri) {
+      attachmentsList.push({
+        base64: template.xlsDataUri,
+        filename: template.xlsFileName || "tabela.xlsx"
+      });
+    }
+
     const sendData = {
       templateId: template.id,
       contactId: contact.id,
-      opportunityId: sendProposalOppId || null,
+      opportunityId: null,
       subject: sendProposalSubject,
       body: sendProposalBody,
+      attachments: attachmentsList,
       attachmentBase64: template.pdfDataUri,
       attachmentFilename: template.pdfFileName
     };
@@ -1083,18 +1385,8 @@ export default function App() {
     const performSend = async () => {
       const response = await apiPost("/proposals/send", sendData);
 
-      // Baixa o PDF
-      downloadProposalPdf(template);
-
-      const newProposal = {
-        id: response.proposalId,
-        templateId: template.id,
-        contactId: contact.id,
-        opportunityId: sendProposalOppId || null,
-        sentAt: new Date().toISOString(),
-      };
-      
-      setProposals((prev) => [newProposal, ...prev]);
+      // Baixa o PDF automaticamente
+      if (template.pdfDataUri) downloadProposalPdf(template);
 
       const interaction = {
         id: response.interactionId,
@@ -1115,7 +1407,16 @@ export default function App() {
       );
 
       setShowSendProposal(false);
-      setView("proposals");
+      setSendingProposal(false);
+
+      if (response.mocked) {
+        setWarningMsg("Proposta registrada no CRM. O disparo de e-mail externo foi simulado internamente.");
+      } else {
+        setSuccessMsg("Proposta comercial registrada e enviada com sucesso!");
+      }
+
+      // Abre modal React de confirmação de oportunidade
+      setPendingOppAfterProposal({ contactName: contact.name, clientId: contact.clientId });
     };
 
     try {
@@ -1196,6 +1497,12 @@ export default function App() {
 
       setShowSendCustomEmail(false);
       setSendingCustomEmail(false);
+
+      if (response.mocked) {
+        setWarningMsg("E-mail registrado no histórico do cliente.");
+      } else {
+        setSuccessMsg("E-mail enviado e registrado com sucesso!");
+      }
     };
 
     try {
@@ -1253,7 +1560,7 @@ export default function App() {
       const interaction = {
         id: response.interactionId,
         date: scheduleMeetingDate,
-        note: `📅 Compromisso Agendado (${response.createdInCalendar ? "Google Calendar" : "Simulador"}): ${scheduleMeetingTitle}\nData: ${scheduleMeetingDate} às ${scheduleMeetingTime} (${durationStr})${guestsStr}\n\nDescrição:\n${scheduleMeetingDescription || "Sem descrição"}`,
+        note: `📅 Compromisso Agendado: ${scheduleMeetingTitle}\nData: ${scheduleMeetingDate} às ${scheduleMeetingTime} (${durationStr})${guestsStr}\n\nDescrição:\n${scheduleMeetingDescription || "Sem descrição"}`,
         aiSummary: null,
         aiNextAction: null,
         aiRisk: null
@@ -1268,6 +1575,12 @@ export default function App() {
       );
 
       setShowScheduleMeeting(false);
+
+      if (response.mocked || !response.createdInCalendar) {
+        setSuccessMsg("Compromisso registrado com sucesso na agenda do CRM!");
+      } else {
+        setSuccessMsg("Compromisso agendado com sucesso!");
+      }
     };
 
     try {
@@ -1291,6 +1604,127 @@ export default function App() {
     }
   }
 
+  const advertiserMap = useMemo(() => {
+    const map = new Map();
+    advertisers.forEach((a) => map.set(a.id, a));
+    return map;
+  }, [advertisers]);
+
+  const clientSegmentByCodigo = useMemo(() => {
+    const map = {};
+    (advertisers || []).forEach((a) => {
+      if (a.codigo) map[String(a.codigo).trim()] = a.segmento;
+    });
+    return map;
+  }, [advertisers]);
+
+  const clientByIdMap = useMemo(() => {
+    const map = {};
+    (advertisers || []).forEach((a) => {
+      map[a.id] = a;
+    });
+    return map;
+  }, [advertisers]);
+
+  const contactSearchQuery = contactSearch.trim().toLowerCase();
+  const filteredContacts = useMemo(() => {
+    if (!contactSearchQuery) {
+      return contacts.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+    }
+    return contacts
+      .filter((c) => {
+        const client = advertiserMap.get(c.clientId);
+        const nameMatch = (c.name || "").toLowerCase().includes(contactSearchQuery);
+        const empresaMatch = client ? (client.name || "").toLowerCase().includes(contactSearchQuery) : false;
+        const agencyMatch =
+          client && client.type === "Anunciante"
+            ? getServingAgencies(client.id).some((ag) => (ag.name || "").toLowerCase().includes(contactSearchQuery))
+            : false;
+        return nameMatch || empresaMatch || agencyMatch;
+      })
+      .slice()
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+  }, [contacts, contactSearchQuery, advertiserMap]);
+
+  const clientSearchQuery = clientSearch.trim().toLowerCase();
+  const filteredAdvertisers = useMemo(() => {
+    const list = !clientSearchQuery
+      ? advertisers
+      : advertisers.filter((a) => {
+          const digits = clientSearchQuery.replace(/\D/g, "");
+          return (
+            (a.nomeFantasia || "").toLowerCase().includes(clientSearchQuery) ||
+            (a.razaoSocial || "").toLowerCase().includes(clientSearchQuery) ||
+            (a.codigo || "").toString().toLowerCase().includes(clientSearchQuery) ||
+            (digits && (a.cnpj || "").includes(digits))
+          );
+        });
+    return list
+      .filter((a) => {
+        if (contactDaysFilter === "all") return true;
+        const daysLimit = parseInt(contactDaysFilter, 10);
+        const status = a.type === "Agência"
+          ? getAgencyInactivityStatus(a, getServedAdvertisers(a))
+          : getClientInactivityStatus(a);
+        if (!status) return false;
+        return status.level === daysLimit;
+      })
+      .slice()
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+  }, [advertisers, clientSearchQuery, contactDaysFilter]);
+
+  const executivoFilterSegmentos = useMemo(() => {
+    if (dashboardExecutivoFilter.length === 0) return null;
+    return Object.keys(segmentoExecutivo).filter((seg) => dashboardExecutivoFilter.includes(segmentoExecutivo[seg]));
+  }, [dashboardExecutivoFilter, segmentoExecutivo]);
+
+  const executivoFilterKeyAccountIds = useMemo(() => {
+    if (dashboardExecutivoFilter.length === 0) return [];
+    const set = new Set();
+    dashboardExecutivoFilter.forEach((execId) => {
+      (executivoKeyAccounts[execId] || []).forEach((kaId) => set.add(kaId));
+    });
+    return Array.from(set);
+  }, [dashboardExecutivoFilter, executivoKeyAccounts]);
+
+  const executivoFilterKeyAccountClients = useMemo(() => {
+    if (executivoFilterKeyAccountIds.length === 0) return [];
+    return (advertisers || []).filter((a) => executivoFilterKeyAccountIds.includes(a.id));
+  }, [executivoFilterKeyAccountIds, advertisers]);
+
+  const executivoFilterKeyAccountCodigos = useMemo(() => {
+    if (executivoFilterKeyAccountClients.length === 0) return new Set();
+    return new Set(executivoFilterKeyAccountClients.map((a) => String(a.codigo || "").trim()).filter(Boolean));
+  }, [executivoFilterKeyAccountClients]);
+
+  const executivoFilterNames = useMemo(() => {
+    if (dashboardExecutivoFilter.length === 0) return [];
+    return executivos.filter((e) => dashboardExecutivoFilter.includes(e.id)).map((e) => e.nome);
+  }, [dashboardExecutivoFilter, executivos]);
+
+  const keyAccountExecByCodigo = useMemo(() => {
+    const map = {};
+    Object.entries(executivoKeyAccounts || {}).forEach(([execId, kaIds]) => {
+      (kaIds || []).forEach((kaId) => {
+        const client = clientByIdMap[kaId];
+        if (client && client.codigo) {
+          map[String(client.codigo).trim()] = String(execId);
+        }
+      });
+    });
+    return map;
+  }, [executivoKeyAccounts, clientByIdMap]);
+
+  const keyAccountExecById = useMemo(() => {
+    const map = {};
+    Object.entries(executivoKeyAccounts || {}).forEach(([execId, kaIds]) => {
+      (kaIds || []).forEach((kaId) => {
+        map[kaId] = String(execId);
+      });
+    });
+    return map;
+  }, [executivoKeyAccounts]);
+
   if (!token || !user) {
     return (
       <Login
@@ -1299,6 +1733,11 @@ export default function App() {
           localStorage.setItem("crm_user_profile", JSON.stringify(usr));
           setToken(tok);
           setUser(usr);
+          if (!hasPermission(usr?.perfil, "can_view_dashboard")) {
+            setView("pipeline");
+          } else {
+            setView("dashboard");
+          }
         }}
       />
     );
@@ -1313,7 +1752,7 @@ export default function App() {
   }
 
   const openOpps = opportunities.filter(
-    (o) => o.stage !== "Fechado" && o.stage !== "Negado"
+    (o) => o.stage !== "Fechado" && o.stage !== "Negado" && o.stage !== "Cancelado"
   );
   
   const pipelineOpportunities = opportunities.filter((o) => {
@@ -1330,11 +1769,42 @@ export default function App() {
     if (monthFilter.length > 0) {
       if (!(o.periodMonths || []).some((m) => monthFilter.includes(m))) return false;
     }
+    if (pipelineSearch.trim()) {
+      const q = pipelineSearch.toLowerCase().trim();
+      const adv = advertisers.find((a) => a.id === o.advertiserId);
+      const ag = o.agencyId && o.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === o.agencyId) : null;
+      
+      const titleMatch = (o.title || "").toLowerCase().includes(q);
+      const advMatch = adv ? (
+        (adv.nomeFantasia || "").toLowerCase().includes(q) ||
+        (adv.razaoSocial || "").toLowerCase().includes(q)
+      ) : false;
+      const agMatch = ag ? (
+        (ag.nomeFantasia || "").toLowerCase().includes(q) ||
+        (ag.razaoSocial || "").toLowerCase().includes(q)
+      ) : false;
+      const execMatch = (o.executivo || "").toLowerCase().includes(q);
+      const respMatch = (o.responsavel || "").toLowerCase().includes(q);
+      const prodMatch = (o.products || []).some((p) => p.toLowerCase().includes(q));
+      
+      if (!titleMatch && !advMatch && !agMatch && !execMatch && !respMatch && !prodMatch) {
+        return false;
+      }
+    }
     return true;
   });
 
   function sortByDeadline(opps) {
-    return opps.slice().sort((a, b) => new Date(a.deliveryDate || "9999-12-31") - new Date(b.deliveryDate || "9999-12-31"));
+    return opps.slice().sort((a, b) => {
+      const aDate = a.deliveryDate;
+      const bDate = b.deliveryDate;
+      if (!aDate && !bDate) {
+        return b.id - a.id;
+      }
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      return new Date(aDate) - new Date(bDate);
+    });
   }
   
   const PLANNING_FINALIZADA_ORDER = ["Comercializado", "Negativado", "Cancelado"];
@@ -1355,7 +1825,15 @@ export default function App() {
         .sort((a, b) => {
           const diff = PLANNING_FINALIZADA_ORDER.indexOf(a.status) - PLANNING_FINALIZADA_ORDER.indexOf(b.status);
           if (diff !== 0) return diff;
-          return new Date(a.deliveryDate || "9999-12-31") - new Date(b.deliveryDate || "9999-12-31");
+          
+          const aDate = a.deliveryDate;
+          const bDate = b.deliveryDate;
+          if (!aDate && !bDate) {
+            return b.id - a.id;
+          }
+          if (!aDate) return 1;
+          if (!bDate) return -1;
+          return new Date(aDate) - new Date(bDate);
         }),
     },
   ];
@@ -1380,21 +1858,24 @@ export default function App() {
       const [y, m] = v.split("-");
       return { type: "Mês", label: `${m}/${y}`, clear: () => setMonthFilter(monthFilter.filter((x) => x !== v)) };
     }),
+    ...(pipelineSearch.trim() ? [{ type: "Busca", label: `"${pipelineSearch.trim()}"`, clear: () => setPipelineSearch("") }] : []),
   ];
-
-  const executivoFilterSegmentos =
-    dashboardExecutivoFilter.length > 0
-      ? Object.keys(segmentoExecutivo).filter((seg) => dashboardExecutivoFilter.includes(segmentoExecutivo[seg]))
-      : null;
 
   function matchesDashboardFilters(o) {
     if (dashboardSegmentFilter.length > 0) {
       const adv = advertisers.find((a) => a.id === o.advertiserId);
       if (!adv || !segMatches(dashboardSegmentFilter, adv.segmento)) return false;
     }
-    if (executivoFilterSegmentos) {
-      const adv = advertisers.find((a) => a.id === o.advertiserId);
-      if (!adv || !executivoFilterSegmentos.includes(adv.segmento)) return false;
+    if (dashboardExecutivoFilter.length > 0) {
+      const kaOwnerExecId = keyAccountExecById[o.advertiserId] || (o.agencyId ? keyAccountExecById[o.agencyId] : null);
+      if (kaOwnerExecId && !dashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
+        return false;
+      }
+      const adv = clientByIdMap[o.advertiserId] || advertisers.find((a) => a.id === o.advertiserId);
+      const isMySegment = adv && executivoFilterSegmentos && executivoFilterSegmentos.includes(adv.segmento);
+      const isMyKeyAccount = executivoFilterKeyAccountIds.includes(o.advertiserId) || (o.agencyId && executivoFilterKeyAccountIds.includes(o.agencyId));
+      const isMyOpp = executivoFilterNames.includes(o.executivo);
+      if (!isMySegment && !isMyKeyAccount && !isMyOpp) return false;
     }
     if (dashboardProductFilter.length > 0) {
       if (!(o.products || []).some((p) => dashboardProductFilter.includes(p))) return false;
@@ -1454,38 +1935,91 @@ export default function App() {
   const STAGE_WEIGHTS = { Frio: 0, Morno: 0.1, Quente: 0.7 };
   const metaVisible = dashboardProductFilter.length === 0 && dashboardAgencyFilter.length === 0 && dashboardAdvertiserFilter.length === 0;
   
-  const relevantSegmentosForMeta = (() => {
-    const base = dashboardSegmentFilter.length > 0 ? dashboardSegmentFilter : Object.keys(monthlyMetas);
-    return executivoFilterSegmentos ? base.filter((seg) => executivoFilterSegmentos.includes(seg)) : base;
-  })();
-  
   const effectiveMonthsForResultado = dashboardMonths.length > 0 ? dashboardMonths : MONTHS;
 
   const visaoGeralFaturamentoData = MONTHS.map((m) => {
     const code = `${dashboardYear}-${m}`;
+    const codeLower = code.toLowerCase();
     const monthInScope = effectiveMonthsForResultado.includes(m);
+    const hasActiveFilters =
+      dashboardSegmentFilter.length > 0 ||
+      dashboardExecutivoFilter.length > 0 ||
+      dashboardAdvertiserFilter.length > 0;
+
     const efetivo = !monthInScope
       ? 0
       : faturamentoEfetivo
           .filter((f) => {
-            if (f.periodo !== code) return false;
-            const client = advertisers.find((a) => a.codigo === f.clienteCodigo);
-            if (!client) return false;
-            if (dashboardSegmentFilter.length > 0 && !segMatches(dashboardSegmentFilter, client.segmento)) return false;
-            if (executivoFilterSegmentos && !executivoFilterSegmentos.includes(client.segmento)) return false;
-            if (dashboardAdvertiserFilter.length > 0 && !dashboardAdvertiserFilter.includes(client.id)) return false;
+            if ((f.periodo || "").toLowerCase() !== codeLower) return false;
+            if (hasActiveFilters) {
+              const clientCod = String(f.clienteCodigo || "").trim();
+              const client = advertisers.find(
+                (a) => String(a.codigo || "").trim() === clientCod
+              );
+              if (!client) return false;
+              if (dashboardSegmentFilter.length > 0 && !segMatches(dashboardSegmentFilter, client.segmento)) return false;
+
+              if (dashboardExecutivoFilter.length > 0) {
+                const kaOwnerExecId = keyAccountExecByCodigo[clientCod] || keyAccountExecById[client.id];
+                if (kaOwnerExecId && !dashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
+                  return false;
+                }
+                const seg = clientSegmentByCodigo[clientCod] || client.segmento;
+                const isMySegment = seg && executivoFilterSegmentos && executivoFilterSegmentos.some((s) => normalizeSegmentName(s) === normalizeSegmentName(seg));
+                const isMyKeyAccount = executivoFilterKeyAccountCodigos.has(clientCod) || executivoFilterKeyAccountIds.includes(client.id);
+                if (!isMySegment && !isMyKeyAccount) return false;
+              }
+
+              if (dashboardAdvertiserFilter.length > 0 && !dashboardAdvertiserFilter.includes(client.id)) return false;
+            }
             return true;
           })
-          .reduce((s, f) => s + f.valor, 0);
+          .reduce((s, f) => s + (Number(f.valor) || 0), 0);
     const potencial = !monthInScope
       ? 0
       : dashboardOpps
-          .filter((o) => ["Frio", "Morno", "Quente"].includes(o.stage) && (o.periodMonths || []).includes(code))
+          .filter(
+            (o) =>
+              ["Frio", "Morno", "Quente"].includes(o.stage) &&
+              (o.periodMonths || []).some((pm) => (pm || "").toLowerCase() === codeLower)
+          )
           .reduce((s, o) => s + monthlyValueOfOpp(o) * STAGE_WEIGHTS[o.stage], 0);
-    const meta =
-      monthInScope && metaVisible
-        ? relevantSegmentosForMeta.reduce((s, seg) => s + ((monthlyMetas[seg] && monthlyMetas[seg][code]) || 0), 0)
-        : 0;
+
+    let meta = 0;
+    if (monthInScope && metaVisible) {
+      if (dashboardExecutivoFilter.length > 0) {
+        dashboardExecutivoFilter.forEach((execId) => {
+          const execIdStr = String(execId);
+          const execSegs = Object.keys(segmentoExecutivo).filter((seg) => String(segmentoExecutivo[seg]) === execIdStr);
+          const execKaIds = executivoKeyAccounts[execId] || [];
+
+          execSegs.forEach((seg) => {
+            if (dashboardSegmentFilter.length > 0 && !segMatches(dashboardSegmentFilter, seg)) return;
+            meta += (monthlyMetas[seg] && (monthlyMetas[seg][code] || monthlyMetas[seg][codeLower])) || 0;
+          });
+
+          execKaIds.forEach((kaId) => {
+            const kaClient = clientByIdMap[kaId];
+            if (dashboardSegmentFilter.length > 0 && (!kaClient || !segMatches(dashboardSegmentFilter, kaClient.segmento))) return;
+            const key = `keyaccount:${kaId}`;
+            meta += (monthlyMetas[key] && (monthlyMetas[key][code] || monthlyMetas[key][codeLower])) || 0;
+          });
+        });
+      } else {
+        const metaKeys = Object.keys(monthlyMetas);
+        metaKeys.forEach((key) => {
+          if (key.startsWith("keyaccount:")) {
+            const kaId = key.replace("keyaccount:", "").trim();
+            const kaClient = clientByIdMap[kaId];
+            if (dashboardSegmentFilter.length > 0 && (!kaClient || !segMatches(dashboardSegmentFilter, kaClient.segmento))) return;
+            meta += (monthlyMetas[key] && (monthlyMetas[key][code] || monthlyMetas[key][codeLower])) || 0;
+          } else {
+            if (dashboardSegmentFilter.length > 0 && !segMatches(dashboardSegmentFilter, key)) return;
+            meta += (monthlyMetas[key] && (monthlyMetas[key][code] || monthlyMetas[key][codeLower])) || 0;
+          }
+        });
+      }
+    }
     return { month: m, Faturamento: efetivo, Pipeline: potencial, Meta: meta };
   });
 
@@ -1505,7 +2039,7 @@ export default function App() {
   const resumoAnoData = [
     { name: "Meta", Meta: visaoGeralMetaAnoTotal, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralMetaAnoTotal },
     { name: "Faturado", Meta: 0, Faturado: visaoGeralFaturamentoEfetivoTotal, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralFaturamentoEfetivoTotal },
-    { name: "GAP", Meta: 0, Faturado: 0, Pipeline: gapPipeline, AProduzir: gapAProduzir, totalTop: gapParaMeta },
+    { name: "GAP", Meta: 0, Faturado: 0, Pipeline: gapPipeline, AProduzir: gapAProduzir, totalTop: -gapParaMeta },
   ];
 
   const pipelineTotal = dashboardOpps.reduce((s, o) => s + periodAdjustedValue(o), 0);
@@ -1582,99 +2116,106 @@ export default function App() {
     : null;
   const selectedOppContact = selectedOpp ? contacts.find((c) => c.id === selectedOpp.contactId) : null;
 
-  const sendProposalTemplate = PROPOSAL_TEMPLATES.find((t) => t.id === sendProposalTemplateId) || null;
+  const canEditOppStage = (() => {
+    if (!user || !selectedOpp) return false;
+    if (!hasPermission(user.perfil, "can_edit_opportunities")) return false;
+    if (user.perfil === "admin") return true;
+    if (user.perfil === "diretor") return true;
+    if (user.perfil === "executivo") {
+      if (user.executivo_id && selectedOpp.executivoId) {
+        return String(user.executivo_id) === String(selectedOpp.executivoId);
+      }
+      if (user.executivo_id) {
+        const myExec = executivos.find((e) => String(e.id) === String(user.executivo_id));
+        if (myExec && selectedOpp.executivo) {
+          return myExec.nome?.toLowerCase() === selectedOpp.executivo.toLowerCase();
+        }
+      }
+      return Boolean(user.nome && selectedOpp.executivo && user.nome.toLowerCase() === selectedOpp.executivo.toLowerCase());
+    }
+    return false;
+  })();
+
+  const sendProposalTemplate = proposalTemplates.find((t) => t.id === sendProposalTemplateId) || null;
   const sendProposalContact = contacts.find((c) => c.id === sendProposalContactId) || null;
   const sendProposalMailto =
     sendProposalTemplate && sendProposalContact && sendProposalContact.email
       ? `mailto:${sendProposalContact.email}?subject=${encodeURIComponent(`Proposta comercial — ${sendProposalTemplate.title} | RedeTV!`)}&body=${encodeURIComponent(buildProposalEmailBody(sendProposalTemplate, sendProposalContact.name))}`
       : null;
 
-  const contactSearchQuery = contactSearch.trim().toLowerCase();
-  const filteredContacts = (
-    !contactSearchQuery
-      ? contacts
-      : contacts.filter((c) => {
-          const client = advertisers.find((a) => a.id === c.clientId);
-          const nameMatch = c.name.toLowerCase().includes(contactSearchQuery);
-          const empresaMatch = client ? client.name.toLowerCase().includes(contactSearchQuery) : false;
-          const agencyMatch =
-            client && client.type === "Anunciante"
-              ? getServingAgencies(client.id).some((ag) => ag.name.toLowerCase().includes(contactSearchQuery))
-              : false;
-          return nameMatch || empresaMatch || agencyMatch;
-        })
-  ).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
-
-  const clientSearchQuery = clientSearch.trim().toLowerCase();
   function getClientTotalValue(a) {
     return opportunities
       .filter((o) => o.advertiserId === a.id || o.agencyId === a.id)
       .reduce((s, o) => s + o.value, 0);
   }
-
-  const filteredAdvertisers = ((!clientSearchQuery
-    ? advertisers
-    : advertisers.filter((a) => {
-        const digits = clientSearchQuery.replace(/\D/g, "");
-        return (
-          (a.nomeFantasia || "").toLowerCase().includes(clientSearchQuery) ||
-          (a.razaoSocial || "").toLowerCase().includes(clientSearchQuery) ||
-          (a.codigo || "").toString().toLowerCase().includes(clientSearchQuery) ||
-          (digits && (a.cnpj || "").includes(digits))
-        );
-      })
-  ).filter((a) => {
-    if (contactDaysFilter === "all") return true;
-    
-    const daysLimit = parseInt(contactDaysFilter, 10);
-    const status = a.type === "Agência"
-      ? getAgencyInactivityStatus(a, getServedAdvertisers(a))
-      : getClientInactivityStatus(a);
-      
-    if (!status) return false;
-    return status.level === daysLimit;
-  })
-  ).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
   
   const availableContacts = getAvailableContacts(newOppForm.agencyId, newOppForm.advertiserId);
 
   function computeExecutivoKpis(executivo) {
-    const segmentos = Object.keys(segmentoExecutivo).filter((seg) => segmentoExecutivo[seg] === executivo.id);
-    const clientesDaCarteira = advertisers.filter((a) => a.type === "Anunciante" && segmentos.includes(a.segmento));
-    const clientIds = clientesDaCarteira.map((c) => c.id);
+    const execIdStr = String(executivo.id);
+    const segmentos = Object.keys(segmentoExecutivo).filter((seg) => String(segmentoExecutivo[seg]) === execIdStr);
+    const keyAccountIds = executivoKeyAccounts[executivo.id] || [];
+    const keyAccountClients = (advertisers || []).filter((a) => keyAccountIds.includes(a.id));
+    const keyAccountCodigos = new Set(keyAccountClients.map((a) => String(a.codigo || "").trim()).filter(Boolean));
 
     let faturamento = 0;
     let pipeline = 0;
     let pipelineTotal = 0;
     let meta = 0;
+
     MONTHS.forEach((m) => {
-      const code = `${executivoYear}-${m}`;
+      const code = `${executivoYear}-${m}`.toLowerCase();
       faturamento += faturamentoEfetivo
         .filter((f) => {
-          if (f.periodo !== code) return false;
-          const client = advertisers.find((a) => a.codigo === f.clienteCodigo);
-          return client && segmentos.includes(client.segmento);
+          if ((f.periodo || "").toLowerCase() !== code) return false;
+          const cod = String(f.clienteCodigo || "").trim();
+          const kaOwnerExecId = keyAccountExecByCodigo[cod];
+          
+          if (kaOwnerExecId && kaOwnerExecId !== execIdStr) {
+            return false;
+          }
+
+          const seg = clientSegmentByCodigo[cod];
+          const isMySegment = seg && segmentos.some((s) => normalizeSegmentName(s) === normalizeSegmentName(seg));
+          return keyAccountCodigos.has(cod) || isMySegment;
         })
-        .reduce((s, f) => s + f.valor, 0);
-      const oppsAbertoNoMes = opportunities.filter(
-        (o) =>
-          ["Frio", "Morno", "Quente"].includes(o.stage) &&
-          (o.periodMonths || []).includes(code) &&
-          clientIds.includes(o.advertiserId)
-      );
-      pipeline += oppsAbertoNoMes.reduce((s, o) => s + monthlyValueOfOpp(o) * STAGE_WEIGHTS[o.stage], 0);
-      pipelineTotal += oppsAbertoNoMes.reduce((s, o) => s + monthlyValueOfOpp(o), 0);
-      meta += segmentos.reduce((s, seg) => s + ((monthlyMetas[seg] && monthlyMetas[seg][code]) || 0), 0);
+        .reduce((s, f) => s + (Number(f.valor) || 0), 0);
+
+      const oppsAbertoNoMes = opportunities.filter((o) => {
+        if (!["Frio", "Morno", "Quente"].includes(o.stage)) return false;
+        if (!(o.periodMonths || []).some((pm) => (pm || "").toLowerCase() === code)) return false;
+        const kaOwnerExecId = keyAccountExecById[o.advertiserId] || (o.agencyId ? keyAccountExecById[o.agencyId] : null);
+        if (kaOwnerExecId && String(kaOwnerExecId) !== execIdStr) {
+          return false;
+        }
+        const adv = clientByIdMap[o.advertiserId];
+        const isMySegment = adv && segmentos.some((s) => normalizeSegmentName(s) === normalizeSegmentName(adv.segmento));
+        const isMyKeyAccount = keyAccountIds.includes(o.advertiserId) || (o.agencyId && keyAccountIds.includes(o.agencyId));
+        const isMyOpp = o.executivo === executivo.nome;
+        return isMySegment || isMyKeyAccount || isMyOpp;
+      });
+
+      const segMeta = segmentos.reduce((s, seg) => s + ((monthlyMetas[seg] && (monthlyMetas[seg][code] || monthlyMetas[seg][`${executivoYear}-${m}`])) || 0), 0);
+      const kaMeta = keyAccountIds.reduce((s, kaId) => {
+        const key = `keyaccount:${kaId}`;
+        return s + ((monthlyMetas[key] && (monthlyMetas[key][code] || monthlyMetas[key][`${executivoYear}-${m}`])) || 0);
+      }, 0);
+      meta += segMeta + kaMeta;
     });
+
     const gap = faturamento - meta;
     const percent = meta > 0 ? (faturamento / meta) * 100 : 0;
-    return { segmentos, clientesDaCarteira, faturamento, pipeline, pipelineTotal, meta, gap, percent };
+    return { segmentos, keyAccountClients, faturamento, pipeline, pipelineTotal, meta, gap, percent };
   }
 
   function computeClientRowForExecutivo(client, year) {
     const faturamento = faturamentoEfetivo
-      .filter((f) => f.clienteCodigo === client.codigo && f.periodo.startsWith(year + "-"))
-      .reduce((s, f) => s + f.valor, 0);
+      .filter(
+        (f) =>
+          String(f.clienteCodigo || "").trim() === String(client.codigo || "").trim() &&
+          (f.periodo || "").toLowerCase().startsWith(String(year).toLowerCase() + "-")
+      )
+      .reduce((s, f) => s + (Number(f.valor) || 0), 0);
     const clientOpps = opportunities.filter(
       (o) => o.advertiserId === client.id && (o.periodMonths || []).some((pm) => pm.startsWith(year + "-"))
     );
@@ -1694,7 +2235,7 @@ export default function App() {
     planning: "Pipeline Planejamento",
     advertisers: "Clientes",
     contacts: "Contatos",
-    proposals: "Propostas geradas com IA",
+    proposals: "Propostas",
     executivos: "Executivos",
   };
 
@@ -1710,7 +2251,7 @@ export default function App() {
         </div>
         <nav className="flex-1 p-3 flex flex-col gap-1">
           {[
-            { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
+            hasPermission(user.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
             { id: "pipeline", label: "Pipeline", icon: GitBranch },
             { id: "advertisers", label: "Clientes", icon: Building2 },
             { id: "contacts", label: "Contatos", icon: Users },
@@ -1883,7 +2424,29 @@ export default function App() {
             </div>
           )}
 
-          {view === "dashboard" && (
+          {successMsg && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-md mb-6 flex items-center justify-between text-sm">
+              <span>{successMsg}</span>
+              <button onClick={() => setSuccessMsg("")} className="text-emerald-400 hover:text-emerald-600">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          {warningMsg && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-md mb-6 flex items-center justify-between text-sm shadow-sm">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                <span>{warningMsg}</span>
+              </div>
+              <button onClick={() => setWarningMsg("")} className="text-amber-500 hover:text-amber-700">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          <React.Suspense fallback={<TabLoadingFallback />}>
+          {view === "dashboard" && hasPermission(user.perfil, "can_view_dashboard") && (
             <DashboardTab
               dashboardSegmentFilter={dashboardSegmentFilter}
               setDashboardSegmentFilter={setDashboardSegmentFilter}
@@ -1950,6 +2513,9 @@ export default function App() {
               highlightedOppId={highlightedOppId}
               setSelectedOppId={setSelectedOppId}
               updateStage={updateStage}
+              pipelineSearch={pipelineSearch}
+              setPipelineSearch={setPipelineSearch}
+              openEditOpportunity={openEditOpportunity}
             />
           )}
 
@@ -1961,6 +2527,7 @@ export default function App() {
               updateOpportunityProducts={updateOpportunityProducts}
               allProducts={allProducts}
               responsaveis={responsaveis}
+              goToOpportunityInPipeline={goToOpportunityInPipeline}
             />
           )}
 
@@ -1968,6 +2535,7 @@ export default function App() {
             <AdvertisersTab
               advertisers={advertisers}
               opportunities={opportunities}
+              faturamentoEfetivo={faturamentoEfetivo}
               contacts={contacts}
               clientSearch={clientSearch}
               setClientSearch={setClientSearch}
@@ -1983,6 +2551,8 @@ export default function App() {
               summarizeInteraction={summarizeInteraction}
               summarizingId={summarizingId}
               goToOpportunityInPipeline={goToOpportunityInPipeline}
+              goToContact={goToContact}
+              setView={setView}
               setSelectedContactId={setSelectedContactId}
               openScheduleMeeting={openScheduleMeeting}
               onTranscribeComplete={(result) => handleTranscriptionComplete(result, selectedAdvertiserId)}
@@ -1991,6 +2561,12 @@ export default function App() {
               openSendProposal={openSendProposal}
               contactDaysFilter={contactDaysFilter}
               setContactDaysFilter={setContactDaysFilter}
+              currentUser={user}
+              onDeleteClient={handleDeleteClient}
+              segmentoExecutivo={segmentoExecutivo}
+              executivoKeyAccounts={executivoKeyAccounts}
+              executivos={executivos}
+              onRefreshData={reloadBootstrapData}
             />
           )}
 
@@ -2004,17 +2580,19 @@ export default function App() {
               selectedContactId={selectedContactId}
               setSelectedContactId={setSelectedContactId}
               setSelectedAdvertiserId={setSelectedAdvertiserId}
+              goToAdvertiser={goToAdvertiser}
+              setView={setView}
               openSendCustomEmail={openSendCustomEmail}
+              openEditContact={openEditContact}
+              currentUser={user}
+              onDeleteContact={handleDeleteContact}
             />
           )}
 
           {view === "proposals" && (
             <ProposalsTab
-              proposals={proposals}
-              contacts={contacts}
-              advertisers={advertisers}
-              opportunities={opportunities}
               openSendProposal={openSendProposal}
+              proposalTemplates={proposalTemplates}
             />
           )}
 
@@ -2035,6 +2613,7 @@ export default function App() {
               setExpandedClientsId={setExpandedClientsId}
               computeClientRowForExecutivo={computeClientRowForExecutivo}
               advertisers={advertisers}
+              executivoKeyAccounts={executivoKeyAccounts}
               currentUser={user}
             />
           )}
@@ -2043,24 +2622,52 @@ export default function App() {
             <AccessTab
               executivos={executivos}
               currentUser={user}
+              proposalTemplates={proposalTemplates}
+              onRefreshProposals={loadProposalTemplates}
+              onRefreshData={reloadBootstrapData}
             />
           )}
+          </React.Suspense>
         </div>
       </main>
 
       {selectedOpp && (
-        <div className="fixed inset-0 bg-slate-900/30 flex justify-end z-40" onClick={() => setSelectedOppId(null)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="drawer-opp-title"
+          className="fixed inset-0 bg-slate-900/30 flex justify-end z-40"
+          onClick={() => setSelectedOppId(null)}
+        >
           <div className="w-full max-w-md bg-white h-full overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
-                <div className="text-lg font-medium text-slate-800">{selectedOpp.title}</div>
+                <h2 id="drawer-opp-title" className="text-lg font-medium text-slate-800">{selectedOpp.title}</h2>
                 <span className={"inline-block text-xs px-1.5 py-0.5 rounded border mt-1 " + STAGE_STYLES[selectedOpp.stage]}>
                   {selectedOpp.stage}
                 </span>
               </div>
-              <button onClick={() => setSelectedOppId(null)} className="text-slate-400 hover:text-slate-700">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const oppId = selectedOpp.id;
+                    setSelectedOppId(null);
+                    openEditOpportunity(oppId);
+                  }}
+                  className="flex items-center gap-1.5 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md font-medium border border-slate-200 transition-colors cursor-pointer"
+                >
+                  <Pencil size={13} /> Editar
+                </button>
+                <button
+                  type="button"
+                  aria-label="Fechar painel"
+                  onClick={() => setSelectedOppId(null)}
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="bg-slate-50 rounded-md p-3 text-sm text-slate-600 mb-5">
@@ -2069,10 +2676,10 @@ export default function App() {
                 {selectedOppAdvertiser ? selectedOppAdvertiser.name : "Anunciante removido"}
               </div>
               {selectedOppAdvertiser && selectedOppAdvertiser.segmento && (
-                <div className="text-xs text-slate-400 mt-1">{selectedOppAdvertiser.segmento}</div>
+                <div className="text-xs text-slate-600 mt-1 font-medium">{selectedOppAdvertiser.segmento}</div>
               )}
               {selectedOppContact && (
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-xs text-slate-600 mt-1 font-medium">
                   Contato: {selectedOppContact.name} · {selectedOppContact.cargo}
                 </div>
               )}
@@ -2081,16 +2688,16 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3 text-sm mb-5">
               <div className="bg-slate-50 rounded-md p-3 col-span-2 flex items-center justify-between">
                 <div>
-                  <div className="text-xs text-slate-405">Investimento previsto</div>
+                  <div className="text-xs text-slate-600 font-medium">Investimento previsto</div>
                   <div className="text-slate-700 font-mono font-semibold">{formatBRL(selectedOpp.value)}</div>
                 </div>
                 {selectedOpp.winProbability !== null && selectedOpp.winProbability !== undefined && (
                   <div className="text-right">
-                    <div className="text-xs text-slate-405">Probabilidade de Fechamento</div>
+                    <div className="text-xs text-slate-600 font-medium">Probabilidade de Fechamento</div>
                     <span
                       className={`inline-block mt-0.5 text-xs font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
-                        selectedOpp.winProbability >= 75 ? "bg-emerald-50 text-emerald-700 border-emerald-250" :
-                        selectedOpp.winProbability >= 45 ? "bg-amber-50 text-amber-700 border-amber-250" :
+                        selectedOpp.winProbability > 80 ? "bg-emerald-50 text-emerald-700 border-emerald-250" :
+                        selectedOpp.winProbability >= 60 ? "bg-amber-50 text-amber-700 border-amber-250" :
                         "bg-rose-50 text-rose-700 border-rose-250"
                       }`}
                     >
@@ -2100,28 +2707,28 @@ export default function App() {
                 )}
               </div>
               <div className="bg-slate-50 rounded-md p-3 col-span-2">
-                <div className="text-xs text-slate-400">Período</div>
+                <div className="text-xs text-slate-600 font-medium">Período</div>
                 <div className="text-slate-700">{formatPeriod(selectedOpp.periodMonths)}</div>
               </div>
               <div className="bg-slate-50 rounded-md p-3">
-                <div className="text-xs text-slate-400">Data de criação</div>
+                <div className="text-xs text-slate-600 font-medium">Data de criação</div>
                 <div className="text-slate-700">{formatDate(selectedOpp.createdAt)}</div>
               </div>
               <div className="bg-slate-50 rounded-md p-3">
-                <div className="text-xs text-slate-400">Data de entrega</div>
+                <div className="text-xs text-slate-600 font-medium">Data de entrega</div>
                 <div className="text-slate-700">{formatDate(selectedOpp.deliveryDate)}</div>
               </div>
               <div className="bg-slate-50 rounded-md p-3 col-span-2">
-                <div className="text-xs text-slate-400">Previsão de fechamento</div>
+                <div className="text-xs text-slate-600 font-medium">Previsão de fechamento</div>
                 <div className="text-slate-700">{formatDate(selectedOpp.expectedCloseDate)}</div>
               </div>
             </div>
 
             <div className="mb-5">
-              <div className="text-xs font-medium text-slate-500 mb-2">Produtos</div>
+              <div className="text-xs font-semibold text-slate-700 mb-2">Produtos</div>
               <div className="flex flex-wrap gap-1.5">
                 {(selectedOpp.products || []).length === 0 && (
-                  <div className="text-xs text-slate-300">Nenhum produto selecionado.</div>
+                  <div className="text-xs text-slate-400">Nenhum produto selecionado.</div>
                 )}
                 {(selectedOpp.products || []).map((p) => {
                   const hasAllocated = selectedOpp.productValues?.[p] !== undefined && selectedOpp.productValues?.[p] !== null;
@@ -2130,7 +2737,7 @@ export default function App() {
                     : (selectedOpp.value / (selectedOpp.products.length || 1));
                   const suffix = hasAllocated ? "" : " (estimado)";
                   return (
-                    <span key={p} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    <span key={p} className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
                       {p} <span className="font-semibold text-slate-800 font-mono">({formatBRL(val)}{suffix})</span>
                     </span>
                   );
@@ -2138,24 +2745,63 @@ export default function App() {
               </div>
             </div>
 
-            <div className="mb-5">
-              <div className="text-xs font-medium text-slate-500 mb-2">Briefing</div>
-              <div className="text-sm text-slate-600 bg-slate-50 rounded-md p-3 whitespace-pre-wrap">
-                {selectedOpp.briefing || "Nenhum briefing registrado."}
+            {selectedOpp.briefing && (
+              <div className="mb-5">
+                <div className="text-xs font-semibold text-slate-700 mb-2">Briefing</div>
+                <div className="text-sm text-slate-600 bg-slate-50 rounded-md p-3 whitespace-pre-wrap">
+                  {selectedOpp.briefing}
+                </div>
               </div>
-            </div>
+            )}
+
+            {(selectedOpp.attachments || []).length > 0 && (
+              <div className="mb-5">
+                <div className="text-xs font-semibold text-slate-700 mb-2">Arquivos Anexados</div>
+                <div className="flex flex-col gap-1.5">
+                  {(selectedOpp.attachments || []).map((att) => (
+                    <a
+                      key={att.id || att.name}
+                      href={att.url || att.dataUri}
+                      download={att.name}
+                      target={att.url ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-3 py-2 text-xs text-slate-700 font-medium transition-colors"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <FileText size={15} className="text-rose-600 shrink-0" />
+                        <span className="truncate">{att.name}</span>
+                      </div>
+                      <span className="text-[10px] text-rose-600 font-semibold uppercase tracking-wider shrink-0 border border-rose-200 bg-rose-50 px-2 py-0.5 rounded">
+                        Baixar
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mb-5">
-              <label className="text-xs text-slate-500 mb-1 block">Estágio</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Estágio</label>
               <select
                 value={selectedOpp.stage}
+                disabled={!canEditOppStage}
                 onChange={(e) => updateStage(selectedOpp.id, e.target.value)}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+                className={`w-full border border-slate-200 rounded-md px-3 py-2 text-sm ${
+                  !canEditOppStage
+                    ? "bg-slate-100 text-slate-500 cursor-not-allowed border-slate-200"
+                    : "bg-white text-slate-800"
+                }`}
               >
                 {STAGES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
+              {!canEditOppStage && (
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+                  <AlertTriangle size={14} className="shrink-0 text-amber-600" />
+                  <span>A alteração de estágio no pipeline é restrita ao executivo responsável e administradores.</span>
+                </div>
+              )}
             </div>
 
             {hasPermission(user.perfil, "can_delete_opportunities") && (
@@ -2182,42 +2828,35 @@ export default function App() {
         setNewAdvForm={setNewAdvForm}
         advertisers={advertisers}
         openQuickCreateClient={openQuickCreateClient}
+        currentUser={user}
+        onDeleteClient={handleDeleteClient}
       />
 
 
-      {showNewExecutivo && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" onClick={() => setShowNewExecutivo(false)}>
-          <form onSubmit={addExecutivo} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-sm flex flex-col gap-3">
-            <div className="flex items-center justify-between mb-1">
-              <div className="font-medium text-slate-800">Novo Executivo</div>
-              <button type="button" onClick={() => setShowNewExecutivo(false)}><X size={16} className="text-slate-400" /></button>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block">Nome</label>
-              <input
-                required
-                autoFocus
-                placeholder="Nome do executivo"
-                value={newExecutivoForm.nome}
-                onChange={(e) => setNewExecutivoForm({ nome: e.target.value })}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
-              />
-            </div>
-            <button type="submit" className="w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800">Salvar Executivo</button>
-          </form>
-        </div>
-      )}
-
       {showQuickCreateClient && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" style={{ zIndex: 70 }} onClick={closeQuickCreateClient}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-quick-client-title"
+          className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+          style={{ zIndex: 70 }}
+          onClick={closeQuickCreateClient}
+        >
           <form onSubmit={confirmQuickCreateClient} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-sm flex flex-col gap-3">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-medium text-slate-800">Cadastrar {quickCreateType}</div>
-              <button type="button" onClick={closeQuickCreateClient}><X size={16} className="text-slate-400" /></button>
+              <h2 id="modal-quick-client-title" className="font-semibold text-slate-800 text-base">Cadastrar {quickCreateType}</h2>
+              <button
+                type="button"
+                aria-label="Fechar modal"
+                onClick={closeQuickCreateClient}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Código</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Código</label>
               <input
                 type="number"
                 placeholder="Ex: 1007"
@@ -2228,7 +2867,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Razão social</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
               <input
                 required
                 autoFocus
@@ -2240,7 +2879,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">CNPJ</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">CNPJ</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -2253,7 +2892,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Nome fantasia</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
               <input
                 placeholder="Nome fantasia"
                 value={quickCreateName}
@@ -2264,7 +2903,7 @@ export default function App() {
 
             {quickCreateType === "Anunciante" && (
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Segmento</label>
+                <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento</label>
                 <select
                   required
                   value={quickCreateSegmento}
@@ -2279,7 +2918,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-slate-500">
               Contatos e vínculos com outras agências/anunciantes podem ser adicionados depois na aba Clientes.
             </div>
 
@@ -2298,11 +2937,17 @@ export default function App() {
         setNewContactForm={setNewContactForm}
         advertisers={advertisers}
         openCreateClientForContact={openCreateClientForContact}
+        editingContactId={editingContactId}
+        currentUser={user}
+        onDeleteContact={handleDeleteContact}
       />
 
       <NewOpportunityModal
         show={showNewOpportunity}
-        onClose={() => setShowNewOpportunity(false)}
+        onClose={() => {
+          setShowNewOpportunity(false);
+          setEditingOppId(null);
+        }}
         onSubmit={addOpportunity}
         newOppForm={newOppForm}
         setNewOppForm={setNewOppForm}
@@ -2314,28 +2959,42 @@ export default function App() {
         errorMsg={errorMsg}
         setErrorMsg={setErrorMsg}
         allProducts={allProducts}
+        editingOppId={editingOppId}
       />
 
       {showSendProposal && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" onClick={() => setShowSendProposal(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-send-prop-title"
+          className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+          onClick={() => setShowSendProposal(false)}
+        >
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-3 shadow-xl">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-semibold text-slate-800">Enviar proposta comercial por e-mail</div>
-              <button onClick={() => setShowSendProposal(false)}><X size={16} className="text-slate-400" /></button>
+              <h2 id="modal-send-prop-title" className="font-semibold text-slate-800 text-base">Enviar proposta comercial por e-mail</h2>
+              <button
+                type="button"
+                aria-label="Fechar modal"
+                onClick={() => setShowSendProposal(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded-md border border-slate-100 mb-1">
-              <span className="font-medium text-slate-700">Modelo selecionado:</span> {sendProposalTemplate ? sendProposalTemplate.title : ""}
+            <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-md border border-slate-100 mb-1">
+              <span className="font-semibold text-slate-700">Modelo selecionado:</span> {sendProposalTemplate ? sendProposalTemplate.title : ""}
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Contato (Destinatário)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Contato (Destinatário)</label>
               <select
                 value={sendProposalContactId}
                 onChange={(e) => {
                   const val = e.target.value;
                   setSendProposalContactId(val);
                   const contact = contacts.find((c) => c.id === val);
-                  const template = PROPOSAL_TEMPLATES.find((t) => t.id === sendProposalTemplateId);
+                  const template = proposalTemplates.find((t) => t.id === sendProposalTemplateId);
                   if (template) {
                     setSendProposalBody(buildProposalEmailBody(template, contact ? contact.name : ""));
                   }
@@ -2356,24 +3015,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Oportunidade (opcional)</label>
-              <select
-                value={sendProposalOppId}
-                onChange={(e) => setSendProposalOppId(e.target.value)}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
-              >
-                <option value="">Nenhuma</option>
-                {openOpps.map((o) => {
-                  const adv = advertisers.find((a) => a.id === o.advertiserId);
-                  return (
-                    <option key={o.id} value={o.id}>{o.title} — {adv ? adv.name : ""}</option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Assunto do e-mail</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Assunto do e-mail</label>
               <input
                 type="text"
                 value={sendProposalSubject}
@@ -2384,7 +3026,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Mensagem (Corpo do e-mail)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Mensagem (Corpo do e-mail)</label>
               <textarea
                 value={sendProposalBody}
                 onChange={(e) => setSendProposalBody(e.target.value)}
@@ -2394,8 +3036,11 @@ export default function App() {
               />
             </div>
 
-            <div className="bg-rose-50 text-rose-700 text-[11px] p-2 rounded-md border border-rose-100 font-medium">
-              📎 O arquivo PDF "{sendProposalTemplate?.pdfFileName}" será anexado automaticamente.
+            <div className="bg-rose-50 text-rose-700 text-[11px] p-2 rounded-md border border-rose-100 font-medium flex flex-col gap-0.5">
+              <div>📎 <b>PDF:</b> "{sendProposalTemplate?.pdfFileName}" será anexado.</div>
+              {sendProposalTemplate?.xlsFileName && (
+                <div>📊 <b>Excel:</b> "{sendProposalTemplate?.xlsFileName}" será anexado.</div>
+              )}
             </div>
 
             <button
@@ -2420,21 +3065,87 @@ export default function App() {
         </div>
       )}
 
+      {/* Modal de confirmação: criar oportunidade após envio de proposta */}
+      {pendingOppAfterProposal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-pending-opp-title"
+          className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50"
+        >
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={20} className="text-emerald-600" />
+              </div>
+              <div>
+                <h2 id="modal-pending-opp-title" className="font-semibold text-slate-800 text-sm">Proposta enviada!</h2>
+                <div className="text-xs text-slate-600 mt-0.5">Proposta enviada para <strong>{pendingOppAfterProposal.contactName}</strong>.</div>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">
+              Deseja criar uma <strong>oportunidade no pipeline</strong> para este cliente agora?
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setPendingOppAfterProposal(null)}
+                className="px-4 py-2 text-xs border border-slate-200 text-slate-600 rounded-md hover:bg-slate-50"
+              >
+                Agora não
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const { clientId, contactName } = pendingOppAfterProposal;
+                  setPendingOppAfterProposal(null);
+                  const advertiser = advertisers.find((a) => a.id === clientId);
+                  setNewOppForm({
+                    ...emptyOppForm(),
+                    advertiserId: clientId || "",
+                    agencyId: (advertiser && advertiser.type === "Agência") ? advertiser.id : "",
+                    title: `Oportunidade - ${advertiser ? (advertiser.nomeFantasia || advertiser.razaoSocial || advertiser.name || "") : contactName}`,
+                  });
+                  setView("pipeline");
+                  setShowNewOpportunity(true);
+                }}
+                className="px-4 py-2 text-xs bg-rose-600 text-white font-semibold rounded-md hover:bg-rose-700"
+              >
+                Criar oportunidade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSendCustomEmail && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" onClick={() => setShowSendCustomEmail(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-send-email-title"
+          className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+          onClick={() => setShowSendCustomEmail(false)}
+        >
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-3 shadow-xl">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-semibold text-slate-800 font-sans">
+              <h2 id="modal-send-email-title" className="font-semibold text-slate-800 font-sans text-base">
                 {customEmailIsProposal ? "Enviar proposta comercial por e-mail" : "Enviar e-mail para o cliente"}
-              </div>
-              <button onClick={() => setShowSendCustomEmail(false)}><X size={16} className="text-slate-400" /></button>
+              </h2>
+              <button
+                type="button"
+                aria-label="Fechar modal"
+                onClick={() => setShowSendCustomEmail(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
             </div>
             
             {(() => {
               const contact = contacts.find(c => c.id === sendCustomEmailContactId);
               const client = contact ? advertisers.find(a => a.id === contact.clientId) : null;
               return (
-                <div className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-md border border-slate-100 mb-1">
+                <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-md border border-slate-100 mb-1">
                   <div><span className="font-semibold text-slate-700">Destinatário:</span> {contact ? `${contact.name} (${contact.email})` : ""}</div>
                   {client && <div className="mt-0.5"><span className="font-semibold text-slate-700">Cliente:</span> {client.name}</div>}
                 </div>
@@ -2442,7 +3153,7 @@ export default function App() {
             })()}
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-semibold">Assunto do e-mail</label>
+              <label className="text-xs text-slate-700 mb-1 block font-semibold">Assunto do e-mail</label>
               <input
                 type="text"
                 value={sendCustomEmailSubject}
@@ -2453,7 +3164,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-semibold">Mensagem (Corpo do e-mail)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-semibold">Mensagem (Corpo do e-mail)</label>
               <textarea
                 value={sendCustomEmailBody}
                 onChange={(e) => setSendCustomEmailBody(e.target.value)}
@@ -2464,7 +3175,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-semibold">Anexo (Opcional)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-semibold">Anexo (Opcional)</label>
               <input
                 type="file"
                 onChange={(e) => {
@@ -2480,7 +3191,7 @@ export default function App() {
                 className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 cursor-pointer"
               />
               {sendCustomEmailAttachmentName && (
-                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                <div className="text-[11px] text-slate-600 mt-1 flex items-center gap-1 font-medium">
                   <span>📎 Anexado: <strong>{sendCustomEmailAttachmentName}</strong></span>
                   <button
                     type="button"
@@ -2519,15 +3230,28 @@ export default function App() {
       )}
 
       {showScheduleMeeting && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" onClick={() => setShowScheduleMeeting(false)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-sched-title"
+          className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+          onClick={() => setShowScheduleMeeting(false)}
+        >
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-3 shadow-xl">
             <div className="flex items-center justify-between mb-1">
-              <div className="font-semibold text-slate-800">Agendar Compromisso (Google Calendar)</div>
-              <button onClick={() => setShowScheduleMeeting(false)}><X size={16} className="text-slate-400" /></button>
+              <h2 id="modal-sched-title" className="font-semibold text-slate-800 text-base">Agendar Compromisso na Agenda</h2>
+              <button
+                type="button"
+                aria-label="Fechar modal"
+                onClick={() => setShowScheduleMeeting(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Título da Reunião</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Título da Reunião</label>
               <input
                 type="text"
                 value={scheduleMeetingTitle}
@@ -2539,7 +3263,7 @@ export default function App() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-slate-500 mb-1 block font-medium">Data</label>
+                <label className="text-xs text-slate-700 mb-1 block font-medium">Data</label>
                 <input
                   type="date"
                   value={scheduleMeetingDate}
@@ -2548,7 +3272,7 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500 mb-1 block font-medium">Hora de início</label>
+                <label className="text-xs text-slate-700 mb-1 block font-medium">Hora de início</label>
                 <input
                   type="time"
                   value={scheduleMeetingTime}
@@ -2559,7 +3283,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Duração</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Duração</label>
               <select
                 value={scheduleMeetingDuration}
                 onChange={(e) => setScheduleMeetingDuration(e.target.value)}
@@ -2575,7 +3299,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Descrição (opcional)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Descrição (opcional)</label>
               <textarea
                 value={scheduleMeetingDescription}
                 onChange={(e) => setScheduleMeetingDescription(e.target.value)}
@@ -2586,7 +3310,7 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-500 mb-1 block font-medium">Convidados (Contatos do Cliente)</label>
+              <label className="text-xs text-slate-700 mb-1 block font-medium">Convidados (Contatos do Cliente)</label>
               <div className="flex flex-col gap-1.5 max-h-24 overflow-y-auto border border-slate-200 rounded-md p-2 bg-slate-50">
                 {contacts.filter(c => c.clientId === scheduleMeetingClientId).map((c) => (
                   <label key={c.id} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
@@ -2606,7 +3330,7 @@ export default function App() {
                   </label>
                 ))}
                 {contacts.filter(c => c.clientId === scheduleMeetingClientId).length === 0 && (
-                  <span className="text-xs text-slate-400">Nenhum contato cadastrado para este cliente.</span>
+                  <span className="text-xs text-slate-500 font-medium">Nenhum contato cadastrado para este cliente.</span>
                 )}
               </div>
             </div>
@@ -2626,7 +3350,7 @@ export default function App() {
                   <Loader2 size={16} className="animate-spin" /> Agendando...
                 </>
               ) : (
-                "Agendar via Google Calendar / Simulação"
+                "Confirmar Agendamento"
               )}
             </button>
           </div>
@@ -2635,7 +3359,12 @@ export default function App() {
 
       {/* Modal de Preview de Transcrição de Reunião */}
       {showTranscriptionPreview && transcriptionPreviewData && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-transc-title"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
             
             {/* Header */}
@@ -2644,14 +3373,16 @@ export default function App() {
                 <span className="p-1 bg-rose-50 rounded-md text-rose-500">
                   <Mic size={18} />
                 </span>
-                <span className="font-semibold text-slate-800">Resultado do Processamento por IA (Gemini 3.6)</span>
+                <h2 id="modal-transc-title" className="font-semibold text-slate-800">Resultado do Processamento por IA (Gemini)</h2>
               </div>
               <button 
+                type="button"
+                aria-label="Fechar prévia da transcrição"
                 onClick={() => {
                   setShowTranscriptionPreview(false);
                   setTranscriptionPreviewData(null);
                 }} 
-                className="text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -2662,7 +3393,7 @@ export default function App() {
               
               {/* Left Column: Transcrição */}
               <div className="flex flex-col h-[50vh]">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Transcrição Completa (Verbatim)</div>
+                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Transcrição Completa (Verbatim)</div>
                 <textarea
                   readOnly
                   value={transcriptionPreviewData.transcricao}
@@ -2675,7 +3406,7 @@ export default function App() {
                 
                 {/* Risco Badge */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grau de Risco Comercial</span>
+                  <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Grau de Risco Comercial</span>
                   <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium uppercase tracking-wider ${
                     transcriptionPreviewData.risco === "alto" ? "bg-rose-50 text-rose-700 border-rose-200" :
                     transcriptionPreviewData.risco === "médio" || transcriptionPreviewData.risco === "medio" ? "bg-amber-50 text-amber-700 border-amber-200" :
@@ -2687,7 +3418,7 @@ export default function App() {
 
                 {/* Resumo Executivo */}
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Resumo da Reunião</div>
+                  <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Resumo da Reunião</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 leading-relaxed">
                     {transcriptionPreviewData.resumo}
                   </div>
@@ -2695,7 +3426,7 @@ export default function App() {
 
                 {/* Briefing de Mídia */}
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Briefing Comercial Sugerido</div>
+                  <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Briefing Comercial Sugerido</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
                     {transcriptionPreviewData.briefing}
                   </div>
@@ -2703,7 +3434,7 @@ export default function App() {
 
                 {/* Próximas Ações */}
                 <div>
-                  <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Próximos Passos (Ações)</div>
+                  <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Próximos Passos (Ações)</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 font-medium">
                     {transcriptionPreviewData.proxima_acao}
                   </div>
@@ -2714,11 +3445,12 @@ export default function App() {
             {/* Footer Buttons */}
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
               <button
+                type="button"
                 onClick={() => {
                   setShowTranscriptionPreview(false);
                   setTranscriptionPreviewData(null);
                 }}
-                className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors"
+                className="px-4 py-2 border border-slate-200 rounded-md text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
               >
                 Descartar
               </button>

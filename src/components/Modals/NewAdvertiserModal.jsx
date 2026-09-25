@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { formatCNPJ, SEGMENTOS } from "../../utils/helpers";
 import { MultiClientSearchField } from "../UI/SearchFields";
 
@@ -12,19 +12,37 @@ export default function NewAdvertiserModal({
   setNewAdvForm,
   advertisers,
   openQuickCreateClient,
+  currentUser,
+  onDeleteClient,
 }) {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" style={{ zIndex: 65 }} onClick={onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-adv-title"
+      className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+      style={{ zIndex: 65 }}
+      onClick={onClose}
+    >
       <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-sm flex flex-col gap-3">
         <div className="flex items-center justify-between mb-1">
-          <div className="font-medium text-slate-800">{editingClientId ? "Editar Cliente" : "Novo Cliente"}</div>
-          <button type="button" onClick={onClose}><X size={16} className="text-slate-400" /></button>
+          <h2 id="modal-adv-title" className="font-semibold text-slate-800 text-base">
+            {editingClientId ? "Editar Cliente" : "Novo Cliente"}
+          </h2>
+          <button
+            type="button"
+            aria-label="Fechar modal"
+            onClick={onClose}
+            className="p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Tipo de cliente</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Tipo de cliente</label>
           <select
             value={newAdvForm.type}
             onChange={(e) =>
@@ -44,7 +62,7 @@ export default function NewAdvertiserModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Código</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Código</label>
           <input
             type="number"
             placeholder="Ex: 1007"
@@ -55,7 +73,7 @@ export default function NewAdvertiserModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Razão social</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
           <input
             required
             placeholder="Razão social"
@@ -66,7 +84,7 @@ export default function NewAdvertiserModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">CNPJ</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">CNPJ</label>
           <input
             type="text"
             inputMode="numeric"
@@ -79,7 +97,7 @@ export default function NewAdvertiserModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Nome fantasia</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
           <input
             placeholder="Nome fantasia"
             value={newAdvForm.nomeFantasia}
@@ -90,7 +108,7 @@ export default function NewAdvertiserModal({
 
         {newAdvForm.type === "Anunciante" && (
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Segmento</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento</label>
             <select
               required
               value={newAdvForm.segmento}
@@ -129,9 +147,22 @@ export default function NewAdvertiserModal({
           />
         )}
 
-        <button type="submit" className="w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800">
-          {editingClientId ? "Salvar alterações" : "Salvar cliente"}
-        </button>
+        <div className="flex items-center gap-2 mt-2">
+          <button type="submit" className="flex-1 bg-slate-900 text-white rounded-md py-2 text-sm font-semibold hover:bg-slate-800 transition-colors">
+            {editingClientId ? "Salvar alterações" : "Salvar cliente"}
+          </button>
+          {editingClientId && currentUser?.perfil === "admin" && (
+            <button
+              type="button"
+              onClick={() => onDeleteClient(editingClientId)}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Excluir cadastro (Apenas Administrador)"
+            >
+              <Trash2 size={14} />
+              <span>Excluir</span>
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

@@ -131,6 +131,11 @@ create index idx_opportunities_contact_id on opportunities(contact_id);
 create index idx_segmento_executivo_executivo_id on segmento_executivo(executivo_id);
 create index idx_faturamento_efetivo_codigo on faturamento_efetivo(cliente_codigo);
 create index idx_metas_segmento on metas(segmento);
+create index idx_metas_client_id on metas(client_id);
+create index idx_metas_periodo on metas(periodo);
+create index idx_client_interactions_date on client_interactions(date desc);
+create index idx_client_interactions_type on client_interactions(type);
+create index idx_client_interactions_user_id on client_interactions(user_id);
 
 -- ---------------------------------------------------------
 -- RLS — habilitado, com política aberta de leitura/escrita.

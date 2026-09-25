@@ -2,62 +2,35 @@ const express = require("express");
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
 const { pool } = require("../db");
+const { hashPassword, verifyPassword } = require("../utils/passwords");
+const { encryptToken } = require("../utils/crypto");
 
 const router = express.Router();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const JWT_SECRET = process.env.JWT_SECRET || "redetv_fallback_secret_key";
-const ALLOWED_DOMAINS = process.env.ALLOWED_DOMAINS; // ex: "redetv.com.br"
+const JWT_SECRET = process.env.JWT_SECRET || "crm_redetv_secret_key_prod_default_2026";
+if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET === "crm_redetv_secret_key_prod_default_2026")) {
+  console.warn("ALERTA DE SEGURANÇA: JWT_SECRET não configurado com entropia alta em ambiente de produção.");
+}
+const ALLOWED_DOMAINS = process.env.ALLOWED_DOMAINS || "redetv.com.br";
+const ALLOW_DEV_MOCK_LOGIN = process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_MOCK_LOGIN === "true";
 
-router.post("/auth/google", async (req, res) => {
-  const { credential } = req.body;
+// Mapeamento fixo de e-mails corporativos para perfis padrão
+const EMAIL_PROFILE_MAP = {
+  "admincrm@redetv.com.br": "admin",
+  "vitor.mardegan@redetv.com.br": "admin",
+  "neto@redetv.com.br": "admin",
+  "nicolle.carvalho@redetv.com.br": "diretor",
+  "silvia.szekely@redetv.com.br": "executivo",
+  "bruno.camargo@redetv.com.br": "executivo",
+  "andre.barcellos@redetv.com.br": "especialista",
+  "tarco@redetv.com.br": "especialista",
+};
 
-  if (!credential) {
-    return res.status(400).json({ error: "Token do Google (credential) ausente na requisição." });
-  }
-
-  // Verifica se o GOOGLE_CLIENT_ID foi configurado
-  if (!GOOGLE_CLIENT_ID) {
-    console.warn("Aviso: GOOGLE_CLIENT_ID não está configurado no ambiente. Validando token localmente sem verificação de assinatura (apenas para testes).");
-    try {
-      // Decodificação insegura apenas para fins de sandbox caso as chaves não estejam prontas
-      const decoded = jwt.decode(credential);
-      if (!decoded) throw new Error("Token malformatado");
-      return await handleUserSignIn(res, {
-        sub: decoded.sub,
-        email: decoded.email,
-        name: decoded.name || decoded.email.split("@")[0],
-        picture: decoded.picture || ""
-      });
-    } catch (err) {
-      return res.status(400).json({ error: "Erro ao decodificar token de teste: " + err.message });
-    }
-  }
-
-  const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-  try {
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-
-    if (!payload || !payload.email) {
-      return res.status(400).json({ error: "Token do Google inválido ou sem e-mail disponível." });
-    }
-
-    await handleUserSignIn(res, {
-      sub: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      picture: payload.picture
-    });
-
-  } catch (err) {
-    console.error("Falha ao autenticar com o Google:", err);
-    return res.status(400).json({ error: "Assinatura do token do Google inválida ou expirada." });
-  }
+router.post("/auth/google", (req, res) => {
+  return res.status(403).json({
+    error: "Autenticação via Google desativada. Por favor, utilize seu e-mail corporativo (@redetv.com.br) e senha.",
+  });
 });
 
 async function handleUserSignIn(res, googleUser) {
@@ -76,25 +49,14 @@ async function handleUserSignIn(res, googleUser) {
   }
 
   try {
-    // Mapeamento fixo de e-mails corporativos para seus perfis padrão
-    const EMAIL_PROFILE_MAP = {
-      "admincrm@redetv.com.br": "admin",
-      "vitor.mardegan@redetv.com.br": "admin",
-      "neto@redetv.com.br": "admin",
-      "nicolle.carvalho@redetv.com.br": "diretor",
-      "silvia.szekely@redetv.com.br": "executivo",
-      "andre.barcellos@redetv.com.br": "especialista",
-      "tarco@redetv.com.br": "especialista",
-    };
-
     const mappedPerfil = EMAIL_PROFILE_MAP[email.toLowerCase()];
     const initialPerfil = mappedPerfil || "executivo";
     const isProtectedEmail = !!mappedPerfil;
 
     // Procura o usuário pelo google_id; se não achar, tenta pelo e-mail (para contas pré-cadastradas via seed)
-    let checkRes = await pool.query("SELECT id, perfil, executivo_id FROM usuarios WHERE google_id = $1", [sub]);
+    let checkRes = await pool.query("SELECT id, perfil, executivo_id, ativo, token_version FROM usuarios WHERE google_id = $1", [sub]);
     if (checkRes.rows.length === 0) {
-      checkRes = await pool.query("SELECT id, perfil, executivo_id FROM usuarios WHERE email = $1", [email.toLowerCase()]);
+      checkRes = await pool.query("SELECT id, perfil, executivo_id, ativo, token_version FROM usuarios WHERE email = $1", [email.toLowerCase()]);
     }
     let userId;
     let perfil = initialPerfil;
@@ -104,6 +66,13 @@ async function handleUserSignIn(res, googleUser) {
       userId = checkRes.rows[0].id;
       perfil = checkRes.rows[0].perfil;
       executivoId = checkRes.rows[0].executivo_id;
+
+      // Bloqueia login se o usuário estiver desativado
+      if (checkRes.rows[0].ativo === false) {
+        return res.status(403).json({
+          error: "Acesso bloqueado. Sua conta foi desativada pelo administrador. Entre em contato com o suporte."
+        });
+      }
 
       // Força atualização de perfil se o e-mail estiver no mapa fixo
       if (isProtectedEmail) {
@@ -121,8 +90,9 @@ async function handleUserSignIn(res, googleUser) {
     }
 
     // Assina o token JWT local contendo as permissões de acesso
+    const tokenVersion = checkRes.rows[0].token_version || 1;
     const sessionToken = jwt.sign(
-      { id: userId, email, nome: name, foto_url: picture, perfil, executivo_id: executivoId },
+      { id: userId, email, nome: name, foto_url: picture, perfil, executivo_id: executivoId, token_version: tokenVersion },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -145,8 +115,135 @@ async function handleUserSignIn(res, googleUser) {
   }
 }
 
-// Rota para receber o authorization code do frontend e obter o refresh/access token
+// ─────────────────────────────────────────────────────────────────────────────
+// Autenticação corporativa com e-mail e senha
+// ─────────────────────────────────────────────────────────────────────────────
+router.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "E-mail e senha são obrigatórios." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
+  // 1. Validação de domínios corporativos autorizados
+  const domain = cleanEmail.split("@")[1];
+  const allowedList = ALLOWED_DOMAINS.split(",").map((d) => d.trim().toLowerCase());
+
+  if (!domain || !allowedList.includes(domain)) {
+    return res.status(403).json({
+      error: `Acesso negado. Apenas e-mails corporativos do(s) domínio(s) ${ALLOWED_DOMAINS} são permitidos.`,
+    });
+  }
+
+  try {
+    // 2. Busca o usuário cadastrado no banco de dados
+    const userRes = await pool.query(
+      "SELECT id, nome, email, perfil, executivo_id, foto_url, ativo, senha_hash, token_version FROM usuarios WHERE LOWER(email) = $1",
+      [cleanEmail]
+    );
+
+    if (userRes.rows.length === 0) {
+      console.warn(`Tentativa de login com usuário inexistente: ${cleanEmail}`);
+      return res.status(401).json({ error: "Credenciais inválidas. E-mail ou senha incorretos." });
+    }
+
+    const user = userRes.rows[0];
+
+    // 3. Verifica se a conta está ativa
+    if (user.ativo === false) {
+      return res.status(403).json({
+        error: "Acesso bloqueado. Sua conta foi desativada pelo administrador. Entre em contato com o suporte.",
+      });
+    }
+
+    // 4. Validação de credenciais corporativas
+    if (!user.senha_hash) {
+      console.warn(`Tentativa de login para conta corporativa sem senha definida: ${cleanEmail}`);
+      return res.status(401).json({ error: "Credenciais inválidas. E-mail ou senha incorretos." });
+    }
+
+    const isValid = verifyPassword(password, user.senha_hash);
+    if (!isValid) {
+      return res.status(401).json({ error: "Credenciais inválidas. E-mail ou senha incorretos." });
+    }
+
+    // 5. Atualiza data do último login
+    await pool.query("UPDATE usuarios SET last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
+
+    // 6. Aplica perfil cadastrado no banco; se não houver perfil no banco, usa mapeamento inicial ou executivo
+    let perfil = user.perfil || EMAIL_PROFILE_MAP[cleanEmail] || "executivo";
+
+    if (!JWT_SECRET) {
+      console.error("ERRO CRÍTICO: JWT_SECRET não configurado.");
+      return res.status(500).json({ error: "Configuração interna do servidor incompleta (JWT_SECRET ausente)." });
+    }
+
+    // 7. Emissão do token JWT de sessão com controle de versão
+    const tokenVersion = user.token_version || 1;
+    const sessionToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        nome: user.nome,
+        foto_url: user.foto_url,
+        perfil,
+        executivo_id: user.executivo_id,
+        token_version: tokenVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token: sessionToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        nome: user.nome,
+        foto_url: user.foto_url,
+        perfil,
+        executivo_id: user.executivo_id,
+      },
+    });
+  } catch (err) {
+    console.error("Erro na autenticação corporativa com e-mail/senha:", err);
+    res.status(500).json({ error: "Erro interno no servidor ao processar autenticação." });
+  }
+});
+
+// Rota para alteração de senha de usuário autenticado
 const requireAuth = require("./authMiddleware");
+router.post("/auth/change-password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: "A nova senha deve ter no mínimo 8 caracteres." });
+  }
+  try {
+    const userRes = await pool.query("SELECT id, senha_hash FROM usuarios WHERE id = $1", [req.user.id]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+    const storedHash = userRes.rows[0].senha_hash;
+    if (storedHash) {
+      if (!currentPassword || !verifyPassword(currentPassword, storedHash)) {
+        return res.status(401).json({ error: "Senha atual incorreta." });
+      }
+    }
+    const newHash = hashPassword(newPassword);
+    await pool.query(
+      "UPDATE usuarios SET senha_hash = $1, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2",
+      [newHash, req.user.id]
+    );
+    res.json({ ok: true, message: "Senha alterada com sucesso." });
+  } catch (err) {
+    console.error("Erro ao alterar senha:", err);
+    res.status(500).json({ error: "Erro interno ao alterar senha." });
+  }
+});
+
+// Rota para receber o authorization code do frontend e obter o refresh/access token
 router.post("/auth/google/callback-code", requireAuth, async (req, res) => {
   const { code } = req.body;
   if (!code) {
@@ -174,21 +271,21 @@ router.post("/auth/google/callback-code", requireAuth, async (req, res) => {
         `UPDATE usuarios 
          SET google_refresh_token = $1, google_access_token = $2, google_token_expires_at = $3 
          WHERE id = $4`,
-        [refresh_token, access_token, expiresAt, req.user.id]
+        [encryptToken(refresh_token), encryptToken(access_token), expiresAt, req.user.id]
       );
     } else {
       await pool.query(
         `UPDATE usuarios 
          SET google_access_token = $1, google_token_expires_at = $2 
          WHERE id = $3`,
-        [access_token, expiresAt, req.user.id]
+        [encryptToken(access_token), expiresAt, req.user.id]
       );
     }
 
     res.json({ success: true });
   } catch (err) {
     console.error("Erro ao trocar authorization code:", err);
-    res.status(500).json({ error: "Não foi possível obter os tokens com o Google: " + err.message });
+    res.status(500).json({ error: "Não foi possível obter os tokens com o Google. Tente novamente mais tarde." });
   }
 });
 

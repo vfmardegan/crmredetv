@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, Trash2 } from "lucide-react";
 import { DECISION_LEVELS, formatCelular, HOBBIES, toggleMultiWithNone, SPORTS } from "../../utils/helpers";
 import { AnyClientSearchField } from "../UI/SearchFields";
 
@@ -11,19 +11,38 @@ export default function NewContactModal({
   setNewContactForm,
   advertisers,
   openCreateClientForContact,
+  editingContactId,
+  currentUser,
+  onDeleteContact,
 }) {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/30 flex items-start justify-center z-50 overflow-y-auto py-8" style={{ zIndex: 60 }} onClick={onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-contact-title"
+      className="fixed inset-0 bg-slate-900/30 flex items-start justify-center z-50 overflow-y-auto py-8"
+      style={{ zIndex: 60 }}
+      onClick={onClose}
+    >
       <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg flex flex-col gap-4">
         <div className="flex items-center justify-between mb-1">
-          <div className="font-medium text-slate-800">Novo Contato</div>
-          <button type="button" onClick={onClose}><X size={16} className="text-slate-400" /></button>
+          <h2 id="modal-contact-title" className="font-semibold text-slate-800 text-base">
+            {editingContactId ? "Editar Contato" : "Novo Contato"}
+          </h2>
+          <button
+            type="button"
+            aria-label="Fechar modal"
+            onClick={onClose}
+            className="p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Nome</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Nome</label>
           <input
             required
             placeholder="Nome completo"
@@ -46,7 +65,7 @@ export default function NewContactModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Cargo</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Cargo</label>
             <input
               placeholder="Cargo"
               value={newContactForm.cargo}
@@ -55,7 +74,7 @@ export default function NewContactModal({
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Departamento</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Departamento</label>
             <input
               placeholder="Departamento"
               value={newContactForm.departamento}
@@ -66,7 +85,7 @@ export default function NewContactModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Nível de decisão</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Nível de decisão</label>
           <div className="flex flex-wrap gap-2">
             {DECISION_LEVELS.map((lvl) => (
               <label
@@ -93,7 +112,7 @@ export default function NewContactModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Celular</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Celular</label>
             <input
               type="text"
               inputMode="numeric"
@@ -104,7 +123,7 @@ export default function NewContactModal({
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">E-mail</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">E-mail</label>
             <input
               placeholder="nome@empresa.com.br"
               value={newContactForm.email}
@@ -115,7 +134,7 @@ export default function NewContactModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Hobbies</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Hobbies</label>
           <div className="flex flex-wrap gap-2">
             {HOBBIES.map((h) => (
               <label
@@ -124,7 +143,7 @@ export default function NewContactModal({
                   "flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 cursor-pointer " +
                   (newContactForm.hobbies.includes(h)
                     ? "bg-rose-50 border-rose-300 text-rose-700"
-                    : "border-slate-200 text-slate-600")
+                    : "border-slate-200 text-slate-700")
                 }
               >
                 <input
@@ -149,7 +168,7 @@ export default function NewContactModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-500 mb-1 block">Esportes</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Esportes</label>
           <div className="flex flex-wrap gap-2">
             {SPORTS.map((s) => (
               <label
@@ -158,7 +177,7 @@ export default function NewContactModal({
                   "flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 cursor-pointer " +
                   (newContactForm.esportes.includes(s)
                     ? "bg-rose-50 border-rose-300 text-rose-700"
-                    : "border-slate-200 text-slate-600")
+                    : "border-slate-200 text-slate-700")
                 }
               >
                 <input
@@ -184,7 +203,7 @@ export default function NewContactModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Time do coração</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Time do coração</label>
             <input
               placeholder="Ex: Flamengo"
               value={newContactForm.timeCoracao}
@@ -193,7 +212,7 @@ export default function NewContactModal({
             />
           </div>
           <div>
-            <label className="text-xs text-slate-500 mb-1 block">Filhos</label>
+            <label className="text-xs text-slate-700 font-medium mb-1 block">Filhos</label>
             <input
               type="number"
               min="0"
@@ -205,7 +224,22 @@ export default function NewContactModal({
           </div>
         </div>
 
-        <button type="submit" className="w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800">Salvar contato</button>
+        <div className="flex items-center gap-2 mt-2">
+          <button type="submit" className="flex-1 bg-slate-900 text-white rounded-md py-2.5 text-sm font-semibold hover:bg-slate-800 transition-colors">
+            {editingContactId ? "Salvar alterações" : "Salvar contato"}
+          </button>
+          {editingContactId && currentUser?.perfil === "admin" && (
+            <button
+              type="button"
+              onClick={() => onDeleteContact(editingContactId)}
+              className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Excluir cadastro (Apenas Administrador)"
+            >
+              <Trash2 size={14} />
+              <span>Excluir</span>
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

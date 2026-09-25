@@ -30,7 +30,7 @@ function calculateWinProbabilities(opportunities, clients, interactions = []) {
 
     opportunities.forEach(opp => {
       const isWon = opp.stage === 'Fechado';
-      const isLost = opp.stage === 'Negado';
+      const isLost = opp.stage === 'Negado' || opp.stage === 'Cancelado';
       const isClosed = isWon || isLost;
 
       if (isClosed) {
@@ -94,7 +94,7 @@ function calculateWinProbabilities(opportunities, clients, interactions = []) {
     const stage = opp.stage || 'Desenvolvimento';
 
     // Win Probability só funciona quando está Frio, Morno ou Quente
-    if (stage === 'Desenvolvimento' || stage === 'Fechado' || stage === 'Negado') {
+    if (stage === 'Desenvolvimento' || stage === 'Fechado' || stage === 'Negado' || stage === 'Cancelado') {
       return {
         ...opp,
         winProbability: null

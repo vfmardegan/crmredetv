@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 
-# Exit immediately if a command exits with a non-zero status
-set -e
+# Exit immediately if an unhandled command fails
+set -euo pipefail
 
-if [ -z "$1" ]; then
-  echo "Erro: Você deve especificar o arquivo de backup (.sql ou .sql.gz) como argumento."
-  echo "Exemplo: ./restore_db.sh ./backups/backup_crm_20260714_100000.sql.gz"
+if [ -z "${1:-}" ]; then
+  echo "Uso: ./restore_db.sh <arquivo_backup.sql[.gz]> [--force]"
+  echo "Exemplo: ./restore_db.sh ./backups/backup_crm_20260918_120000.sql.gz"
   exit 1
 fi
 
 BACKUP_FILE="$1"
+FORCE_RESTORE="${2:-}"
 
 # Verificar se o arquivo existe
 if [ ! -f "${BACKUP_FILE}" ]; then
@@ -17,12 +18,37 @@ if [ ! -f "${BACKUP_FILE}" ]; then
   exit 1
 fi
 
+# 1. Identificar o container de banco de dados ativo
+if [ -z "${CRM_DB_CONTAINER:-}" ]; then
+  DETECTED=$(docker ps --filter "name=crm-db" --format "{{.Names}}" | head -n 1 || true)
+  if [ -n "${DETECTED}" ]; then
+    CRM_DB_CONTAINER="${DETECTED}"
+  else
+    CRM_DB_CONTAINER="crm-db-8"
+  fi
+fi
+
+DB_USER="${POSTGRES_USER:-postgres}"
+DB_NAME="${POSTGRES_DB:-crm_redetv}"
+
 echo "=========================================="
-echo " Iniciando Restauração do Banco de Dados  "
+echo " Restauração de Banco de Dados — CRM      "
+echo "=========================================="
+echo "-> Container alvo: ${CRM_DB_CONTAINER}"
+echo "-> Base de dados:  ${DB_NAME} (usuário: ${DB_USER})"
+echo "-> Arquivo backup: ${BACKUP_FILE}"
 echo "=========================================="
 
+if [ "${FORCE_RESTORE}" != "--force" ]; then
+  echo "ATENÇÃO: Esta operação irá sobrescrever a base de dados '${DB_NAME}' com os dados do backup."
+  read -p "Deseja prosseguir com a restauração? (digite 'sim' para confirmar): " CONFIRM
+  if [ "${CONFIRM}" != "sim" ]; then
+    echo "Operação cancelada pelo usuário."
+    exit 0
+  fi
+fi
+
 TEMP_FILE=""
-# Se estiver compactado, descompactar temporariamente
 if [[ "${BACKUP_FILE}" == *.gz ]]; then
   echo "-> Descompactando arquivo temporariamente..."
   TEMP_FILE="./temp_restore.sql"
@@ -33,19 +59,21 @@ else
 fi
 
 # Dropar conexões e recriar o banco de dados para garantir restauração limpa
-echo "-> Reiniciando o banco de dados crm_redetv..."
-docker exec -t crm-db-v2 psql -U postgres -c "REVOKE CONNECT ON DATABASE crm_redetv FROM public;" || true
-docker exec -t crm-db-v2 psql -U postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'crm_redetv' AND pid <> pg_backend_pid();" || true
-docker exec -t crm-db-v2 psql -U postgres -c "DROP DATABASE IF EXISTS crm_redetv;"
-docker exec -t crm-db-v2 psql -U postgres -c "CREATE DATABASE crm_redetv;"
+echo "-> Encerrando conexões ativas na base ${DB_NAME}..."
+docker exec -t "${CRM_DB_CONTAINER}" psql -U "${DB_USER}" -c "REVOKE CONNECT ON DATABASE ${DB_NAME} FROM public;" || true
+docker exec -t "${CRM_DB_CONTAINER}" psql -U "${DB_USER}" -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${DB_NAME}' AND pid <> pg_backend_pid();" || true
+
+echo "-> Recriando base de dados ${DB_NAME}..."
+docker exec -t "${CRM_DB_CONTAINER}" psql -U "${DB_USER}" -c "DROP DATABASE IF EXISTS ${DB_NAME};"
+docker exec -t "${CRM_DB_CONTAINER}" psql -U "${DB_USER}" -c "CREATE DATABASE ${DB_NAME};"
 
 # Importar o backup
 echo "-> Importando os dados do backup..."
-cat "${RESTORE_TARGET}" | docker exec -i crm-db-v2 psql -U postgres -d crm_redetv
+cat "${RESTORE_TARGET}" | docker exec -i "${CRM_DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}"
 
 # Limpar arquivo temporário se necessário
 if [ -n "${TEMP_FILE}" ] && [ -f "${TEMP_FILE}" ]; then
-  rm "${TEMP_FILE}"
+  rm -f "${TEMP_FILE}"
 fi
 
 echo "=========================================="

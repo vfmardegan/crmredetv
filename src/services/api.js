@@ -19,7 +19,7 @@ export async function apiPost(path, body) {
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
-  if (res.status === 401) {
+  if (res.status === 401 && !path.startsWith("/auth/")) {
     handleUnauthorized();
   }
   if (!res.ok) {
@@ -56,6 +56,22 @@ export async function apiDelete(path) {
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `DELETE ${path} respondeu ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function apiPatch(path, data) {
+  const res = await fetch(`/api/v1${path}`, {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (res.status === 401) {
+    handleUnauthorized();
+  }
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `PATCH ${path} respondeu ${res.status}`);
   }
   return res.json();
 }

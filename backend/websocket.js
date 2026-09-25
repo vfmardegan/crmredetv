@@ -3,7 +3,10 @@ const url = require("url");
 const jwt = require("jsonwebtoken");
 const { pool } = require("./db");
 
-const JWT_SECRET = process.env.JWT_SECRET || "redetv_fallback_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "crm_redetv_secret_key_prod_default_2026";
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "crm_redetv_secret_key_prod_default_2026") {
+  console.warn("ALERTA CRÍTICO DE SEGURANÇA: JWT_SECRET não configurado ou utilizando chave padrão estática.");
+}
 
 // Mapa de conexões ativas: wsSocket -> { id: userId, perfil, nome, email }
 const activeConnections = new Map();
@@ -11,11 +14,13 @@ const activeConnections = new Map();
 function initWebSocket(server) {
   const wss = new WebSocketServer({ noServer: true });
 
-  server.on("upgrade", (request, socket, head) => {
+  server.on("upgrade", async (request, socket, head) => {
     const parsedUrl = url.parse(request.url, true);
-    // Espera o endpoint /api/v1/ws?token=...
+    // Espera o endpoint /api/v1/ws
     if (parsedUrl.pathname === "/api/v1/ws") {
-      const token = parsedUrl.query.token;
+      // Suporta token via cabeçalho Sec-WebSocket-Protocol ou via query string
+      const headerToken = request.headers["sec-websocket-protocol"];
+      const token = headerToken || parsedUrl.query.token;
       if (!token) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         socket.destroy();
@@ -24,6 +29,24 @@ function initWebSocket(server) {
 
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
+
+        // Verifica no banco de dados se o usuário está ativo e se o token_version é válido
+        const userCheck = await pool.query(
+          "SELECT ativo, token_version FROM usuarios WHERE id = $1",
+          [decoded.id]
+        );
+        const currentVersion = userCheck.rows[0]?.token_version || 1;
+        const jwtVersion = decoded.token_version || 1;
+        if (
+          userCheck.rows.length === 0 ||
+          userCheck.rows[0].ativo === false ||
+          jwtVersion !== currentVersion
+        ) {
+          socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+          socket.destroy();
+          return;
+        }
+
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, decoded);
         });
@@ -231,9 +254,25 @@ function scheduleDailyCheck() {
   }, 60000);
 }
 
+function disconnectUser(userId) {
+  const targetId = String(userId);
+  for (const [ws, profile] of activeConnections.entries()) {
+    if (String(profile.id) === targetId) {
+      try {
+        ws.send(JSON.stringify({ event: "force_disconnect", message: "Conta desativada ou sessão revogada." }));
+        ws.close(1008, "Conta desativada");
+      } catch (err) {
+        // Socket pode já estar fechado
+      }
+      activeConnections.delete(ws);
+    }
+  }
+}
+
 module.exports = {
   initWebSocket,
   notifyUser,
   broadcastToAdmins,
-  broadcastToDirectorsOfExec
+  broadcastToDirectorsOfExec,
+  disconnectUser
 };

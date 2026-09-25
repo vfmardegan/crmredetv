@@ -2,6 +2,9 @@ const express = require("express");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { pool } = require("../db");
+const { requirePermission } = require("../utils/acl");
+const { decryptToken } = require("../utils/crypto");
+const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
@@ -9,7 +12,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // Helper para montar e-mail em formato MIME RFC 2822
-function createMimeMessage({ to, subject, body, attachmentBase64, attachmentFilename }) {
+function createMimeMessage({ to, subject, body, attachments, attachmentBase64, attachmentFilename }) {
   const boundary = "boundary_" + Math.random().toString(36).slice(2);
   const parts = [];
 
@@ -27,22 +30,32 @@ function createMimeMessage({ to, subject, body, attachmentBase64, attachmentFile
   parts.push(Buffer.from(body).toString("base64"));
   parts.push("");
 
-  // Anexo
-  if (attachmentBase64) {
-    const matches = attachmentBase64.match(/^data:(.+);base64,/);
-    const contentType = matches ? matches[1] : "application/octet-stream";
+  // Lista unificada de anexos
+  const list = [];
+  if (attachments && Array.isArray(attachments)) {
+    list.push(...attachments);
+  } else if (attachmentBase64) {
+    list.push({ base64: attachmentBase64, filename: attachmentFilename || "attachment" });
+  }
 
-    const base64Data = attachmentBase64.includes(";base64,")
-      ? attachmentBase64.split(";base64,")[1]
-      : attachmentBase64;
+  // Anexos
+  for (const att of list) {
+    if (att.base64) {
+      const matches = att.base64.match(/^data:(.+);base64,/);
+      const contentType = matches ? matches[1] : "application/octet-stream";
 
-    parts.push(`--${boundary}`);
-    parts.push(`Content-Type: ${contentType}`);
-    parts.push("Content-Transfer-Encoding: base64");
-    parts.push(`Content-Disposition: attachment; filename="${attachmentFilename}"`);
-    parts.push("");
-    parts.push(base64Data);
-    parts.push("");
+      const base64Data = att.base64.includes(";base64,")
+        ? att.base64.split(";base64,")[1]
+        : att.base64;
+
+      parts.push(`--${boundary}`);
+      parts.push(`Content-Type: ${contentType}`);
+      parts.push("Content-Transfer-Encoding: base64");
+      parts.push(`Content-Disposition: attachment; filename="${att.filename}"`);
+      parts.push("");
+      parts.push(base64Data);
+      parts.push("");
+    }
   }
 
   parts.push(`--${boundary}--`);
@@ -56,13 +69,23 @@ function createMimeMessage({ to, subject, body, attachmentBase64, attachmentFile
 }
 
 // POST /api/v1/proposals — registra o envio manual
-router.post("/proposals", async (req, res) => {
+router.post("/proposals", requirePermission("can_send_proposals"), async (req, res) => {
   const { templateId, contactId, opportunityId } = req.body;
   if (!templateId || !contactId) {
     return res.status(400).json({ error: "templateId e contactId são obrigatórios." });
   }
-  const id = crypto.randomUUID();
+
   try {
+    const contactRes = await pool.query("SELECT client_id FROM contacts WHERE id = $1", [contactId]);
+    if (contactRes.rows.length === 0) {
+      return res.status(404).json({ error: "Contato não encontrado." });
+    }
+    const allowed = await isClientAllowedForUser(req.user, contactRes.rows[0].client_id);
+    if (!allowed) {
+      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
+    }
+
+    const id = crypto.randomUUID();
     await pool.query(
       `insert into sent_proposals (id, template_id, contact_id, opportunity_id, sent_at)
        values ($1, $2, $3, $4, now())`,
@@ -71,24 +94,25 @@ router.post("/proposals", async (req, res) => {
     res.status(201).json({ id });
   } catch (err) {
     console.error("Erro em POST /proposals:", err);
-    res.status(500).json({ error: "Não foi possível registrar o envio." });
+    res.status(500).json({ error: "Não foi possível registrar o envio da proposta comercial." });
   }
 });
 
 // POST /api/v1/proposals/send — envia proposta por e-mail (Gmail API ou Bypass) e registra histórico
-router.post("/proposals/send", async (req, res) => {
+router.post("/proposals/send", requirePermission("can_send_proposals"), async (req, res) => {
   const {
     templateId,
     contactId,
     opportunityId,
     subject,
     body,
+    attachments,
     attachmentBase64,
     attachmentFilename
   } = req.body;
 
-  if (!templateId || !contactId || !subject || !body) {
-    return res.status(400).json({ error: "Parâmetros obrigatórios ausentes (templateId, contactId, subject, body)." });
+  if (!contactId || !subject || !body) {
+    return res.status(400).json({ error: "Parâmetros obrigatórios ausentes (contactId, subject, body)." });
   }
 
   try {
@@ -110,9 +134,17 @@ router.post("/proposals/send", async (req, res) => {
       return res.status(400).json({ error: "Este contato não possui e-mail cadastrado." });
     }
 
-    // 2. Busca informações do template da proposta
-    const templateRes = await pool.query("SELECT title FROM proposal_templates WHERE id = $1", [templateId]);
-    const templateTitle = templateRes.rows.length > 0 ? templateRes.rows[0].title : "Proposta Comercial";
+    const allowed = await isClientAllowedForUser(req.user, contact.client_id);
+    if (!allowed) {
+      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
+    }
+
+    // 2. Busca o título do template (se fornecido e existir no banco)
+    let templateTitle = "Proposta Comercial";
+    if (templateId) {
+      const templateRes = await pool.query("SELECT title FROM proposal_templates WHERE id = $1", [templateId]);
+      if (templateRes.rows.length > 0) templateTitle = templateRes.rows[0].title;
+    }
 
     // 3. Verifica credenciais do Google para o usuário logado
     const userRes = await pool.query(
@@ -130,8 +162,8 @@ router.post("/proposals/send", async (req, res) => {
       try {
         const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
         oauth2Client.setCredentials({
-          refresh_token: userTokens.google_refresh_token,
-          access_token: userTokens.google_access_token
+          refresh_token: decryptToken(userTokens.google_refresh_token),
+          access_token: decryptToken(userTokens.google_access_token)
         });
 
         // Garante token atualizado
@@ -141,6 +173,7 @@ router.post("/proposals/send", async (req, res) => {
           to: contact.email,
           subject,
           body,
+          attachments,
           attachmentBase64,
           attachmentFilename: attachmentFilename || "proposta.pdf"
         });
@@ -166,15 +199,7 @@ router.post("/proposals/send", async (req, res) => {
       }
     }
 
-    // 4. Registra no histórico de propostas enviadas
-    const proposalId = crypto.randomUUID();
-    await pool.query(
-      `INSERT INTO sent_proposals (id, template_id, contact_id, opportunity_id, sent_at)
-       VALUES ($1, $2, $3, $4, now())`,
-      [proposalId, templateId, contactId, opportunityId || null]
-    );
-
-    // 5. Registra nas interações/histórico do cliente
+    // 4. Registra nas interações/histórico do cliente
     const interactionId = crypto.randomUUID();
     const interactionNote = `Proposta comercial — ${templateTitle} enviada para ${contact.name}\n\nAssunto: ${subject}\n\nMensagem:\n${body}`;
     
@@ -187,19 +212,18 @@ router.post("/proposals/send", async (req, res) => {
     res.json({
       success: true,
       sentViaGmail,
-      proposalId,
       interactionId,
       mocked: !sentViaGmail
     });
 
   } catch (err) {
     console.error("Erro ao enviar proposta por e-mail:", err);
-    res.status(500).json({ error: "Erro interno do servidor ao processar envio: " + err.message });
+    res.status(500).json({ error: "Erro interno do servidor ao processar envio da proposta comercial." });
   }
 });
 
 // POST /api/v1/emails/send — envia e-mail customizado (Gmail API ou Bypass) e registra histórico
-router.post("/emails/send", async (req, res) => {
+router.post("/emails/send", requirePermission("can_send_proposals"), async (req, res) => {
   const {
     contactId,
     subject,
@@ -231,6 +255,11 @@ router.post("/emails/send", async (req, res) => {
       return res.status(400).json({ error: "Este contato não possui e-mail cadastrado." });
     }
 
+    const allowed = await isClientAllowedForUser(req.user, contact.client_id);
+    if (!allowed) {
+      return res.status(403).json({ error: "Acesso negado. O cliente deste contato não pertence à sua carteira autorizada." });
+    }
+
     // 2. Verifica credenciais do Google para o usuário logado
     const userRes = await pool.query(
       "SELECT google_refresh_token, google_access_token FROM usuarios WHERE id = $1",
@@ -247,8 +276,8 @@ router.post("/emails/send", async (req, res) => {
       try {
         const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
         oauth2Client.setCredentials({
-          refresh_token: userTokens.google_refresh_token,
-          access_token: userTokens.google_access_token
+          refresh_token: decryptToken(userTokens.google_refresh_token),
+          access_token: decryptToken(userTokens.google_access_token)
         });
 
         // Garante token atualizado
@@ -307,7 +336,156 @@ router.post("/emails/send", async (req, res) => {
 
   } catch (err) {
     console.error("Erro ao enviar e-mail:", err);
-    res.status(500).json({ error: "Erro interno do servidor ao processar envio: " + err.message });
+    res.status(500).json({ error: "Erro interno do servidor ao processar envio do e-mail." });
+  }
+});
+
+// ==========================================
+// ROTAS CRUD DE PROPOSICÕES / PROPOSTAS PADRÃO
+// ==========================================
+
+// GET /api/v1/proposal-templates
+router.get("/proposal-templates", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, product, title, subtitle, horario, periodo, 
+              pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
+              xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
+              created_at as "createdAt"
+       FROM proposal_templates
+       ORDER BY created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Erro em GET /proposal-templates:", err);
+    res.status(500).json({ error: "Erro ao buscar propostas padrão." });
+  }
+});
+
+// POST /api/v1/proposal-templates (Apenas Administrador)
+router.post("/proposal-templates", requirePermission("can_manage_users"), async (req, res) => {
+  const {
+    product,
+    title,
+    subtitle,
+    horario,
+    periodo,
+    pdfFileName,
+    pdfDataUri,
+    xlsFileName,
+    xlsDataUri
+  } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ error: "O título da proposta é obrigatório." });
+  }
+
+  const id = "tpl-" + crypto.randomUUID().slice(0, 8);
+
+  try {
+    const query = `
+      INSERT INTO proposal_templates (
+        id, product, title, subtitle, horario, periodo,
+        pdf_file_name, pdf_data_uri, xls_file_name, xls_data_uri
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING id, product, title, subtitle, horario, periodo,
+                pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
+                xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
+                created_at as "createdAt"
+    `;
+    const values = [
+      id,
+      product || "",
+      title,
+      subtitle || "",
+      horario || "",
+      periodo || "",
+      pdfFileName || null,
+      pdfDataUri || null,
+      xlsFileName || null,
+      xlsDataUri || null
+    ];
+    const result = await pool.query(query, values);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Erro em POST /proposal-templates:", err);
+    res.status(500).json({ error: "Erro ao criar proposta padrão." });
+  }
+});
+
+// PUT /api/v1/proposal-templates/:id (Apenas Administrador)
+router.put("/proposal-templates/:id", requirePermission("can_manage_users"), async (req, res) => {
+  const { id } = req.params;
+  const {
+    product,
+    title,
+    subtitle,
+    horario,
+    periodo,
+    pdfFileName,
+    pdfDataUri,
+    xlsFileName,
+    xlsDataUri
+  } = req.body;
+
+  if (!title) {
+    return res.status(400).json({ error: "O título da proposta é obrigatório." });
+  }
+
+  try {
+    const query = `
+      UPDATE proposal_templates
+      SET product = $1,
+          title = $2,
+          subtitle = $3,
+          horario = $4,
+          periodo = $5,
+          pdf_file_name = COALESCE($6, pdf_file_name),
+          pdf_data_uri = COALESCE($7, pdf_data_uri),
+          xls_file_name = COALESCE($8, xls_file_name),
+          xls_data_uri = COALESCE($9, xls_data_uri)
+      WHERE id = $10
+      RETURNING id, product, title, subtitle, horario, periodo,
+                pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
+                xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
+                created_at as "createdAt"
+    `;
+    const values = [
+      product || "",
+      title,
+      subtitle || "",
+      horario || "",
+      periodo || "",
+      pdfFileName,
+      pdfDataUri,
+      xlsFileName,
+      xlsDataUri,
+      id
+    ];
+    const result = await pool.query(query, values);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Proposta padrão não encontrada." });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Erro em PUT /proposal-templates/:id:", err);
+    res.status(500).json({ error: "Erro ao atualizar proposta padrão." });
+  }
+});
+
+// DELETE /api/v1/proposal-templates/:id (Apenas Administrador)
+router.delete("/proposal-templates/:id", requirePermission("can_manage_users"), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query("DELETE FROM proposal_templates WHERE id = $1 RETURNING id", [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Proposta padrão não encontrada." });
+    }
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error("Erro em DELETE /proposal-templates/:id:", err);
+    res.status(500).json({ error: "Erro ao excluir proposta padrão." });
   }
 });
 

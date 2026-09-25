@@ -8,5 +8,14 @@ export default defineConfig({
     port: 8000,
     host: true,
     allowedHosts: true // Permite conexões de qualquer host externo (ex: DNS público da AWS)
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name]-[hash].js`,
+        chunkFileNames: `assets/[name]-[hash].js`,
+        assetFileNames: `assets/[name]-[hash].[ext]`,
+      }
+    }
   }
 })

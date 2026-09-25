@@ -1,5 +1,5 @@
 import React from "react";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, Pencil, X } from "lucide-react";
 import {
   STAGES,
   STAGE_STYLES,
@@ -28,11 +28,22 @@ export default function PipelineKanbanTab({
   advertisers,
   highlightedOppId,
   setSelectedOppId,
-  updateStage
+  updateStage,
+  pipelineSearch,
+  setPipelineSearch,
+  openEditOpportunity
 }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Campo de Busca de Texto */}
+        <input
+          type="text"
+          value={pipelineSearch || ""}
+          onChange={(e) => setPipelineSearch(e.target.value)}
+          placeholder="Buscar no pipeline..."
+          className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-52 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shrink-0"
+        />
         <MultiSelectFilterButton
           label="Segmento"
           options={SEGMENTOS.map((s) => ({ value: s, label: s }))}
@@ -96,14 +107,26 @@ export default function PipelineKanbanTab({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="font-medium text-slate-800">{o.title}</div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOppId(o.id)}
-                          className="text-slate-400 hover:text-rose-600 shrink-0"
-                          title="Ver card completo"
-                        >
-                          <Maximize2 size={13} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {openEditOpportunity && (
+                            <button
+                              type="button"
+                              onClick={() => openEditOpportunity(o.id)}
+                              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
+                              title="Editar Oportunidade"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOppId(o.id)}
+                            className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
+                            title="Ver card completo"
+                          >
+                            <Maximize2 size={12} />
+                          </button>
+                        </div>
                       </div>
                       <div className="text-xs text-slate-500 mt-0.5">
                         {agency ? `${agency.name} → ${advertiser ? advertiser.name : ""}` : advertiser ? advertiser.name : ""}
@@ -121,8 +144,8 @@ export default function PipelineKanbanTab({
                         {o.winProbability !== null && o.winProbability !== undefined && (
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 uppercase tracking-wider ${
-                              o.winProbability >= 75 ? "bg-emerald-50 text-emerald-700 border-emerald-250 font-bold" :
-                              o.winProbability >= 45 ? "bg-amber-50 text-amber-700 border-amber-250 font-bold" :
+                              o.winProbability > 80 ? "bg-emerald-50 text-emerald-700 border-emerald-250 font-bold" :
+                              o.winProbability >= 60 ? "bg-amber-50 text-amber-700 border-amber-250 font-bold" :
                               "bg-rose-50 text-rose-700 border-rose-250 font-bold"
                             }`}
                             title="Probabilidade de fechamento estimada por estatísticas históricas"

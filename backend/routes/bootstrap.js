@@ -43,10 +43,23 @@ function contactRowToJson(row) {
 }
 
 function opportunityRowToJson(row) {
+  // Desacoplamento dos anexos base64 ([BD-001]):
+  // Remove o payload de dataUri do bootstrap para manter o JSON leve e performático.
+  // Fornece a URL para streaming sob demanda caso o usuário clique em baixar.
+  const rawAttachments = Array.isArray(row.attachments) ? row.attachments : [];
+  const lightweightAttachments = rawAttachments.map((att) => {
+    const { dataUri, ...meta } = att;
+    return {
+      ...meta,
+      url: meta.url || `/api/v1/opportunities/${row.id}/attachments/${meta.id || encodeURIComponent(meta.name || "anexo")}`,
+    };
+  });
+
   return {
     id: row.id,
     title: row.title,
     executivo: row.executivo || "",
+    executivoId: row.executivo_id || null, // [BD-002] Foreign key vinculada
     agencyId: row.agency_id || DIRECT_CLIENT_ID,
     advertiserId: row.advertiser_id,
     contactId: row.contact_id,
@@ -66,6 +79,7 @@ function opportunityRowToJson(row) {
     planDeliveryDate: row.plan_delivery_date || "",
     winProbability: row.winProbability !== undefined ? row.winProbability : null,
     productValues: row.product_values || {},
+    attachments: lightweightAttachments,
   };
 }
 
@@ -114,12 +128,18 @@ router.get("/bootstrap", async (req, res) => {
       pool.query("select * from sent_proposals order by sent_at desc"),
       pool.query("select * from faturamento_efetivo"),
       pool.query("select * from metas"),
-      pool.query("select * from executivos order by nome"),
+      pool.query(`
+        SELECT e.* 
+        FROM executivos e 
+        LEFT JOIN usuarios u ON u.executivo_id = e.id 
+        WHERE COALESCE(u.ativo, TRUE) = TRUE 
+        ORDER BY e.nome
+      `),
       pool.query("select * from segmento_executivo"),
       pool.query("select * from carteira_key_accounts"),
       pool.query("select * from diretor_executivos"),
       pool.query("select * from client_interactions order by date desc, created_at desc"),
-      pool.query("select nome from usuarios order by nome"),
+      pool.query("select nome from usuarios where coalesce(ativo, true) = true order by nome"),
     ]);
 
     // Inicializa mapeamento de relacionamentos de agências
@@ -168,11 +188,19 @@ router.get("/bootstrap", async (req, res) => {
       // 1. Resolve a lista de executivos cujo dados são permitidos
       let allowedExecIds = [];
       if (perfil === "executivo") {
-        allowedExecIds = myExecId ? [myExecId] : [];
+        let resolvedExecId = myExecId;
+        if (!resolvedExecId) {
+          const uRes = await pool.query("SELECT executivo_id FROM usuarios WHERE id = $1", [myUserId]);
+          resolvedExecId = uRes.rows[0]?.executivo_id || null;
+        }
+        allowedExecIds = resolvedExecId ? [resolvedExecId] : [];
       } else if (perfil === "diretor") {
         allowedExecIds = dirExecsRes.rows
-          .filter((d) => d.diretor_id === myUserId)
+          .filter((d) => String(d.diretor_id) === String(myUserId))
           .map((d) => d.executivo_id);
+        if (myExecId && !allowedExecIds.includes(myExecId)) {
+          allowedExecIds.push(myExecId);
+        }
       }
 
       const allowedExecNames = execRes.rows
@@ -211,8 +239,11 @@ router.get("/bootstrap", async (req, res) => {
       const allowedClientIds = filteredClients.map((c) => c.id);
       const allowedClientCodigos = filteredClients.map((c) => c.codigo).filter(Boolean);
 
-      // 3. Filtrar Oportunidades (de acordo com executivos autorizados)
-      filteredOpps = oppsRes.rows.filter((o) => allowedExecNames.includes(o.executivo));
+      // 3. Filtrar Oportunidades (de acordo com executivos autorizados via FK e nome)
+      filteredOpps = oppsRes.rows.filter((o) =>
+        (o.executivo_id && allowedExecIds.includes(o.executivo_id)) ||
+        allowedExecNames.includes(o.executivo)
+      );
 
       // 4. Filtrar Contatos
       filteredContacts = contactsRes.rows.filter((c) => allowedClientIds.includes(c.client_id));
@@ -227,17 +258,30 @@ router.get("/bootstrap", async (req, res) => {
       );
 
       // 7. Filtrar Metas
-      filteredMetas = metasRes.rows.filter((m) => allowedSegments.includes(m.segmento));
+      filteredMetas = metasRes.rows.filter((m) => {
+        if (m.client_id) {
+          return allowedKeyAccounts.includes(m.client_id);
+        }
+        return !m.segmento || allowedSegments.includes(m.segmento);
+      });
 
       // 8. Filtrar Executivos
       filteredExecutivos = execRes.rows.filter((e) => allowedExecIds.includes(e.id));
     }
 
+    if (perfil === "especialista") {
+      filteredFaturamento = [];
+      filteredMetas = [];
+    }
+
     // Estrutura o objeto de metas mensais
     const monthlyMetas = {};
     filteredMetas.forEach((m) => {
-      if (!monthlyMetas[m.segmento]) monthlyMetas[m.segmento] = {};
-      monthlyMetas[m.segmento][m.periodo] = Number(m.valor) || 0;
+      const key = m.client_id ? `keyaccount:${m.client_id}` : m.segmento;
+      if (key) {
+        if (!monthlyMetas[key]) monthlyMetas[key] = {};
+        monthlyMetas[key][m.periodo] = Number(m.valor) || 0;
+      }
     });
 
     // Mapeamento de carteira
@@ -249,6 +293,14 @@ router.get("/bootstrap", async (req, res) => {
       }
     });
 
+    const executivoKeyAccounts = {};
+    keyAccountsRes.rows.forEach((k) => {
+      if (perfil === "admin" || perfil === "especialista" || filteredExecutivos.some(e => e.id === k.executivo_id)) {
+        if (!executivoKeyAccounts[k.executivo_id]) executivoKeyAccounts[k.executivo_id] = [];
+        executivoKeyAccounts[k.executivo_id].push(k.client_id);
+      }
+    });
+
     res.json({
       advertisers: filteredClients.map((r) => clientRowToJson(r, agencyLinksByAgencyId, interactionsByClientId)),
       contacts: filteredContacts.map(contactRowToJson),
@@ -256,8 +308,9 @@ router.get("/bootstrap", async (req, res) => {
       proposals: filteredProposals.map(proposalRowToJson),
       faturamentoEfetivo: filteredFaturamento.map(faturamentoRowToJson),
       monthlyMetas,
-      executivos: filteredExecutivos.map((e) => ({ id: e.id, nome: e.nome })),
+      executivos: filteredExecutivos.map((e) => ({ id: e.id, nome: e.nome, email: e.email || "" })),
       segmentoExecutivo,
+      executivoKeyAccounts,
       responsaveis: responsaveisRes.rows.map(r => r.nome),
     });
 

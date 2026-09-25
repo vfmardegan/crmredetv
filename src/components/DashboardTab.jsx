@@ -35,7 +35,8 @@ const STAGE_CHART_COLORS = {
   "Morno":            "#eab308",
   "Quente":           "#f97316",
   "Fechado":          "#22c55e",
-  "Negado":           "#ef4444",
+  "Negado":           "#64748b",
+  "Cancelado":        "#64748b",
 };
 
 export default function DashboardTab({
@@ -111,7 +112,7 @@ export default function DashboardTab({
           selected={dashboardAdvertiserFilter}
           onChange={setDashboardAdvertiserFilter}
         />
-        {(userPerfil === "admin" || userPerfil === "diretor" || userPerfil === "especialista") && (
+        {(userPerfil === "admin" || userPerfil === "diretor") && (
           <MultiSelectFilterButton
             label="Executivo"
             options={executivos.map((ex) => ({ value: ex.id, label: ex.nome }))}
@@ -211,7 +212,7 @@ export default function DashboardTab({
                   <LabelList
                     dataKey="totalTop"
                     position="top"
-                    formatter={(v) => (v > 0 ? formatBRL(v) : "")}
+                    formatter={(v) => (v !== 0 ? formatBRL(v) : "")}
                     style={{ fontSize: 13, fill: "#334155" }}
                   />
                 </Bar>

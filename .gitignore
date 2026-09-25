@@ -8,3 +8,5 @@ build/
 scratch/
 temp_restore.sql
 .gemini/
+backups/*.sql.gz
+*.sql.gz
