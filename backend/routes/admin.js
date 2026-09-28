@@ -138,9 +138,9 @@ router.post("/admin/users", async (req, res) => {
     const googleId = emailClean;
     const senhaHash = hashPassword(senha.trim());
 
-    // Insere o usuário
+    // Insere o usuário marcando deve_trocar_senha = TRUE para exigir senha definitiva no 1º login
     const insertRes = await pool.query(
-      "INSERT INTO usuarios (google_id, email, nome, perfil, senha_hash) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      "INSERT INTO usuarios (google_id, email, nome, perfil, senha_hash, deve_trocar_senha) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id",
       [googleId, emailClean, nomeClean, perfil, senhaHash]
     );
     const newUserId = insertRes.rows[0].id;
@@ -177,7 +177,7 @@ router.put("/admin/users/:id/reset-password", async (req, res) => {
   try {
     const senhaHash = hashPassword(senha.trim());
     const updateRes = await pool.query(
-      "UPDATE usuarios SET senha_hash = $1, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2 RETURNING id, email",
+      "UPDATE usuarios SET senha_hash = $1, token_version = COALESCE(token_version, 1) + 1, deve_trocar_senha = TRUE WHERE id = $2 RETURNING id, email",
       [senhaHash, id]
     );
     if (updateRes.rows.length === 0) {
@@ -190,7 +190,7 @@ router.put("/admin/users/:id/reset-password", async (req, res) => {
     }
     res.json({
       ok: true,
-      message: "Senha provisória atualizada com sucesso pelo administrador.",
+      message: "Senha provisória atualizada com sucesso. O colaborador deverá definir sua senha definitiva no próximo acesso.",
     });
   } catch (err) {
     console.error("Erro ao redefinir senha do usuário:", err);

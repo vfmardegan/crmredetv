@@ -11,6 +11,14 @@ export default function Login({ onLoginSuccess }) {
   const [showLgpdModal, setShowLgpdModal] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
 
+  // Estados para troca obrigatória de senha temporária
+  const [isSettingNewPassword, setIsSettingNewPassword] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   async function handleEmailPasswordSubmit(e) {
     e.preventDefault();
     if (!email.trim() || !password) {
@@ -24,12 +32,61 @@ export default function Login({ onLoginSuccess }) {
         email: email.trim(),
         password: password,
       });
+
+      if (res.requireNewPassword) {
+        setTemporaryPassword(password);
+        setNewPassword("");
+        setConfirmPassword("");
+        setIsSettingNewPassword(true);
+        return;
+      }
+
       onLoginSuccess(res.token, res.user);
     } catch (err) {
       setError(err.message || "Erro ao efetuar login corporativo.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleDefinitivePasswordSubmit(e) {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 8) {
+      setError("A nova senha definitiva deve conter no mínimo 8 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("A confirmação da nova senha não confere.");
+      return;
+    }
+    if (newPassword === temporaryPassword) {
+      setError("A nova senha definitiva deve ser diferente da senha temporária utilizada.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiPost("/auth/definitive-password", {
+        email: email.trim(),
+        temporaryPassword: temporaryPassword,
+        newPassword: newPassword,
+      });
+      onLoginSuccess(res.token, res.user);
+    } catch (err) {
+      setError(err.message || "Erro ao cadastrar nova senha definitiva.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleCancelDefinitive() {
+    setIsSettingNewPassword(false);
+    setTemporaryPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPassword("");
+    setError("");
   }
 
   return (
@@ -40,15 +97,29 @@ export default function Login({ onLoginSuccess }) {
 
       <div className="w-full max-w-md mx-4 z-10">
         <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl">
-          <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-lg shadow-rose-500/20">
-              R!
+          {isSettingNewPassword ? (
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-lg shadow-amber-500/20">
+                <KeyRound size={22} />
+              </div>
+              <h1 className="text-xl font-bold text-white">
+                Definir Nova Senha
+              </h1>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs">
+                Olá, <span className="text-slate-200 font-medium">{email}</span>. Você fez login com uma senha temporária. Cadastre sua nova senha definitiva para prosseguir.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-              CRM Comercial
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">RedeTV! Comercial e OPEC</p>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 to-violet-600 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-lg shadow-rose-500/20">
+                R!
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                CRM Comercial
+              </h1>
+              <p className="text-xs text-slate-400 mt-1">RedeTV! Comercial e OPEC</p>
+            </div>
+          )}
 
           {error && (
             <div className="bg-rose-950/40 border border-rose-800/60 text-rose-200 rounded-lg p-3.5 mb-5 text-sm flex gap-3 items-start animate-shake">
@@ -57,7 +128,98 @@ export default function Login({ onLoginSuccess }) {
             </div>
           )}
 
-          <div className="flex flex-col gap-5">
+          {isSettingNewPassword ? (
+            <form onSubmit={handleDefinitivePasswordSubmit} className="flex flex-col gap-3.5">
+              <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-3 text-xs text-amber-200/90 flex gap-2.5 items-start">
+                <KeyRound className="text-amber-400 shrink-0 mt-0.5" size={16} />
+                <span className="leading-relaxed">Por políticas corporativas de segurança, a senha temporária expira neste primeiro login. Crie sua senha definitiva (mínimo de 8 caracteres).</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Nova Senha Definitiva
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock size={16} />
+                  </div>
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    required
+                    disabled={loading}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    className="w-full pl-10 pr-10 py-2 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition"
+                  >
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Confirmar Nova Senha
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Lock size={16} />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    required
+                    disabled={loading}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repita a nova senha"
+                    className="w-full pl-10 pr-10 py-2 bg-slate-950/70 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition disabled:opacity-50"
+                  />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300 transition"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] text-white font-medium py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-950/40 flex items-center justify-center gap-2 text-sm transition disabled:opacity-50 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Salvando nova senha...</span>
+                  </>
+                ) : (
+                  <>
+                    <KeyRound size={16} />
+                    <span>Salvar Senha e Entrar</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleCancelDefinitive}
+                className="w-full py-1 text-xs text-slate-400 hover:text-slate-200 transition text-center cursor-pointer"
+              >
+                Cancelar e voltar ao login
+              </button>
+            </form>
+          ) : (
+            <div className="flex flex-col gap-5">
             {/* Formulário de login corporativo por e-mail e senha */}
             <form onSubmit={handleEmailPasswordSubmit} className="flex flex-col gap-3.5">
               <div>
@@ -150,6 +312,7 @@ export default function Login({ onLoginSuccess }) {
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -222,7 +385,7 @@ export default function Login({ onLoginSuccess }) {
                     2
                   </div>
                   <p className="text-slate-300">
-                    <strong className="text-white">Liberação no Painel:</strong> O administrador acessa a aba <em>Gestão e Acessos</em> e clica em <em>Resetar Senha</em> no seu cadastro.
+                    <strong className="text-white">Senha Temporária:</strong> O administrador acessa <em>Gestão e Acessos</em> e gera uma nova senha temporária para seu usuário.
                   </p>
                 </div>
                 <div className="flex gap-2.5 items-start">
@@ -230,7 +393,7 @@ export default function Login({ onLoginSuccess }) {
                     3
                   </div>
                   <p className="text-slate-300">
-                    <strong className="text-white">Cadastre a Nova Senha:</strong> Retorne a esta tela, digite seu e-mail e a nova senha desejada. Ela será gravada automaticamente no sistema!
+                    <strong className="text-white">Defina sua Nova Senha:</strong> Ao efetuar o login com a senha temporária, o sistema exigirá imediatamente o cadastro da sua nova senha definitiva!
                   </p>
                 </div>
               </div>

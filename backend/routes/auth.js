@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { pool } = require("../db");
 const { hashPassword, verifyPassword } = require("../utils/passwords");
 const { encryptToken } = require("../utils/crypto");
+const { logAudit } = require("../utils/audit");
 
 const router = express.Router();
 
@@ -140,7 +141,7 @@ router.post("/auth/login", async (req, res) => {
   try {
     // 2. Busca o usuário cadastrado no banco de dados
     const userRes = await pool.query(
-      "SELECT id, nome, email, perfil, executivo_id, foto_url, ativo, senha_hash, token_version FROM usuarios WHERE LOWER(email) = $1",
+      "SELECT id, nome, email, perfil, executivo_id, foto_url, ativo, senha_hash, token_version, deve_trocar_senha FROM usuarios WHERE LOWER(email) = $1",
       [cleanEmail]
     );
 
@@ -169,10 +170,20 @@ router.post("/auth/login", async (req, res) => {
       return res.status(401).json({ error: "Credenciais inválidas. E-mail ou senha incorretos." });
     }
 
-    // 5. Atualiza data do último login
+    // 5. Se o usuário está com senha provisória/temporária pendente, exige definição de senha definitiva
+    if (user.deve_trocar_senha === true) {
+      return res.json({
+        requireNewPassword: true,
+        email: user.email,
+        nome: user.nome,
+        message: "Senha temporária validada com sucesso. Por favor, cadastre sua nova senha definitiva.",
+      });
+    }
+
+    // 6. Atualiza data do último login
     await pool.query("UPDATE usuarios SET last_login = CURRENT_TIMESTAMP WHERE id = $1", [user.id]);
 
-    // 6. Aplica perfil cadastrado no banco; se não houver perfil no banco, usa mapeamento inicial ou executivo
+    // 7. Aplica perfil cadastrado no banco; se não houver perfil no banco, usa mapeamento inicial ou executivo
     let perfil = user.perfil || EMAIL_PROFILE_MAP[cleanEmail] || "executivo";
 
     if (!JWT_SECRET) {
@@ -180,7 +191,7 @@ router.post("/auth/login", async (req, res) => {
       return res.status(500).json({ error: "Configuração interna do servidor incompleta (JWT_SECRET ausente)." });
     }
 
-    // 7. Emissão do token JWT de sessão com controle de versão
+    // 8. Emissão do token JWT de sessão com controle de versão
     const tokenVersion = user.token_version || 1;
     const sessionToken = jwt.sign(
       {
@@ -205,11 +216,93 @@ router.post("/auth/login", async (req, res) => {
         foto_url: user.foto_url,
         perfil,
         executivo_id: user.executivo_id,
+        deveTrocarSenha: false,
       },
     });
   } catch (err) {
     console.error("Erro na autenticação corporativa com e-mail/senha:", err);
     res.status(500).json({ error: "Erro interno no servidor ao processar autenticação." });
+  }
+});
+
+// Rota para definição de nova senha definitiva (após validar senha temporária)
+router.post("/auth/definitive-password", async (req, res) => {
+  const { email, temporaryPassword, newPassword } = req.body;
+  if (!email || !temporaryPassword || !newPassword) {
+    return res.status(400).json({ error: "E-mail, senha temporária e nova senha definitiva são obrigatórios." });
+  }
+  if (newPassword.trim().length < 8) {
+    return res.status(400).json({ error: "A nova senha definitiva deve ter no mínimo 8 caracteres." });
+  }
+  if (temporaryPassword.trim() === newPassword.trim()) {
+    return res.status(400).json({ error: "A nova senha definitiva deve ser diferente da senha temporária." });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
+  try {
+    const userRes = await pool.query(
+      "SELECT id, nome, email, perfil, executivo_id, foto_url, ativo, senha_hash, token_version, deve_trocar_senha FROM usuarios WHERE LOWER(email) = $1",
+      [cleanEmail]
+    );
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ error: "Credenciais inválidas." });
+    }
+    const user = userRes.rows[0];
+    if (user.ativo === false) {
+      return res.status(403).json({ error: "Acesso bloqueado. Conta desativada pelo administrador." });
+    }
+    if (!user.senha_hash || !verifyPassword(temporaryPassword, user.senha_hash)) {
+      return res.status(401).json({ error: "Senha temporária incorreta." });
+    }
+
+    const newHash = hashPassword(newPassword.trim());
+    const newTokenVersion = (user.token_version || 1) + 1;
+
+    await pool.query(
+      "UPDATE usuarios SET senha_hash = $1, deve_trocar_senha = FALSE, token_version = $2, last_login = CURRENT_TIMESTAMP WHERE id = $3",
+      [newHash, newTokenVersion, user.id]
+    );
+
+    await logAudit(
+      user.id,
+      user.email,
+      "set_definitive_password",
+      `Colaborador ${user.nome} cadastrou com sucesso sua senha definitiva.`
+    );
+
+    const perfil = user.perfil || EMAIL_PROFILE_MAP[cleanEmail] || "executivo";
+    const sessionToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        nome: user.nome,
+        foto_url: user.foto_url,
+        perfil,
+        executivo_id: user.executivo_id,
+        token_version: newTokenVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      ok: true,
+      token: sessionToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        nome: user.nome,
+        foto_url: user.foto_url,
+        perfil,
+        executivo_id: user.executivo_id,
+        deveTrocarSenha: false,
+      },
+      message: "Senha definitiva cadastrada com sucesso! Bem-vindo ao CRM.",
+    });
+  } catch (err) {
+    console.error("Erro em /auth/definitive-password:", err);
+    res.status(500).json({ error: "Erro interno ao cadastrar nova senha definitiva." });
   }
 });
 
@@ -233,7 +326,7 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
     }
     const newHash = hashPassword(newPassword);
     await pool.query(
-      "UPDATE usuarios SET senha_hash = $1, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2",
+      "UPDATE usuarios SET senha_hash = $1, deve_trocar_senha = FALSE, token_version = COALESCE(token_version, 1) + 1 WHERE id = $2",
       [newHash, req.user.id]
     );
     res.json({ ok: true, message: "Senha alterada com sucesso." });

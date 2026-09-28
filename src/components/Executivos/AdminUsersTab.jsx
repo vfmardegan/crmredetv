@@ -31,10 +31,10 @@ export default function AdminUsersTab({
     if (!editingUserId) return;
     const editingUser = users.find((x) => x.id === editingUserId);
     const userName = editingUser ? editingUser.nome : "o colaborador";
-    const novaSenha = window.prompt(`Defina a nova senha provisória para ${userName} (mínimo 8 caracteres):`);
+    const novaSenha = window.prompt(`Defina a nova senha temporária para ${userName} (mínimo 8 caracteres):`);
     if (novaSenha === null) return;
     if (novaSenha.trim().length < 8) {
-      alert("A nova senha provisória deve ter no mínimo 8 caracteres.");
+      alert("A nova senha temporária deve ter no mínimo 8 caracteres.");
       return;
     }
     setResettingPassword(true);
@@ -43,7 +43,7 @@ export default function AdminUsersTab({
       const res = await apiPut(`/admin/users/${editingUserId}/reset-password`, { senha: novaSenha.trim() });
       setResetFeedback({
         type: "success",
-        message: res.message || "Senha provisória atualizada com sucesso! Comunique-a ao colaborador com segurança.",
+        message: res.message || "Senha temporária atualizada com sucesso! Ao fazer login com ela, o colaborador será solicitado a cadastrar sua nova senha definitiva.",
       });
       if (typeof loadUsers === "function") loadUsers();
     } catch (err) {
@@ -279,7 +279,7 @@ export default function AdminUsersTab({
                 Redefinição de Senha
               </label>
               <p className="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
-                Resetar a senha permite que o colaborador cadastre uma nova senha diretamente no próximo login com seu e-mail corporativo.
+                Define uma nova senha temporária. Ao efetuar o login com essa senha temporária, o sistema solicitará imediatamente a criação de uma senha definitiva.
               </p>
               <button
                 type="button"
@@ -288,7 +288,7 @@ export default function AdminUsersTab({
                 className="w-full border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-md py-2 px-3 text-xs font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
                 <KeyRound size={14} />
-                {resettingPassword ? "Resetando senha..." : "Resetar Senha (Liberar Novo Cadastro)"}
+                {resettingPassword ? "Atualizando senha..." : "Definir Senha Temporária / Resetar"}
               </button>
 
               {resetFeedback && (

@@ -257,6 +257,11 @@ const initDb = async () => {
       ALTER TABLE clients ALTER COLUMN razao_social DROP NOT NULL;
     `);
 
+    // 20. Controle de senha temporária e exigência de cadastro de nova senha definitiva
+    await pool.query(`
+      ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS deve_trocar_senha BOOLEAN DEFAULT FALSE;
+    `);
+
     console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos e alocações de oportunidades verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);
