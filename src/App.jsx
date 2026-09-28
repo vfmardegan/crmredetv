@@ -637,12 +637,17 @@ export default function App() {
 
   function addAdvertiser(e) {
     e.preventDefault();
+    const cleanRazaoSocial = (newAdvForm.razaoSocial || "").trim();
     const cleanNomeFantasia = (newAdvForm.nomeFantasia || "").trim();
-    if (!cleanNomeFantasia) {
-      setErrorMsg("O Nome Fantasia é obrigatório.");
+    if (!cleanRazaoSocial && !cleanNomeFantasia) {
+      setErrorMsg("A Razão Social é obrigatória.");
       return;
     }
-    const displayName = cleanNomeFantasia;
+    if (newAdvForm.type === "Anunciante" && !newAdvForm.segmento) {
+      setErrorMsg("Selecione um segmento para o anunciante.");
+      return;
+    }
+    const displayName = cleanNomeFantasia || cleanRazaoSocial;
 
     if (editingClientId) {
       const clientId = editingClientId;
@@ -962,12 +967,17 @@ export default function App() {
 
   function confirmQuickCreateClient(e) {
     e.preventDefault();
+    const cleanRazaoSocial = (quickCreateRazaoSocial || "").trim();
     const cleanNomeFantasia = (quickCreateName || "").trim();
-    if (!cleanNomeFantasia) {
-      setErrorMsg("O Nome Fantasia é obrigatório.");
+    if (!cleanRazaoSocial && !cleanNomeFantasia) {
+      setErrorMsg("A Razão Social é obrigatória.");
       return;
     }
-    const displayName = cleanNomeFantasia;
+    if (quickCreateType === "Anunciante" && !quickCreateSegmento) {
+      setErrorMsg("Selecione um segmento para o anunciante.");
+      return;
+    }
+    const displayName = cleanNomeFantasia || cleanRazaoSocial;
     const client = {
       id: uid(),
       codigo: quickCreateCodigo,
@@ -2882,9 +2892,11 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social *</label>
               <input
-                placeholder="Razão social (opcional)"
+                required
+                autoFocus
+                placeholder="Razão social"
                 value={quickCreateRazaoSocial}
                 onChange={(e) => setQuickCreateRazaoSocial(e.target.value)}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
@@ -2905,11 +2917,9 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia *</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
               <input
-                required
-                autoFocus
-                placeholder="Nome fantasia"
+                placeholder="Nome fantasia (opcional)"
                 value={quickCreateName}
                 onChange={(e) => setQuickCreateName(e.target.value)}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
@@ -2918,13 +2928,14 @@ export default function App() {
 
             {quickCreateType === "Anunciante" && (
               <div>
-                <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento</label>
+                <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento *</label>
                 <select
+                  required
                   value={quickCreateSegmento}
                   onChange={(e) => setQuickCreateSegmento(e.target.value)}
                   className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
                 >
-                  <option value="">Selecionar segmento (opcional)</option>
+                  <option value="">Selecionar segmento</option>
                   {SEGMENTOS.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
