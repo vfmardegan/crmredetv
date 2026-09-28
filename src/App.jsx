@@ -637,17 +637,17 @@ export default function App() {
 
   function addAdvertiser(e) {
     e.preventDefault();
-    const cleanRazaoSocial = (newAdvForm.razaoSocial || "").trim();
     const cleanNomeFantasia = (newAdvForm.nomeFantasia || "").trim();
-    if (!cleanRazaoSocial && !cleanNomeFantasia) {
-      setErrorMsg("A Razão Social é obrigatória.");
+    if (!cleanNomeFantasia) {
+      setErrorMsg("O Nome Fantasia é obrigatório.");
       return;
     }
     if (newAdvForm.type === "Anunciante" && !newAdvForm.segmento) {
       setErrorMsg("Selecione um segmento para o anunciante.");
       return;
     }
-    const displayName = cleanNomeFantasia || cleanRazaoSocial;
+    const cleanRazaoSocial = (newAdvForm.razaoSocial || "").trim() || cleanNomeFantasia;
+    const displayName = cleanNomeFantasia;
 
     if (editingClientId) {
       const clientId = editingClientId;
@@ -657,9 +657,9 @@ export default function App() {
             ? {
                 ...a,
                 codigo: newAdvForm.codigo,
-                razaoSocial: newAdvForm.razaoSocial,
+                razaoSocial: cleanRazaoSocial,
                 cnpj: newAdvForm.cnpj,
-                nomeFantasia: newAdvForm.nomeFantasia,
+                nomeFantasia: cleanNomeFantasia,
                 name: displayName,
                 type: newAdvForm.type,
                 segmento: newAdvForm.type === "Agência" ? "" : newAdvForm.segmento,
@@ -696,8 +696,8 @@ export default function App() {
       });
       setShowNewAdvertiser(false);
       apiPut(`/clients/${clientId}`, {
-        codigo: newAdvForm.codigo, razaoSocial: newAdvForm.razaoSocial, cnpj: newAdvForm.cnpj,
-        nomeFantasia: newAdvForm.nomeFantasia, type: newAdvForm.type, segmento: newAdvForm.segmento,
+        codigo: newAdvForm.codigo, razaoSocial: cleanRazaoSocial, cnpj: newAdvForm.cnpj,
+        nomeFantasia: cleanNomeFantasia, type: newAdvForm.type, segmento: newAdvForm.segmento,
       })
         .then(() =>
           newAdvForm.type === "Agência"
@@ -714,9 +714,9 @@ export default function App() {
     const adv = {
       id: uid(),
       codigo: newAdvForm.codigo,
-      razaoSocial: newAdvForm.razaoSocial,
+      razaoSocial: cleanRazaoSocial,
       cnpj: newAdvForm.cnpj,
-      nomeFantasia: newAdvForm.nomeFantasia,
+      nomeFantasia: cleanNomeFantasia,
       name: displayName,
       type: newAdvForm.type,
       segmento: newAdvForm.type === "Agência" ? "" : newAdvForm.segmento,
@@ -967,23 +967,23 @@ export default function App() {
 
   function confirmQuickCreateClient(e) {
     e.preventDefault();
-    const cleanRazaoSocial = (quickCreateRazaoSocial || "").trim();
     const cleanNomeFantasia = (quickCreateName || "").trim();
-    if (!cleanRazaoSocial && !cleanNomeFantasia) {
-      setErrorMsg("A Razão Social é obrigatória.");
+    if (!cleanNomeFantasia) {
+      setErrorMsg("O Nome Fantasia é obrigatório.");
       return;
     }
     if (quickCreateType === "Anunciante" && !quickCreateSegmento) {
       setErrorMsg("Selecione um segmento para o anunciante.");
       return;
     }
-    const displayName = cleanNomeFantasia || cleanRazaoSocial;
+    const cleanRazaoSocial = (quickCreateRazaoSocial || "").trim() || cleanNomeFantasia;
+    const displayName = cleanNomeFantasia;
     const client = {
       id: uid(),
       codigo: quickCreateCodigo,
-      razaoSocial: quickCreateRazaoSocial,
+      razaoSocial: cleanRazaoSocial,
       cnpj: quickCreateCnpj,
-      nomeFantasia: quickCreateName,
+      nomeFantasia: cleanNomeFantasia,
       name: displayName,
       type: quickCreateType,
       segmento: quickCreateType === "Anunciante" ? quickCreateSegmento : "",
@@ -2892,11 +2892,9 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social *</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
               <input
-                required
-                autoFocus
-                placeholder="Razão social"
+                placeholder="Razão social (opcional)"
                 value={quickCreateRazaoSocial}
                 onChange={(e) => setQuickCreateRazaoSocial(e.target.value)}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
@@ -2917,9 +2915,11 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia *</label>
               <input
-                placeholder="Nome fantasia (opcional)"
+                required
+                autoFocus
+                placeholder="Nome fantasia"
                 value={quickCreateName}
                 onChange={(e) => setQuickCreateName(e.target.value)}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"

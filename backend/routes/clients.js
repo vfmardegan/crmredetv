@@ -100,18 +100,17 @@ router.get("/clients", async (req, res) => {
 // Exige permissão can_edit_clients ([SEC-006]).
 router.post("/clients", requirePermission("can_edit_clients"), async (req, res) => {
   const { codigo, razaoSocial, cnpj, nomeFantasia, type, segmento } = req.body;
-  const cleanRazaoSocial = (razaoSocial || "").trim();
   const cleanNomeFantasia = (nomeFantasia || "").trim();
-  const cleanCodigo = (codigo || "").toString().trim();
-  const cleanCnpj = (cnpj || "").toString().trim();
-  const cleanSegmento = (segmento || "").trim();
-
-  if (!cleanRazaoSocial && !cleanNomeFantasia) {
-    return res.status(400).json({ error: "A Razão Social é obrigatória." });
+  if (!cleanNomeFantasia) {
+    return res.status(400).json({ error: "O Nome Fantasia é obrigatório." });
   }
+  const cleanSegmento = (segmento || "").trim();
   if (type === "Anunciante" && !cleanSegmento) {
     return res.status(400).json({ error: "Selecione um segmento para o anunciante." });
   }
+  const cleanRazaoSocial = (razaoSocial || "").trim() || cleanNomeFantasia;
+  const cleanCodigo = (codigo || "").toString().trim();
+  const cleanCnpj = (cnpj || "").toString().trim();
   const id = req.body.id || crypto.randomUUID();
   try {
     await pool.query(
@@ -120,9 +119,9 @@ router.post("/clients", requirePermission("can_edit_clients"), async (req, res) 
       [
         id,
         cleanCodigo || null,
-        cleanRazaoSocial || cleanNomeFantasia,
+        cleanRazaoSocial,
         cleanCnpj || null,
-        cleanNomeFantasia || null,
+        cleanNomeFantasia,
         type,
         type === "Anunciante" ? cleanSegmento : null
       ]
@@ -131,7 +130,7 @@ router.post("/clients", requirePermission("can_edit_clients"), async (req, res) 
       req.user.id,
       req.user.email,
       "create_client",
-      `Criou o cliente ${type} "${cleanNomeFantasia || cleanRazaoSocial}" (ID: ${id})`
+      `Criou o cliente ${type} "${cleanNomeFantasia}" (ID: ${id})`
     );
     res.status(201).json({ id });
   } catch (err) {
@@ -144,18 +143,17 @@ router.post("/clients", requirePermission("can_edit_clients"), async (req, res) 
 router.put("/clients/:id", requirePermission("can_edit_clients"), async (req, res) => {
   const { id } = req.params;
   const { codigo, razaoSocial, cnpj, nomeFantasia, type, segmento } = req.body;
-  const cleanRazaoSocial = (razaoSocial || "").trim();
   const cleanNomeFantasia = (nomeFantasia || "").trim();
-  const cleanCodigo = (codigo || "").toString().trim();
-  const cleanCnpj = (cnpj || "").toString().trim();
-  const cleanSegmento = (segmento || "").trim();
-
-  if (!cleanRazaoSocial && !cleanNomeFantasia) {
-    return res.status(400).json({ error: "A Razão Social é obrigatória." });
+  if (!cleanNomeFantasia) {
+    return res.status(400).json({ error: "O Nome Fantasia é obrigatório." });
   }
+  const cleanSegmento = (segmento || "").trim();
   if (type === "Anunciante" && !cleanSegmento) {
     return res.status(400).json({ error: "Selecione um segmento para o anunciante." });
   }
+  const cleanRazaoSocial = (razaoSocial || "").trim() || cleanNomeFantasia;
+  const cleanCodigo = (codigo || "").toString().trim();
+  const cleanCnpj = (cnpj || "").toString().trim();
   try {
     const allowed = await isClientAllowedForUser(req.user, id);
     if (!allowed) {
@@ -167,9 +165,9 @@ router.put("/clients/:id", requirePermission("can_edit_clients"), async (req, re
        type = $5, segmento = $6 where id = $7`,
       [
         cleanCodigo || null,
-        cleanRazaoSocial || cleanNomeFantasia,
+        cleanRazaoSocial,
         cleanCnpj || null,
-        cleanNomeFantasia || null,
+        cleanNomeFantasia,
         type,
         type === "Anunciante" ? cleanSegmento : null,
         id
@@ -180,7 +178,7 @@ router.put("/clients/:id", requirePermission("can_edit_clients"), async (req, re
       req.user.id,
       req.user.email,
       "update_client",
-      `Atualizou os dados do cliente ${type} "${cleanNomeFantasia || cleanRazaoSocial}" (ID: ${id})`
+      `Atualizou os dados do cliente ${type} "${cleanNomeFantasia}" (ID: ${id})`
     );
     res.json({ id });
   } catch (err) {
