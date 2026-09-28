@@ -78,9 +78,8 @@ export default function NewOpportunityModal({
       aria-modal="true"
       aria-labelledby="modal-opp-title"
       className="fixed inset-0 bg-slate-900/30 flex items-start justify-center z-50 overflow-y-auto py-8"
-      onClick={() => { setErrorMsg(""); onClose(); }}
     >
-      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg flex flex-col gap-4">
+      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg flex flex-col gap-4 shadow-xl">
         <div className="flex items-center justify-between mb-1">
           <h2 id="modal-opp-title" className="font-semibold text-slate-800 text-base">
             {editingOppId ? "Editar Oportunidade" : "Nova Oportunidade"}
@@ -89,7 +88,7 @@ export default function NewOpportunityModal({
             type="button"
             aria-label="Fechar modal"
             onClick={() => { setErrorMsg(""); onClose(); }}
-            className="p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>

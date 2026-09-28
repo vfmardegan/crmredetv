@@ -452,9 +452,6 @@ export default function App() {
           setShowSendCustomEmail(false);
         } else if (showScheduleMeeting) {
           setShowScheduleMeeting(false);
-        } else if (showNewOpportunity) {
-          setShowNewOpportunity(false);
-          setEditingOppId(null);
         } else if (showNewAdvertiser) {
           closeNewAdvertiser();
         } else if (showNewContact) {
