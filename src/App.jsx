@@ -637,12 +637,12 @@ export default function App() {
 
   function addAdvertiser(e) {
     e.preventDefault();
-    if (!newAdvForm.nomeFantasia.trim() && !newAdvForm.razaoSocial.trim()) return;
-    if (newAdvForm.type === "Anunciante" && !newAdvForm.segmento) {
-      setErrorMsg("Selecione um segmento para o anunciante.");
+    const cleanNomeFantasia = (newAdvForm.nomeFantasia || "").trim();
+    if (!cleanNomeFantasia) {
+      setErrorMsg("O Nome Fantasia é obrigatório.");
       return;
     }
-    const displayName = newAdvForm.nomeFantasia.trim() || newAdvForm.razaoSocial.trim();
+    const displayName = cleanNomeFantasia;
 
     if (editingClientId) {
       const clientId = editingClientId;
@@ -962,12 +962,12 @@ export default function App() {
 
   function confirmQuickCreateClient(e) {
     e.preventDefault();
-    if (!quickCreateName.trim() && !quickCreateRazaoSocial.trim()) return;
-    if (quickCreateType === "Anunciante" && !quickCreateSegmento) {
-      setErrorMsg("Selecione um segmento para o anunciante.");
+    const cleanNomeFantasia = (quickCreateName || "").trim();
+    if (!cleanNomeFantasia) {
+      setErrorMsg("O Nome Fantasia é obrigatório.");
       return;
     }
-    const displayName = quickCreateName.trim() || quickCreateRazaoSocial.trim();
+    const displayName = cleanNomeFantasia;
     const client = {
       id: uid(),
       codigo: quickCreateCodigo,
@@ -2884,9 +2884,7 @@ export default function App() {
             <div>
               <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
               <input
-                required
-                autoFocus
-                placeholder="Razão social"
+                placeholder="Razão social (opcional)"
                 value={quickCreateRazaoSocial}
                 onChange={(e) => setQuickCreateRazaoSocial(e.target.value)}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
@@ -2907,8 +2905,10 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
+              <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia *</label>
               <input
+                required
+                autoFocus
                 placeholder="Nome fantasia"
                 value={quickCreateName}
                 onChange={(e) => setQuickCreateName(e.target.value)}
@@ -2920,12 +2920,11 @@ export default function App() {
               <div>
                 <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento</label>
                 <select
-                  required
                   value={quickCreateSegmento}
                   onChange={(e) => setQuickCreateSegmento(e.target.value)}
                   className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
                 >
-                  <option value="">Selecionar segmento</option>
+                  <option value="">Selecionar segmento (opcional)</option>
                   {SEGMENTOS.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}

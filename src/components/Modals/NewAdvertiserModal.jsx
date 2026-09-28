@@ -75,8 +75,7 @@ export default function NewAdvertiserModal({
         <div>
           <label className="text-xs text-slate-700 font-medium mb-1 block">Razão social</label>
           <input
-            required
-            placeholder="Razão social"
+            placeholder="Razão social (opcional)"
             value={newAdvForm.razaoSocial}
             onChange={(e) => setNewAdvForm({ ...newAdvForm, razaoSocial: e.target.value })}
             className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
@@ -97,8 +96,9 @@ export default function NewAdvertiserModal({
         </div>
 
         <div>
-          <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia</label>
+          <label className="text-xs text-slate-700 font-medium mb-1 block">Nome fantasia *</label>
           <input
+            required
             placeholder="Nome fantasia"
             value={newAdvForm.nomeFantasia}
             onChange={(e) => setNewAdvForm({ ...newAdvForm, nomeFantasia: e.target.value })}
@@ -110,12 +110,11 @@ export default function NewAdvertiserModal({
           <div>
             <label className="text-xs text-slate-700 font-medium mb-1 block">Segmento</label>
             <select
-              required
               value={newAdvForm.segmento}
               onChange={(e) => setNewAdvForm({ ...newAdvForm, segmento: e.target.value })}
               className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
             >
-              <option value="">Selecionar segmento</option>
+              <option value="">Selecionar segmento (opcional)</option>
               {SEGMENTOS.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}

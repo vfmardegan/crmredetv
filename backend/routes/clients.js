@@ -100,24 +100,34 @@ router.get("/clients", async (req, res) => {
 // Exige permissão can_edit_clients ([SEC-006]).
 router.post("/clients", requirePermission("can_edit_clients"), async (req, res) => {
   const { codigo, razaoSocial, cnpj, nomeFantasia, type, segmento } = req.body;
-  if (!razaoSocial && !nomeFantasia) {
-    return res.status(400).json({ error: "Informe ao menos Razão Social ou Nome Fantasia." });
+  const cleanNomeFantasia = (nomeFantasia || "").trim();
+  if (!cleanNomeFantasia) {
+    return res.status(400).json({ error: "O Nome Fantasia é obrigatório." });
   }
-  if (type === "Anunciante" && !segmento) {
-    return res.status(400).json({ error: "Selecione um segmento para o anunciante." });
-  }
+  const cleanRazaoSocial = (razaoSocial || "").trim();
+  const cleanCodigo = (codigo || "").toString().trim();
+  const cleanCnpj = (cnpj || "").toString().trim();
+  const cleanSegmento = (segmento || "").trim();
   const id = req.body.id || crypto.randomUUID();
   try {
     await pool.query(
       `insert into clients (id, codigo, razao_social, cnpj, nome_fantasia, type, segmento)
        values ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, codigo || null, razaoSocial || nomeFantasia, cnpj || null, nomeFantasia || null, type, type === "Anunciante" ? segmento : null]
+      [
+        id,
+        cleanCodigo || null,
+        cleanRazaoSocial || cleanNomeFantasia,
+        cleanCnpj || null,
+        cleanNomeFantasia,
+        type,
+        cleanSegmento || null
+      ]
     );
     await logAudit(
       req.user.id,
       req.user.email,
       "create_client",
-      `Criou o cliente ${type} "${nomeFantasia || razaoSocial}" (ID: ${id})`
+      `Criou o cliente ${type} "${cleanNomeFantasia}" (ID: ${id})`
     );
     res.status(201).json({ id });
   } catch (err) {
@@ -130,6 +140,14 @@ router.post("/clients", requirePermission("can_edit_clients"), async (req, res) 
 router.put("/clients/:id", requirePermission("can_edit_clients"), async (req, res) => {
   const { id } = req.params;
   const { codigo, razaoSocial, cnpj, nomeFantasia, type, segmento } = req.body;
+  const cleanNomeFantasia = (nomeFantasia || "").trim();
+  if (!cleanNomeFantasia) {
+    return res.status(400).json({ error: "O Nome Fantasia é obrigatório." });
+  }
+  const cleanRazaoSocial = (razaoSocial || "").trim();
+  const cleanCodigo = (codigo || "").toString().trim();
+  const cleanCnpj = (cnpj || "").toString().trim();
+  const cleanSegmento = (segmento || "").trim();
   try {
     const allowed = await isClientAllowedForUser(req.user, id);
     if (!allowed) {
@@ -139,14 +157,22 @@ router.put("/clients/:id", requirePermission("can_edit_clients"), async (req, re
     const result = await pool.query(
       `update clients set codigo = $1, razao_social = $2, cnpj = $3, nome_fantasia = $4,
        type = $5, segmento = $6 where id = $7`,
-      [codigo || null, razaoSocial || nomeFantasia, cnpj || null, nomeFantasia || null, type, type === "Anunciante" ? segmento : null, id]
+      [
+        cleanCodigo || null,
+        cleanRazaoSocial || cleanNomeFantasia,
+        cleanCnpj || null,
+        cleanNomeFantasia,
+        type,
+        cleanSegmento || null,
+        id
+      ]
     );
     if (result.rowCount === 0) return res.status(404).json({ error: "Cliente não encontrado." });
     await logAudit(
       req.user.id,
       req.user.email,
       "update_client",
-      `Atualizou os dados do cliente ${type} "${nomeFantasia || razaoSocial}" (ID: ${id})`
+      `Atualizou os dados do cliente ${type} "${cleanNomeFantasia}" (ID: ${id})`
     );
     res.json({ id });
   } catch (err) {

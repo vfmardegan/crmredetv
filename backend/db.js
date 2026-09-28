@@ -252,6 +252,11 @@ const initDb = async () => {
       CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts (email);
     `);
 
+    // 19. Flexibilização de campos no cadastro de clientes (apenas nome_fantasia é obrigatório)
+    await pool.query(`
+      ALTER TABLE clients ALTER COLUMN razao_social DROP NOT NULL;
+    `);
+
     console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos e alocações de oportunidades verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);
