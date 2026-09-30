@@ -309,6 +309,14 @@ export default function App() {
       setExecutivoKeyAccounts(parsed.executivoKeyAccounts && typeof parsed.executivoKeyAccounts === "object" ? parsed.executivoKeyAccounts : {});
       setContacts((parsed.contacts || []).map(normalizeContact));
       setResponsaveis(Array.isArray(parsed.responsaveis) ? parsed.responsaveis : []);
+      if (Array.isArray(parsed.produtos)) {
+        const activeRows = parsed.produtos.filter((p) => p.ativo !== false);
+        setAllProducts({
+          televisao: activeRows.filter((p) => p.categoria === "televisao").map((p) => p.nome),
+          digital:   activeRows.filter((p) => p.categoria === "digital").map((p) => p.nome),
+          especiais: activeRows.filter((p) => p.categoria === "especiais").map((p) => p.nome),
+        });
+      }
     } catch (e) {
       console.error("Falha ao carregar dados da API:", e);
       setErrorMsg("Não foi possível carregar os dados do servidor. Tente recarregar a página.");

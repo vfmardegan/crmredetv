@@ -25,14 +25,18 @@ export const TV_PRODUCTS = [
   "A Tarde É Sua",
   "A Tarde É Sua - 1ª Edição",
   "American Zone",
+  "Amor em Risco",
   "Bola Na Rede",
   "Brasil Do Povo",
+  "Dinheiro na Conta",
   "É Notícia",
   "Fica Com A Gente",
   "Leitura Dinâmica",
   "Mega Sonho",
   "Nordeste Do Povo",
+  "O Grande Vencedor",
   "Operação De Risco",
+  "Operação Resgate",
   "Para Aqui",
   "Programmatic TV",
   "RedeTV! News",
@@ -44,6 +48,7 @@ export const TV_PRODUCTS = [
   "Sensacional",
   "Superpop",
   "TV Fama",
+  "Vizinhos em Guerra",
 ];
 
 export const SPECIAL_PROJECTS = ["Bezona", "Eleições 2026", "Liga Monstro", "Liga Universitária"];
@@ -65,15 +70,19 @@ const PRODUCT_MIGRATION = {
   "A TARDE É SUA": "A Tarde É Sua",
   "A TARDE É SUA - 1ª EDIÇÃO": "A Tarde É Sua - 1ª Edição",
   "AMERICAN ZONE": "American Zone",
+  "AMOR EM RISCO": "Amor em Risco",
   "BEZONA": "Bezona",
   "BOLA NA REDE": "Bola Na Rede",
   "BRASIL DO POVO": "Brasil Do Povo",
+  "DINHEIRO NA CONTA": "Dinheiro na Conta",
   "É NOTÍCIA": "É Notícia",
   "FICA COM A GENTE": "Fica Com A Gente",
   "LEITURA DINÂMICA": "Leitura Dinâmica",
   "MEGA SONHO": "Mega Sonho",
   "NORDESTE DO POVO": "Nordeste Do Povo",
+  "O GRANDE VENCEDOR": "O Grande Vencedor",
   "OPERAÇÃO DE RISCO": "Operação De Risco",
+  "OPERAÇÃO RESGATE": "Operação Resgate",
   "PARA AQUI": "Para Aqui",
   "PROGRAMMATIC TV": "Programmatic TV",
   "REDETV! NEWS": "RedeTV! News",
@@ -85,6 +94,7 @@ const PRODUCT_MIGRATION = {
   "SENSACIONAL": "Sensacional",
   "SUPERPOP": "Superpop",
   "TV FAMA": "TV Fama",
+  "VIZINHOS EM GUERRA": "Vizinhos em Guerra",
   "ESPORTES": "Esportes",
   "GOOGLE PARTNER SALES": "Google Partner Sales",
   "PEGADINHAS": "Pegadinhas",
@@ -101,9 +111,13 @@ const PRODUCT_MIGRATION = {
 };
 
 export function migrateProductName(p) {
-  if (VALID_PRODUCTS_SET.has(p)) return p;
-  if (Object.prototype.hasOwnProperty.call(PRODUCT_MIGRATION, p)) return PRODUCT_MIGRATION[p];
-  return null;
+  if (!p || typeof p !== "string") return null;
+  const trimmed = p.trim();
+  if (VALID_PRODUCTS_SET.has(trimmed)) return trimmed;
+  if (Object.prototype.hasOwnProperty.call(PRODUCT_MIGRATION, trimmed)) {
+    return PRODUCT_MIGRATION[trimmed];
+  }
+  return trimmed;
 }
 
 export const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];

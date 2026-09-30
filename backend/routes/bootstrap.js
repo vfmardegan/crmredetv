@@ -119,7 +119,8 @@ router.get("/bootstrap", async (req, res) => {
       keyAccountsRes,
       dirExecsRes,
       interactionsRes,
-      responsaveisRes
+      responsaveisRes,
+      produtosRes
     ] = await Promise.all([
       pool.query("select * from clients order by id"),
       pool.query("select * from agency_links"),
@@ -140,6 +141,7 @@ router.get("/bootstrap", async (req, res) => {
       pool.query("select * from diretor_executivos"),
       pool.query("select * from client_interactions order by date desc, created_at desc"),
       pool.query("select nome from usuarios where coalesce(ativo, true) = true order by nome"),
+      pool.query("select * from produtos where coalesce(ativo, true) = true order by categoria, nome"),
     ]);
 
     // Inicializa mapeamento de relacionamentos de agências
@@ -291,6 +293,7 @@ router.get("/bootstrap", async (req, res) => {
       segmentoExecutivo,
       executivoKeyAccounts,
       responsaveis: responsaveisRes.rows.map(r => r.nome),
+      produtos: produtosRes.rows,
     });
 
   } catch (err) {
