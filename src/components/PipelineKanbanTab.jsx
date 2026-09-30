@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Maximize2, Pencil, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Maximize2, Pencil, X } from "lucide-react";
 import {
   STAGES,
   STAGE_STYLES,
@@ -45,6 +45,9 @@ export default function PipelineKanbanTab({
     const updateWidth = () => {
       if (kanbanRef.current) {
         setScrollWidth(kanbanRef.current.scrollWidth);
+        if (topScrollRef.current) {
+          topScrollRef.current.scrollLeft = kanbanRef.current.scrollLeft;
+        }
       }
     };
     updateWidth();
@@ -79,12 +82,6 @@ export default function PipelineKanbanTab({
     requestAnimationFrame(() => {
       isSyncingScroll.current = false;
     });
-  };
-
-  const scrollKanban = (amount) => {
-    if (kanbanRef.current) {
-      kanbanRef.current.scrollBy({ left: amount, behavior: "smooth" });
-    }
   };
 
   return (
@@ -136,41 +133,20 @@ export default function PipelineKanbanTab({
         )}
       </div>
 
-      {/* Barra de rolagem horizontal superior sincronizada com as colunas */}
-      <div className="flex items-center gap-3 bg-slate-50/90 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-600 shadow-xs">
-        <div className="flex items-center gap-1 shrink-0 font-medium text-slate-700">
-          <span>Navegar Colunas:</span>
-          <button
-            type="button"
-            onClick={() => scrollKanban(-350)}
-            className="p-1 hover:bg-slate-200 rounded text-slate-700 transition-colors flex items-center justify-center border border-slate-300 bg-white ml-1"
-            title="Rolar colunas para a esquerda"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollKanban(350)}
-            className="p-1 hover:bg-slate-200 rounded text-slate-700 transition-colors flex items-center justify-center border border-slate-300 bg-white"
-            title="Rolar colunas para a direita"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-        <div
-          ref={topScrollRef}
-          onScroll={handleTopScroll}
-          className="overflow-x-auto flex-1 h-3 cursor-pointer"
-          style={{ scrollbarWidth: "thin" }}
-        >
-          <div style={{ width: `${scrollWidth}px`, height: "1px" }} />
-        </div>
+      {/* Barra de rolagem horizontal superior sincronizada com as colunas (sempre visível) */}
+      <div
+        ref={topScrollRef}
+        onScroll={handleTopScroll}
+        className="w-full always-visible-scrollbar rounded border border-slate-200 bg-slate-100/70"
+        style={{ height: "14px" }}
+      >
+        <div style={{ width: `${scrollWidth}px`, height: "1px" }} />
       </div>
 
       <div
         ref={kanbanRef}
         onScroll={handleKanbanScroll}
-        className="flex gap-4 overflow-x-auto pb-4"
+        className="flex gap-4 overflow-x-auto pb-4 always-visible-scrollbar"
       >
         {STAGES.map((stage) => {
           const stageOpps = pipelineOpportunities.filter((o) => o.stage === stage);
