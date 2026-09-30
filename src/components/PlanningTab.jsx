@@ -75,16 +75,16 @@ export default function PlanningTab({
   const query = planningSearch.trim().toLowerCase();
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-5">
+    <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
       {/* Barra de Filtros e Busca do Planejamento */}
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <input
             type="text"
             value={planningSearch}
             onChange={(e) => setPlanningSearch(e.target.value)}
             placeholder="Buscar no planejamento (oportunidade, executivo, agência, anunciante)..."
-            className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-72 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shadow-sm"
+            className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-full sm:w-72 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shadow-sm"
           />
           <MultiSelectFilterButton
             label="Responsável"
@@ -398,8 +398,8 @@ export default function PlanningTab({
 
       {/* Modal de Valoração por Produto */}
       {selectedOpp && (
-        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50" onClick={() => setSelectedOpp(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-4 shadow-xl">
+        <div className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto" onClick={() => setSelectedOpp(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md flex flex-col gap-4 shadow-xl max-h-[92vh] overflow-y-auto my-auto sm:my-0">
             <div className="flex items-center justify-between mb-1">
               <div>
                 <div className="font-semibold text-slate-800 text-sm">Valoração por Produto (Mídia)</div>

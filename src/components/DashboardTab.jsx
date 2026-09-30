@@ -171,9 +171,9 @@ export default function DashboardTab({
             ))}
           </div>
         </div>
-        <div className="flex items-start gap-2">
+        <div className="flex items-start gap-2 flex-wrap sm:flex-nowrap">
           <span className="text-xs text-slate-400 w-16 shrink-0 pt-1.5">Meses</span>
-          <div className="grid grid-cols-6 gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {MONTHS.map((m) => (
               <label
                 key={m}
@@ -200,7 +200,7 @@ export default function DashboardTab({
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">
           Resultado <span className="text-slate-400 font-normal">({dashboardYear})</span>
         </div>
@@ -264,7 +264,7 @@ export default function DashboardTab({
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="text-sm font-medium text-slate-700">
             Resultado Mensal <span className="text-slate-400 font-normal">({dashboardYear})</span>
@@ -302,7 +302,7 @@ export default function DashboardTab({
         dashboardProductFilter={dashboardProductFilter}
       />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="Pipeline Total" value={formatBRL(pipelineTotal)} sub={`${dashboardOpps.length} oportunidades`} />
         <KpiCard label="Em Desenvolvimento" value={formatBRL(emDesenvolvimentoValor)} sub={`${countByStage("Desenvolvimento")} oportunidades`} />
         <KpiCard label="Em Aberto" value={formatBRL(emAbertoValor)} sub={`${emAbertoCount} · frio, morno e quente`} />
@@ -312,7 +312,7 @@ export default function DashboardTab({
         <KpiCard label="Taxa de Conversão" value={`${Math.round(taxaConversao * 100)}%`} sub={`${countByStage("Fechado")} fechadas · ${countByStage("Negado")} negadas`} />
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Total</div>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={stageData} margin={{ top: 20 }}>
@@ -334,7 +334,7 @@ export default function DashboardTab({
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Mensal <span className="text-slate-400 font-normal">({dashboardYear})</span></div>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={monthlyOpenData} margin={{ top: 20 }}>
@@ -351,7 +351,7 @@ export default function DashboardTab({
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-5">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">Pipeline por Produto</div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse whitespace-nowrap">

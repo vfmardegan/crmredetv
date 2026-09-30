@@ -22,11 +22,11 @@ export default function NewAdvertiserModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-adv-title"
-      className="fixed inset-0 bg-slate-900/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto"
       style={{ zIndex: 65 }}
       onClick={onClose}
     >
-      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-sm flex flex-col gap-3">
+      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-sm max-h-[92vh] overflow-y-auto flex flex-col gap-3 shadow-xl my-auto">
         <div className="flex items-center justify-between mb-1">
           <h2 id="modal-adv-title" className="font-semibold text-slate-800 text-base">
             {editingClientId ? "Editar Cliente" : "Novo Cliente"}

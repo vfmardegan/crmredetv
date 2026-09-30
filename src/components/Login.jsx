@@ -96,7 +96,7 @@ export default function Login({ onLoginSuccess }) {
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="w-full max-w-md mx-4 z-10">
-        <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-2xl">
           {isSettingNewPassword ? (
             <div className="flex flex-col items-center text-center mb-6">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white font-bold text-xl mb-3 shadow-lg shadow-amber-500/20">

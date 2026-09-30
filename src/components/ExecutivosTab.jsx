@@ -109,7 +109,7 @@ export default function ExecutivosTab({
         const linkedKeyAccounts = advertisers.filter((a) => currentKeyAccountIds.includes(a.id));
 
         return (
-          <div key={executivo.id} className="bg-white rounded-lg border border-slate-200 p-5">
+          <div key={executivo.id} className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <div className="font-medium text-slate-800 flex items-center gap-2">
@@ -241,7 +241,7 @@ export default function ExecutivosTab({
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <KpiCard
                 label="Meta"
                 value={formatBRL(kpis.meta)}
@@ -254,7 +254,7 @@ export default function ExecutivosTab({
                 sub={`${Math.round(kpis.percent)}% da meta atingido`}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
               <KpiCard label="Oportunidades (Pipeline Total)" value={formatBRL(kpis.pipelineTotal)} sub="Frio + Morno + Quente, sem ponderar" />
               <KpiCard label="Pipeline" value={formatBRL(kpis.pipeline)} sub="Frio 0% + Morno 10% + Quente 70%" />
             </div>

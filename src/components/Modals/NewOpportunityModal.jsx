@@ -77,9 +77,9 @@ export default function NewOpportunityModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-opp-title"
-      className="fixed inset-0 bg-slate-900/30 flex items-start justify-center z-50 overflow-y-auto py-8"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center sm:items-start justify-center z-50 overflow-y-auto p-3 sm:p-6 md:py-8"
     >
-      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg flex flex-col gap-4 shadow-xl">
+      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto flex flex-col gap-4 shadow-xl my-auto sm:my-0">
         <div className="flex items-center justify-between mb-1">
           <h2 id="modal-opp-title" className="font-semibold text-slate-800 text-base">
             {editingOppId ? "Editar Oportunidade" : "Nova Oportunidade"}
@@ -129,7 +129,7 @@ export default function NewOpportunityModal({
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ClientSearchField
             label="Agência"
             type="Agência"
@@ -429,7 +429,7 @@ export default function NewOpportunityModal({
             </div>
 
             {/* 03 Datas quando switch acionado: Criação, Entrega, Fechamento */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs text-slate-700 font-medium mb-1 block">Data de criação</label>
                 <input
@@ -462,7 +462,7 @@ export default function NewOpportunityModal({
           </>
         ) : (
           /* 02 Datas quando switch não acionado: Criação, Fechamento */
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-slate-700 font-medium mb-1 block">Data de criação</label>
               <input
@@ -491,7 +491,7 @@ export default function NewOpportunityModal({
             {editingOppId ? "Estágio no Pipeline Comercial *" : "Temperatura do projeto *"}
           </label>
           {editingOppId ? (
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2">
               {[
                 { value: "Desenvolvimento", label: "Desenvolvimento", style: "border-slate-300 bg-slate-100 text-slate-700 font-semibold" },
                 { value: "Frio", label: "❄️ Frio", style: "border-sky-300 bg-sky-50 text-sky-700 font-semibold" },

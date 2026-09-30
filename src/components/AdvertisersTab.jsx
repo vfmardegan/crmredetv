@@ -734,7 +734,7 @@ export default function AdvertisersTab({
           className="fixed inset-0 bg-slate-900/30 flex justify-end z-40"
           onClick={() => setSelectedAdvertiserId(null)}
         >
-          <div className="w-full max-w-md bg-white h-full overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full sm:max-w-md bg-white h-full overflow-y-auto p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">

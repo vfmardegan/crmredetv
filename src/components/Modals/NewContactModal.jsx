@@ -22,11 +22,11 @@ export default function NewContactModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-contact-title"
-      className="fixed inset-0 bg-slate-900/30 flex items-start justify-center z-50 overflow-y-auto py-8"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center sm:items-start justify-center z-50 overflow-y-auto p-3 sm:p-6 md:py-8"
       style={{ zIndex: 60 }}
       onClick={onClose}
     >
-      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-6 w-full max-w-lg flex flex-col gap-4">
+      <form onSubmit={onSubmit} onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-lg max-h-[92vh] overflow-y-auto flex flex-col gap-4 shadow-xl my-auto sm:my-0">
         <div className="flex items-center justify-between mb-1">
           <h2 id="modal-contact-title" className="font-semibold text-slate-800 text-base">
             {editingContactId ? "Editar Contato" : "Novo Contato"}
@@ -63,7 +63,7 @@ export default function NewContactModal({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-700 font-medium mb-1 block">Cargo</label>
             <input
@@ -110,7 +110,7 @@ export default function NewContactModal({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-700 font-medium mb-1 block">Celular</label>
             <input
@@ -201,7 +201,7 @@ export default function NewContactModal({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-700 font-medium mb-1 block">Time do coração</label>
             <input

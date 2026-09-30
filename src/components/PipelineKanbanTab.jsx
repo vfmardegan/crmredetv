@@ -182,7 +182,7 @@ export default function PipelineKanbanTab({
           value={pipelineSearch || ""}
           onChange={(e) => setPipelineSearch(e.target.value)}
           placeholder="Buscar no pipeline..."
-          className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-52 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shrink-0"
+          className="border border-slate-200 rounded-md px-3 py-1.5 text-xs bg-white w-full sm:w-52 outline-none focus:ring-2 focus:ring-slate-400 placeholder:text-slate-400 shrink-0"
         />
         <MultiSelectFilterButton
           label="Segmento"

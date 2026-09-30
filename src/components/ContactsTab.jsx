@@ -67,10 +67,10 @@ export default function ContactsTab({
             <button
               key={c.id}
               onClick={() => setSelectedContactId(c.id)}
-              className="w-full text-left p-4 flex items-center justify-between hover:bg-slate-50"
+              className="w-full text-left p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50"
             >
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-slate-800">{c.name}</span>
                   {client && (
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${
@@ -91,7 +91,7 @@ export default function ContactsTab({
                   {c.cargo}{c.cargo && client ? " · " : ""}{client ? (client.nomeFantasia || client.razaoSocial || client.name) : "Cliente não vinculado"}
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right shrink-0">
                 <div className="text-xs text-slate-500">{c.celular ? formatCelular(c.celular) : "—"}</div>
                 <div className="text-xs text-slate-400">{c.email || "—"}</div>
               </div>
@@ -122,7 +122,7 @@ export default function ContactsTab({
           className="fixed inset-0 bg-slate-900/30 flex justify-end z-40"
           onClick={() => setSelectedContactId(null)}
         >
-          <div className="w-full max-w-md bg-white h-full overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full sm:max-w-md bg-white h-full overflow-y-auto p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
              <div className="flex items-start justify-between mb-4">
               <div>
                 <div className="flex items-center gap-2">

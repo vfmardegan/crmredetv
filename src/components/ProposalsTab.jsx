@@ -13,7 +13,7 @@ export default function ProposalsTab({ openSendProposal, proposalTemplates = [] 
       {proposalTemplates.map((t) => (
         <div
           key={t.id}
-          className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between gap-3"
+          className="bg-white rounded-lg border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-md bg-rose-50 border border-rose-200 flex items-center justify-center shrink-0">
@@ -41,7 +41,7 @@ export default function ProposalsTab({ openSendProposal, proposalTemplates = [] 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {t.pdfDataUri && (
               <a
                 href={t.pdfDataUri}
