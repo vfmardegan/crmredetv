@@ -212,6 +212,7 @@ export default function App() {
   const [segmentFilter, setSegmentFilter] = useState([]);
   const [productFilter, setProductFilter] = useState([]);
   const [agencyFilter, setAgencyFilter] = useState([]);
+  const [executivoFilter, setExecutivoFilter] = useState([]);
   const [monthFilter, setMonthFilter] = useState([]);
   const [dashboardYear, setDashboardYear] = useState(2026);
   const [dashboardMonths, setDashboardMonths] = useState([]);
@@ -1774,6 +1775,22 @@ export default function App() {
   const openOpps = opportunities.filter(
     (o) => o.stage !== "Fechado" && o.stage !== "Negado" && o.stage !== "Cancelado"
   );
+
+  const executivoFilterOptions = useMemo(() => {
+    const list = [...executivos];
+    const existingNames = new Set(list.map((e) => (e.nome || "").toLowerCase().trim()));
+    opportunities.forEach((o) => {
+      const name = (o.executivo || "").trim();
+      if (name && !existingNames.has(name.toLowerCase())) {
+        existingNames.add(name.toLowerCase());
+        list.push({ id: o.executivoId || o.executivo_id || name, nome: name });
+      }
+    });
+    return list
+      .filter((e) => e.nome)
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      .map((e) => ({ value: e.id, label: e.nome }));
+  }, [executivos, opportunities]);
   
   const pipelineOpportunities = opportunities.filter((o) => {
     if (segmentFilter.length > 0) {
@@ -1788,6 +1805,23 @@ export default function App() {
     }
     if (monthFilter.length > 0) {
       if (!(o.periodMonths || []).some((m) => monthFilter.includes(m))) return false;
+    }
+    if (executivoFilter.length > 0) {
+      const selectedExecNames = executivoFilterOptions
+        .filter((opt) => executivoFilter.includes(opt.value))
+        .map((opt) => opt.label.toLowerCase().trim());
+      const selectedExecIds = executivoFilter.map(String);
+
+      const oppExecName = (o.executivo || "").toLowerCase().trim();
+      const oppExecId = String(o.executivoId || o.executivo_id || "").trim();
+
+      const nameMatch = oppExecName && selectedExecNames.includes(oppExecName);
+      const idMatch = oppExecId && selectedExecIds.includes(oppExecId);
+      const directMatch = executivoFilter.some(
+        (v) => String(v).toLowerCase().trim() === oppExecName || String(v).trim() === oppExecId
+      );
+
+      if (!nameMatch && !idMatch && !directMatch) return false;
     }
     if (pipelineSearch.trim()) {
       const q = pipelineSearch.toLowerCase().trim();
@@ -1873,6 +1907,10 @@ export default function App() {
     ...agencyFilter.map((v) => {
       const opt = agencyFilterOptions.find((o) => o.value === v);
       return { type: "Agência", label: opt ? opt.label : v, clear: () => setAgencyFilter(agencyFilter.filter((x) => x !== v)) };
+    }),
+    ...executivoFilter.map((v) => {
+      const opt = executivoFilterOptions.find((o) => o.value === v);
+      return { type: "Executivo", label: opt ? opt.label : v, clear: () => setExecutivoFilter(executivoFilter.filter((x) => x !== v)) };
     }),
     ...monthFilter.map((v) => {
       const [y, m] = v.split("-");
@@ -2579,6 +2617,9 @@ export default function App() {
               setProductFilter={setProductFilter}
               agencyFilter={agencyFilter}
               setAgencyFilter={setAgencyFilter}
+              executivoFilter={executivoFilter}
+              setExecutivoFilter={setExecutivoFilter}
+              executivoFilterOptions={executivoFilterOptions}
               monthFilter={monthFilter}
               setMonthFilter={setMonthFilter}
               pipelineActiveFilters={pipelineActiveFilters}

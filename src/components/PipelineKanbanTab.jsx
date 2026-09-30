@@ -19,6 +19,9 @@ export default function PipelineKanbanTab({
   setProductFilter,
   agencyFilter,
   setAgencyFilter,
+  executivoFilter = [],
+  setExecutivoFilter,
+  executivoFilterOptions = [],
   monthFilter,
   setMonthFilter,
   pipelineActiveFilters,
@@ -61,6 +64,12 @@ export default function PipelineKanbanTab({
           options={agencyFilterOptions}
           selected={agencyFilter}
           onChange={setAgencyFilter}
+        />
+        <MultiSelectFilterButton
+          label="Executivo"
+          options={executivoFilterOptions}
+          selected={executivoFilter}
+          onChange={setExecutivoFilter}
         />
         <PeriodFilterButton selected={monthFilter} onChange={setMonthFilter} />
         {pipelineActiveFilters.map((f, i) => (
@@ -133,6 +142,9 @@ export default function PipelineKanbanTab({
                       </div>
                       {advertiser && advertiser.segmento && (
                         <div className="text-xs text-slate-500 mt-0.5">{advertiser.segmento}</div>
+                      )}
+                      {o.executivo && (
+                        <div className="text-xs text-slate-500 mt-0.5 font-medium">Executivo: {o.executivo}</div>
                       )}
                       <div className="flex flex-wrap gap-1 mt-2">
                         {(o.products || []).map((p) => (
