@@ -1173,7 +1173,7 @@ export default function App() {
       }
       const bootData = await apiGet("/bootstrap");
       if (bootData && bootData.opportunities) {
-        setOpportunities(bootData.opportunities);
+        setOpportunities((bootData.opportunities || []).map(normalizeOpportunity));
       }
       setNewOppForm(emptyOppForm());
       setShowNewOpportunity(false);
@@ -1901,25 +1901,22 @@ export default function App() {
     return true;
   }
 
-  const dashboardOppsYearOnly = opportunities.filter((o) => {
-    const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
-    if (monthsInYear.length === 0) return false;
-    return matchesDashboardFilters(o);
-  });
-
-  const dashboardOpps = dashboardOppsYearOnly.filter((o) => {
-    if (dashboardMonths.length === 0) return true;
-    const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
-    return monthsInYear.some((m) => dashboardMonths.includes(m.split("-")[1]));
+  const dashboardOpps = opportunities.filter((o) => {
+    if (!matchesDashboardFilters(o)) return false;
+    if (dashboardMonths.length > 0) {
+      const monthsInScope = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
+      return monthsInScope.some((m) => dashboardMonths.includes(m.split("-")[1]));
+    }
+    return true;
   });
 
   function monthlyValueOfOpp(o) {
     const n = (o.periodMonths || []).length;
-    return n > 0 ? o.value / n : 0;
+    return n > 0 ? (Number(o.value) || 0) / n : 0;
   }
 
   function periodAdjustedValue(o) {
-    if (dashboardMonths.length === 0) return o.value;
+    if (dashboardMonths.length === 0) return Number(o.value) || 0;
     const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
     const matched = monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]));
     return monthlyValueOfOpp(o) * matched.length;
