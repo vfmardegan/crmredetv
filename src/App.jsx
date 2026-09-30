@@ -1084,7 +1084,8 @@ export default function App() {
     if (!opp) return;
     setEditingOppId(opp.id);
     const hasPlanningRequest = Boolean(
-      (opp.status && ["Pendente", "Desenvolvimento", "Aprovação"].includes(opp.status)) ||
+      opp.status ||
+      opp.briefing ||
       opp.stage === "Desenvolvimento"
     );
     setNewOppForm({
@@ -1142,41 +1143,69 @@ export default function App() {
       return;
     }
 
-    if (newOppForm.solicitarPlanejamento) {
-      if (!newOppForm.briefing.trim()) {
-        setErrorMsg("Preencha o briefing ao solicitar proposta ao planejamento.");
-        return;
-      }
-      if (!newOppForm.deliveryDate) {
-        setErrorMsg("Preencha a data de entrega desejada.");
-        return;
+    const existingOpp = editingOppId ? opportunities.find((o) => o.id === editingOppId) : null;
+
+    if (!editingOppId) {
+      if (newOppForm.solicitarPlanejamento) {
+        if (!newOppForm.briefing.trim()) {
+          setErrorMsg("Preencha o briefing ao solicitar proposta ao planejamento.");
+          return;
+        }
+        if (!newOppForm.deliveryDate) {
+          setErrorMsg("Preencha a data de entrega desejada.");
+          return;
+        }
+      } else {
+        if (!newOppForm.expectedCloseDate) {
+          setErrorMsg("Preencha a previsão de fechamento.");
+          return;
+        }
       }
     } else {
-      if (!newOppForm.expectedCloseDate) {
-        setErrorMsg("Preencha a previsão de fechamento.");
-        return;
+      if (newOppForm.solicitarPlanejamento && !existingOpp?.status && !existingOpp?.briefing) {
+        if (!newOppForm.briefing.trim()) {
+          setErrorMsg("Preencha o briefing ao solicitar proposta ao planejamento.");
+          return;
+        }
+        if (!newOppForm.deliveryDate) {
+          setErrorMsg("Preencha a data de entrega desejada.");
+          return;
+        }
       }
     }
-
-    const existingOpp = editingOppId ? opportunities.find((o) => o.id === editingOppId) : null;
 
     let targetStage;
     let targetStatus;
     let targetDeliveryDate;
     let targetExpectedCloseDate;
 
-    if (newOppForm.solicitarPlanejamento) {
-      targetStage = "Desenvolvimento";
-      targetStatus = existingOpp?.status ? existingOpp.status : "Pendente";
-      targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || null;
-      targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || targetDeliveryDate || (existingOpp ? toInputDate(existingOpp.expectedCloseDate) : todayStr());
+    if (editingOppId && existingOpp) {
+      // EDIÇÃO DE OPORTUNIDADE EXISTENTE:
+      // Preserva o status do planejamento pré-existente (ex.: "Entregue", "Pendente", "Comercializado", etc.)
+      if (newOppForm.solicitarPlanejamento) {
+        targetStatus = existingOpp.status || "Pendente";
+        targetStage = existingOpp.stage === "Desenvolvimento" ? "Desenvolvimento" : (newOppForm.temperatura || existingOpp.stage);
+      } else {
+        // Se a oportunidade já tinha vínculo de planejamento, preserva existingOpp.status
+        targetStatus = existingOpp.status || null;
+        targetStage = newOppForm.temperatura || (existingOpp.stage !== "Desenvolvimento" ? existingOpp.stage : "Morno");
+      }
+
+      targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || toInputDate(existingOpp.deliveryDate) || null;
+      targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || toInputDate(existingOpp.expectedCloseDate) || todayStr();
     } else {
-      // Se não solicitar proposta ao planejamento, o card não deve ir para a aba Planejamento (status = null)
-      targetStage = newOppForm.temperatura || (existingOpp && existingOpp.stage !== "Desenvolvimento" ? existingOpp.stage : "Morno");
-      targetStatus = null;
-      // Preserva data de entrega histórica se já existir e o usuário não alterou, ou null se não houver
-      targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || (existingOpp ? toInputDate(existingOpp.deliveryDate) : null);
-      targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || (existingOpp ? toInputDate(existingOpp.expectedCloseDate) : todayStr());
+      // CRIAÇÃO DE NOVA OPORTUNIDADE:
+      if (newOppForm.solicitarPlanejamento) {
+        targetStage = "Desenvolvimento";
+        targetStatus = "Pendente";
+        targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || null;
+        targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || targetDeliveryDate || todayStr();
+      } else {
+        targetStage = newOppForm.temperatura || "Morno";
+        targetStatus = null;
+        targetDeliveryDate = null;
+        targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || todayStr();
+      }
     }
 
     const payload = {
