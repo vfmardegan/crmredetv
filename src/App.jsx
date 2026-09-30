@@ -2095,30 +2095,32 @@ export default function App() {
         return sum + valForProduct;
       }, 0);
     });
-    const total = STAGES.reduce((sum, s) => sum + stageValues[s], 0);
-    const emAberto = stageValues["Frio"] + stageValues["Morno"] + stageValues["Quente"];
-    const fechado = stageValues["Fechado"];
-    const negado = stageValues["Negado"];
+    const PIPELINE_TOTAL_STAGES = ["Frio", "Morno", "Quente", "Fechado", "Negado"];
+    const total = PIPELINE_TOTAL_STAGES.reduce((sum, s) => sum + (stageValues[s] || 0), 0);
+    const hasAnyStageValue = STAGES.some((s) => (stageValues[s] || 0) > 0);
+    const emAberto = (stageValues["Frio"] || 0) + (stageValues["Morno"] || 0) + (stageValues["Quente"] || 0);
+    const fechado = stageValues["Fechado"] || 0;
+    const negado = stageValues["Negado"] || 0;
     const taxaConversao = fechado + negado > 0 ? fechado / (fechado + negado) : null;
-    return { product: p, stageValues, total, emAberto, taxaConversao };
+    return { product: p, stageValues, total, hasAnyStageValue, emAberto, taxaConversao };
   }
 
   function sumProductRows(rows) {
     const stageValues = {};
     STAGES.forEach((s) => {
-      stageValues[s] = rows.reduce((sum, r) => sum + r.stageValues[s], 0);
+      stageValues[s] = rows.reduce((sum, r) => sum + (r.stageValues[s] || 0), 0);
     });
-    const total = rows.reduce((sum, r) => sum + r.total, 0);
-    const emAberto = rows.reduce((sum, r) => sum + r.emAberto, 0);
-    const fechado = stageValues["Fechado"];
-    const negado = stageValues["Negado"];
+    const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
+    const emAberto = rows.reduce((sum, r) => sum + (r.emAberto || 0), 0);
+    const fechado = stageValues["Fechado"] || 0;
+    const negado = stageValues["Negado"] || 0;
     const taxaConversao = fechado + negado > 0 ? fechado / (fechado + negado) : null;
     return { stageValues, total, emAberto, taxaConversao };
   }
 
-  const tvProductRows = allProducts.televisao.map(computeProductRow).filter((r) => r.total > 0);
-  const digitalProductRows = allProducts.digital.map(computeProductRow).filter((r) => r.total > 0);
-  const specialProductRows = allProducts.especiais.map(computeProductRow).filter((r) => r.total > 0);
+  const tvProductRows = allProducts.televisao.map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const digitalProductRows = allProducts.digital.map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const specialProductRows = allProducts.especiais.map(computeProductRow).filter((r) => r.hasAnyStageValue);
   const tvProductTotals = sumProductRows(tvProductRows);
   const digitalProductTotals = sumProductRows(digitalProductRows);
   const specialProductTotals = sumProductRows(specialProductRows);

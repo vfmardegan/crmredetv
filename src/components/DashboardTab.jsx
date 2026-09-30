@@ -375,8 +375,8 @@ export default function DashboardTab({
                       {STAGES.map((s) => (
                         <td key={s} className="py-1.5 px-3 text-right font-mono">{r.stageValues[s] > 0 ? formatBRL(r.stageValues[s]) : "—"}</td>
                       ))}
-                      <td className="py-1.5 px-3 text-right font-mono text-slate-800">{formatBRL(r.total)}</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{formatBRL(r.emAberto)}</td>
+                      <td className="py-1.5 px-3 text-right font-mono text-slate-800">{r.total > 0 ? formatBRL(r.total) : "—"}</td>
+                      <td className="py-1.5 px-3 text-right font-mono">{r.emAberto > 0 ? formatBRL(r.emAberto) : "—"}</td>
                       <td className="py-1.5 pl-3 text-right font-mono">{r.taxaConversao === null ? "—" : `${Math.round(r.taxaConversao * 100)}%`}</td>
                     </tr>
                   ))}
@@ -386,8 +386,8 @@ export default function DashboardTab({
                       {STAGES.map((s) => (
                         <td key={s} className="py-1.5 px-3 text-right font-mono">{group.totals.stageValues[s] > 0 ? formatBRL(group.totals.stageValues[s]) : "—"}</td>
                       ))}
-                      <td className="py-1.5 px-3 text-right font-mono">{formatBRL(group.totals.total)}</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{formatBRL(group.totals.emAberto)}</td>
+                      <td className="py-1.5 px-3 text-right font-mono">{group.totals.total > 0 ? formatBRL(group.totals.total) : "—"}</td>
+                      <td className="py-1.5 px-3 text-right font-mono">{group.totals.emAberto > 0 ? formatBRL(group.totals.emAberto) : "—"}</td>
                       <td className="py-1.5 pl-3 text-right font-mono">{group.totals.taxaConversao === null ? "—" : `${Math.round(group.totals.taxaConversao * 100)}%`}</td>
                     </tr>
                   )}
