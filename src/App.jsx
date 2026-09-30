@@ -2130,6 +2130,7 @@ export default function App() {
     if (!hasPermission(user.perfil, "can_edit_opportunities")) return false;
     if (user.perfil === "admin") return true;
     if (user.perfil === "diretor") return true;
+    if (user.perfil === "especialista") return true;
     if (user.perfil === "executivo") {
       if (user.executivo_id && selectedOpp.executivoId) {
         return String(user.executivo_id) === String(selectedOpp.executivoId);
@@ -2409,7 +2410,7 @@ export default function App() {
                 <Plus size={15} /> Novo Contato
               </button>
             )}
-            {view === "pipeline" && (
+            {view === "pipeline" && hasPermission(user.perfil, "can_create_opportunities") && (
               <button
                 onClick={() => {
                   const myExecName = user?.perfil === "executivo"
@@ -2818,7 +2819,7 @@ export default function App() {
               {!canEditOppStage && (
                 <div className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
                   <AlertTriangle size={14} className="shrink-0 text-amber-600" />
-                  <span>A alteração de estágio no pipeline é restrita ao executivo responsável e administradores.</span>
+                  <span>A alteração de estágio no pipeline é restrita ao executivo responsável, especialistas e administradores.</span>
                 </div>
               )}
             </div>

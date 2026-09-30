@@ -44,7 +44,8 @@ const PERMISSIONS = {
     "can_view_clients",
     "can_view_executivos",
     "can_view_contacts",
-    "can_edit_contacts"
+    "can_edit_contacts",
+    "can_edit_opportunities"
   ],
   executivo: [
     "can_view_dashboard",

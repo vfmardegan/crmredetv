@@ -66,6 +66,8 @@ async function isOpportunityWriteAllowed(user, oppId, body = {}) {
 
   if (!hasPermission(user.perfil, "can_edit_opportunities")) return false;
 
+  if (user.perfil === "especialista") return true;
+
   const oppRes = await pool.query("SELECT executivo, executivo_id FROM opportunities WHERE id = $1", [oppId]);
   if (oppRes.rows.length === 0) return true; // Deixa o update principal retornar 404
   const oppExecName = oppRes.rows[0].executivo;
