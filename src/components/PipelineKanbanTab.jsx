@@ -37,51 +37,140 @@ export default function PipelineKanbanTab({
   openEditOpportunity
 }) {
   const kanbanRef = useRef(null);
-  const topScrollRef = useRef(null);
-  const [scrollWidth, setScrollWidth] = useState(0);
-  const isSyncingScroll = useRef(false);
+  const trackRef = useRef(null);
+  const dragStartRef = useRef({ startX: 0, startScrollLeft: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [scrollMetrics, setScrollMetrics] = useState({
+    scrollWidth: 0,
+    clientWidth: 0,
+    scrollLeft: 0,
+  });
+
+  const updateMetrics = () => {
+    if (kanbanRef.current) {
+      setScrollMetrics({
+        scrollWidth: kanbanRef.current.scrollWidth,
+        clientWidth: kanbanRef.current.clientWidth,
+        scrollLeft: kanbanRef.current.scrollLeft,
+      });
+    }
+  };
 
   useEffect(() => {
-    const updateWidth = () => {
-      if (kanbanRef.current) {
-        setScrollWidth(kanbanRef.current.scrollWidth);
-        if (topScrollRef.current) {
-          topScrollRef.current.scrollLeft = kanbanRef.current.scrollLeft;
-        }
-      }
-    };
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    const observer = new ResizeObserver(updateWidth);
+    updateMetrics();
+    window.addEventListener("resize", updateMetrics);
+    const observer = new ResizeObserver(updateMetrics);
     if (kanbanRef.current) {
       observer.observe(kanbanRef.current);
     }
     return () => {
-      window.removeEventListener("resize", updateWidth);
+      window.removeEventListener("resize", updateMetrics);
       observer.disconnect();
     };
   }, [pipelineOpportunities]);
 
-  const handleTopScroll = () => {
-    if (isSyncingScroll.current) return;
-    isSyncingScroll.current = true;
-    if (topScrollRef.current && kanbanRef.current) {
-      kanbanRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+  const handleKanbanScroll = () => {
+    if (kanbanRef.current) {
+      setScrollMetrics((prev) => ({
+        ...prev,
+        scrollLeft: kanbanRef.current.scrollLeft,
+      }));
     }
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
   };
 
-  const handleKanbanScroll = () => {
-    if (isSyncingScroll.current) return;
-    isSyncingScroll.current = true;
-    if (topScrollRef.current && kanbanRef.current) {
-      topScrollRef.current.scrollLeft = kanbanRef.current.scrollLeft;
+  const { scrollWidth, clientWidth, scrollLeft } = scrollMetrics;
+  const maxScroll = Math.max(0, scrollWidth - clientWidth);
+  const visibleRatio = scrollWidth > 0 ? clientWidth / scrollWidth : 1;
+  const thumbWidthPct = Math.max(Math.min(visibleRatio * 100, 100), 8);
+  const maxThumbLeftPct = 100 - thumbWidthPct;
+  const thumbLeftPct = maxScroll > 0 ? Math.min(Math.max((scrollLeft / maxScroll) * maxThumbLeftPct, 0), maxThumbLeftPct) : 0;
+
+  const handleThumbMouseDown = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!kanbanRef.current || !trackRef.current) return;
+
+    setIsDragging(true);
+    document.body.style.userSelect = "none";
+    dragStartRef.current = {
+      startX: e.clientX,
+      startScrollLeft: kanbanRef.current.scrollLeft,
+    };
+
+    const handleMouseMove = (moveEvent) => {
+      if (!kanbanRef.current || !trackRef.current) return;
+      const deltaX = moveEvent.clientX - dragStartRef.current.startX;
+      const trackWidth = trackRef.current.clientWidth;
+      const thumbPixelWidth = (thumbWidthPct / 100) * trackWidth;
+      const availableTrackPixels = trackWidth - thumbPixelWidth;
+
+      if (availableTrackPixels > 0 && maxScroll > 0) {
+        const ratio = maxScroll / availableTrackPixels;
+        const newScrollLeft = Math.max(0, Math.min(dragStartRef.current.startScrollLeft + deltaX * ratio, maxScroll));
+        kanbanRef.current.scrollLeft = newScrollLeft;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleThumbTouchStart = (e) => {
+    e.stopPropagation();
+    if (!kanbanRef.current || !trackRef.current || !e.touches[0]) return;
+
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.touches[0].clientX,
+      startScrollLeft: kanbanRef.current.scrollLeft,
+    };
+
+    const handleTouchMove = (moveEvent) => {
+      if (!kanbanRef.current || !trackRef.current || !moveEvent.touches[0]) return;
+      const deltaX = moveEvent.touches[0].clientX - dragStartRef.current.startX;
+      const trackWidth = trackRef.current.clientWidth;
+      const thumbPixelWidth = (thumbWidthPct / 100) * trackWidth;
+      const availableTrackPixels = trackWidth - thumbPixelWidth;
+
+      if (availableTrackPixels > 0 && maxScroll > 0) {
+        const ratio = maxScroll / availableTrackPixels;
+        const newScrollLeft = Math.max(0, Math.min(dragStartRef.current.startScrollLeft + deltaX * ratio, maxScroll));
+        kanbanRef.current.scrollLeft = newScrollLeft;
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("touchend", handleTouchEnd);
+  };
+
+  const handleTrackClick = (e) => {
+    if (!kanbanRef.current || !trackRef.current || maxScroll <= 0) return;
+    const trackRect = trackRef.current.getBoundingClientRect();
+    const clickX = e.clientX - trackRect.left;
+    const thumbPixelWidth = (thumbWidthPct / 100) * trackRect.width;
+    const availableTrackPixels = trackRect.width - thumbPixelWidth;
+
+    if (availableTrackPixels > 0) {
+      const targetThumbLeft = clickX - thumbPixelWidth / 2;
+      const targetPct = Math.max(0, Math.min(targetThumbLeft / availableTrackPixels, 1));
+      kanbanRef.current.scrollTo({
+        left: targetPct * maxScroll,
+        behavior: "smooth",
+      });
     }
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
   };
 
   return (
@@ -133,15 +222,29 @@ export default function PipelineKanbanTab({
         )}
       </div>
 
-      {/* Barra de rolagem horizontal superior sincronizada com as colunas (sempre visível) */}
-      <div
-        ref={topScrollRef}
-        onScroll={handleTopScroll}
-        className="w-full always-visible-scrollbar rounded border border-slate-200 bg-slate-100/70"
-        style={{ height: "14px" }}
-      >
-        <div style={{ width: `${scrollWidth}px`, height: "1px" }} />
-      </div>
+      {/* Barra de rolagem e indicador de posição superior SEMPRE VISÍVEL */}
+      {maxScroll > 0 && (
+        <div className="w-full py-0.5">
+          <div
+            ref={trackRef}
+            onClick={handleTrackClick}
+            className="w-full h-3 bg-slate-200/90 hover:bg-slate-200 border border-slate-300 rounded-full relative cursor-pointer select-none transition-colors"
+            title="Barra de rolagem do Pipeline - clique ou arraste para navegar"
+          >
+            <div
+              onMouseDown={handleThumbMouseDown}
+              onTouchStart={handleThumbTouchStart}
+              style={{
+                left: `${thumbLeftPct}%`,
+                width: `${thumbWidthPct}%`,
+              }}
+              className={`absolute top-0 bottom-0 rounded-full cursor-grab active:cursor-grabbing shadow-sm transition-colors ${
+                isDragging ? "bg-slate-700" : "bg-slate-500 hover:bg-slate-600"
+              }`}
+            />
+          </div>
+        </div>
+      )}
 
       <div
         ref={kanbanRef}
