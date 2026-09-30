@@ -1746,6 +1746,22 @@ export default function App() {
     return map;
   }, [executivoKeyAccounts]);
 
+  const executivoFilterOptions = useMemo(() => {
+    const list = [...executivos];
+    const existingNames = new Set(list.map((e) => (e.nome || "").toLowerCase().trim()));
+    opportunities.forEach((o) => {
+      const name = (o.executivo || "").trim();
+      if (name && !existingNames.has(name.toLowerCase())) {
+        existingNames.add(name.toLowerCase());
+        list.push({ id: o.executivoId || o.executivo_id || name, nome: name });
+      }
+    });
+    return list
+      .filter((e) => e.nome)
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      .map((e) => ({ value: e.id, label: e.nome }));
+  }, [executivos, opportunities]);
+
   if (!token || !user) {
     return (
       <Login
@@ -1775,22 +1791,6 @@ export default function App() {
   const openOpps = opportunities.filter(
     (o) => o.stage !== "Fechado" && o.stage !== "Negado" && o.stage !== "Cancelado"
   );
-
-  const executivoFilterOptions = useMemo(() => {
-    const list = [...executivos];
-    const existingNames = new Set(list.map((e) => (e.nome || "").toLowerCase().trim()));
-    opportunities.forEach((o) => {
-      const name = (o.executivo || "").trim();
-      if (name && !existingNames.has(name.toLowerCase())) {
-        existingNames.add(name.toLowerCase());
-        list.push({ id: o.executivoId || o.executivo_id || name, nome: name });
-      }
-    });
-    return list
-      .filter((e) => e.nome)
-      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
-      .map((e) => ({ value: e.id, label: e.nome }));
-  }, [executivos, opportunities]);
   
   const pipelineOpportunities = opportunities.filter((o) => {
     if (segmentFilter.length > 0) {
