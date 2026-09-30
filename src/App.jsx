@@ -1184,11 +1184,12 @@ export default function App() {
       // Preserva o status do planejamento pré-existente (ex.: "Entregue", "Pendente", "Comercializado", etc.)
       if (newOppForm.solicitarPlanejamento) {
         targetStatus = existingOpp.status || "Pendente";
-        targetStage = existingOpp.stage === "Desenvolvimento" ? "Desenvolvimento" : (newOppForm.temperatura || existingOpp.stage);
+        targetStage = existingOpp.stage === "Desenvolvimento" ? "Desenvolvimento" : (newOppForm.stage || existingOpp.stage);
       } else {
         // Se a oportunidade já tinha vínculo de planejamento, preserva existingOpp.status
         targetStatus = existingOpp.status || null;
-        targetStage = newOppForm.temperatura || (existingOpp.stage !== "Desenvolvimento" ? existingOpp.stage : "Morno");
+        // Na edição, o estágio comercial é estritamente o selecionado no formulário ou preserva o existente (ex.: "Fechado")
+        targetStage = newOppForm.stage || existingOpp.stage;
       }
 
       targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || toInputDate(existingOpp.deliveryDate) || null;

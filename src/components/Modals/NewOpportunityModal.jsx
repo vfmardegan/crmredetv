@@ -485,31 +485,72 @@ export default function NewOpportunityModal({
           </div>
         )}
 
-        {/* Seção Temperatura do Projeto (Quente, Morno, Frio) */}
+        {/* Seção Estágio / Temperatura do Projeto */}
         <div>
-          <label className="text-xs text-slate-700 mb-1.5 block font-semibold">Temperatura do projeto *</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { value: "Quente", label: "🔥 Quente", style: "border-rose-300 bg-rose-50 text-rose-700 font-semibold" },
-              { value: "Morno", label: "⛅ Morno", style: "border-amber-300 bg-amber-50 text-amber-700 font-semibold" },
-              { value: "Frio", label: "❄️ Frio", style: "border-sky-300 bg-sky-50 text-sky-700 font-semibold" },
-            ].map((item) => {
-              const selected = (newOppForm.temperatura || "Morno") === item.value;
-              return (
-                <button
-                  type="button"
-                  key={item.value}
-                  onClick={() => setNewOppForm((prev) => ({ ...prev, temperatura: item.value }))}
-                  className={
-                    "py-2 text-xs rounded-md border text-center transition-all cursor-pointer " +
-                    (selected ? item.style + " shadow-sm ring-1 ring-offset-1 ring-slate-300" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
-                  }
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+          <label className="text-xs text-slate-700 mb-1.5 block font-semibold">
+            {editingOppId ? "Estágio no Pipeline Comercial *" : "Temperatura do projeto *"}
+          </label>
+          {editingOppId ? (
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {[
+                { value: "Desenvolvimento", label: "Desenvolvimento", style: "border-slate-300 bg-slate-100 text-slate-700 font-semibold" },
+                { value: "Frio", label: "❄️ Frio", style: "border-sky-300 bg-sky-50 text-sky-700 font-semibold" },
+                { value: "Morno", label: "⛅ Morno", style: "border-amber-300 bg-amber-50 text-amber-700 font-semibold" },
+                { value: "Quente", label: "🔥 Quente", style: "border-rose-300 bg-rose-50 text-rose-700 font-semibold" },
+                { value: "Fechado", label: "✅ Fechado", style: "border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold" },
+                { value: "Negado", label: "❌ Negado", style: "border-gray-300 bg-gray-100 text-gray-700 font-semibold" },
+              ].map((item) => {
+                const currentStage = newOppForm.stage || newOppForm.temperatura || "Morno";
+                const selected = currentStage === item.value;
+                return (
+                  <button
+                    type="button"
+                    key={item.value}
+                    onClick={() =>
+                      setNewOppForm((prev) => ({
+                        ...prev,
+                        stage: item.value,
+                        temperatura: ["Quente", "Morno", "Frio"].includes(item.value) ? item.value : prev.temperatura,
+                      }))
+                    }
+                    className={
+                      "py-2 px-1 text-[11px] rounded-md border text-center transition-all cursor-pointer truncate " +
+                      (selected
+                        ? item.style + " shadow-sm ring-1 ring-offset-1 ring-slate-300"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
+                    }
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: "Quente", label: "🔥 Quente", style: "border-rose-300 bg-rose-50 text-rose-700 font-semibold" },
+                { value: "Morno", label: "⛅ Morno", style: "border-amber-300 bg-amber-50 text-amber-700 font-semibold" },
+                { value: "Frio", label: "❄️ Frio", style: "border-sky-300 bg-sky-50 text-sky-700 font-semibold" },
+              ].map((item) => {
+                const selected = (newOppForm.temperatura || "Morno") === item.value;
+                return (
+                  <button
+                    type="button"
+                    key={item.value}
+                    onClick={() => setNewOppForm((prev) => ({ ...prev, temperatura: item.value, stage: item.value }))}
+                    className={
+                      "py-2 text-xs rounded-md border text-center transition-all cursor-pointer " +
+                      (selected
+                        ? item.style + " shadow-sm ring-1 ring-offset-1 ring-slate-300"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
+                    }
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <button type="submit" className="w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800">
