@@ -26,6 +26,7 @@ export default function ClientBilledTable({
   dashboardAdvertiserFilter = [],
   dashboardAgencyFilter = [],
   dashboardExecutivoFilter = [],
+  dashboardProductFilter = [],
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("total");
@@ -110,8 +111,12 @@ export default function ClientBilledTable({
     [monthsInScope]
   );
 
+  const isProductFiltered = Boolean(dashboardProductFilter && dashboardProductFilter.length > 0);
+
   // Consolidação dos clientes com faturamento no período e filtros
   const billedClients = useMemo(() => {
+    if (isProductFiltered) return [];
+
     const clientBilledData = new Map();
 
     (faturamentoEfetivo || []).forEach((f) => {
@@ -211,6 +216,7 @@ export default function ClientBilledTable({
     executivoFilterKeyAccountCodigos,
     executivoFilterKeyAccountIds,
     executivoFilterSegmentos,
+    isProductFiltered,
   ]);
 
   // Filtragem por busca textual local (nome fantasia, razão social, código ou segmento)
@@ -277,6 +283,7 @@ export default function ClientBilledTable({
 
   // Exportar dados para CSV
   const handleExportCSV = () => {
+    if (!sortedRows || sortedRows.length === 0) return;
     const headers = [
       "Ranking",
       "Código",
@@ -325,11 +332,14 @@ export default function ClientBilledTable({
   };
 
   const periodLabel = useMemo(() => {
+    if (isProductFiltered) {
+      return "Filtro de Produto · Zerado";
+    }
     if (dashboardMonths && dashboardMonths.length > 0) {
       return `${dashboardYear} · ${dashboardMonths.join(", ")}`;
     }
     return `${dashboardYear} · Ano Completo`;
-  }, [dashboardYear, dashboardMonths]);
+  }, [dashboardYear, dashboardMonths, isProductFiltered]);
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm flex flex-col gap-4 mt-2">
@@ -371,10 +381,16 @@ export default function ClientBilledTable({
 
           <button
             onClick={handleExportCSV}
-            title="Exportar tabela atual para CSV"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-sm whitespace-nowrap"
+            disabled={sortedRows.length === 0}
+            title={sortedRows.length === 0 ? "Nenhum dado para exportar" : "Exportar tabela atual para CSV"}
+            className={
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors shadow-sm whitespace-nowrap " +
+              (sortedRows.length === 0
+                ? "text-slate-400 bg-slate-50 border-slate-200 cursor-not-allowed"
+                : "text-slate-700 bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300")
+            }
           >
-            <Download size={13} className="text-slate-500" />
+            <Download size={13} className={sortedRows.length === 0 ? "text-slate-300" : "text-slate-500"} />
             Exportar CSV
           </button>
         </div>
@@ -433,10 +449,14 @@ export default function ClientBilledTable({
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Building2 className="mx-auto mb-2 text-slate-300" size={32} />
                     <p className="font-medium text-slate-600">
-                      Nenhum cliente com faturamento encontrado para os filtros selecionados.
+                      {isProductFiltered
+                        ? "Clientes Ativos zerados sob filtro de produto."
+                        : "Nenhum cliente com faturamento encontrado para os filtros selecionados."}
                     </p>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Tente ajustar o ano, os meses ou os filtros de segmento e executivo.
+                      {isProductFiltered
+                        ? "O faturamento efetivo não possui divisão por produto comercial."
+                        : "Tente ajustar o ano, os meses ou os filtros de segmento e executivo."}
                     </p>
                   </td>
                 </tr>

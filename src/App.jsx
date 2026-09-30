@@ -1918,13 +1918,48 @@ export default function App() {
     return true;
   });
 
-  function monthlyValueOfOpp(o) {
+  function oppProductValue(o, productFilter = dashboardProductFilter) {
+    const totalVal = Number(o.value) || 0;
+    if (!productFilter || productFilter.length === 0) return totalVal;
+
+    const prods = o.products || [];
+    const numProds = prods.length || 1;
+    const matchingProds = prods.filter((p) => productFilter.includes(p));
+    if (matchingProds.length === 0) return 0;
+
+    let sum = 0;
+    matchingProds.forEach((p) => {
+      const allocatedVal = o.productValues?.[p];
+      if (allocatedVal !== undefined && allocatedVal !== null && Number(allocatedVal) > 0 && totalVal > 0) {
+        sum += Number(allocatedVal);
+      } else {
+        sum += totalVal / numProds;
+      }
+    });
+
+    return Math.min(sum, totalVal);
+  }
+
+  function rawMonthlyValueOfOpp(o) {
     const n = (o.periodMonths || []).length;
     return n > 0 ? (Number(o.value) || 0) / n : 0;
   }
 
-  function periodAdjustedValue(o) {
+  function rawPeriodAdjustedValue(o) {
     if (dashboardMonths.length === 0) return Number(o.value) || 0;
+    const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
+    const matched = monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]));
+    return rawMonthlyValueOfOpp(o) * matched.length;
+  }
+
+  function monthlyValueOfOpp(o) {
+    const n = (o.periodMonths || []).length;
+    const val = oppProductValue(o, dashboardProductFilter);
+    return n > 0 ? val / n : 0;
+  }
+
+  function periodAdjustedValue(o) {
+    if (dashboardMonths.length === 0) return oppProductValue(o, dashboardProductFilter);
     const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
     const matched = monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]));
     return monthlyValueOfOpp(o) * matched.length;
@@ -1950,11 +1985,15 @@ export default function App() {
   });
 
   const STAGE_WEIGHTS = { Frio: 0, Morno: 0.1, Quente: 0.7 };
-  const metaVisible = dashboardProductFilter.length === 0 && dashboardAgencyFilter.length === 0 && dashboardAdvertiserFilter.length === 0;
+  const isProductFiltered = dashboardProductFilter.length > 0;
+  const metaVisible = !isProductFiltered && dashboardAgencyFilter.length === 0 && dashboardAdvertiserFilter.length === 0;
   
   const effectiveMonthsForResultado = dashboardMonths.length > 0 ? dashboardMonths : MONTHS;
 
   const visaoGeralFaturamentoData = MONTHS.map((m) => {
+    if (isProductFiltered) {
+      return { month: m, Faturamento: 0, Pipeline: 0, Meta: 0 };
+    }
     const code = `${dashboardYear}-${m}`;
     const codeLower = code.toLowerCase();
     const monthInScope = effectiveMonthsForResultado.includes(m);
@@ -2040,24 +2079,30 @@ export default function App() {
     return { month: m, Faturamento: efetivo, Pipeline: potencial, Meta: meta };
   });
 
-  const visaoGeralFaturamentoEfetivoTotal = visaoGeralFaturamentoData.reduce((s, m) => s + m.Faturamento, 0);
-  const visaoGeralFaturamentoPotencialTotal = visaoGeralFaturamentoData.reduce((s, m) => s + m.Pipeline, 0);
-  const visaoGeralMetaAnoTotal = visaoGeralFaturamentoData.reduce((s, m) => s + m.Meta, 0);
+  const visaoGeralFaturamentoEfetivoTotal = isProductFiltered ? 0 : visaoGeralFaturamentoData.reduce((s, m) => s + m.Faturamento, 0);
+  const visaoGeralFaturamentoPotencialTotal = isProductFiltered ? 0 : visaoGeralFaturamentoData.reduce((s, m) => s + m.Pipeline, 0);
+  const visaoGeralMetaAnoTotal = isProductFiltered ? 0 : visaoGeralFaturamentoData.reduce((s, m) => s + m.Meta, 0);
   
-  const gapParaMeta = Math.max(0, visaoGeralMetaAnoTotal - visaoGeralFaturamentoEfetivoTotal);
-  const gapPipeline = Math.min(gapParaMeta, visaoGeralFaturamentoPotencialTotal);
-  const gapAProduzir = Math.max(0, gapParaMeta - visaoGeralFaturamentoPotencialTotal);
+  const gapParaMeta = isProductFiltered ? 0 : Math.max(0, visaoGeralMetaAnoTotal - visaoGeralFaturamentoEfetivoTotal);
+  const gapPipeline = isProductFiltered ? 0 : Math.min(gapParaMeta, visaoGeralFaturamentoPotencialTotal);
+  const gapAProduzir = isProductFiltered ? 0 : Math.max(0, gapParaMeta - visaoGeralFaturamentoPotencialTotal);
   
-  const metaAtingida = visaoGeralFaturamentoEfetivoTotal >= visaoGeralMetaAnoTotal;
+  const metaAtingida = !isProductFiltered && visaoGeralFaturamentoEfetivoTotal >= visaoGeralMetaAnoTotal;
   const visaoGeralAtingimentoPercent =
-    visaoGeralMetaAnoTotal > 0 ? (visaoGeralFaturamentoEfetivoTotal / visaoGeralMetaAnoTotal) * 100 : 0;
-  const faturadoMenosMeta = visaoGeralFaturamentoEfetivoTotal - visaoGeralMetaAnoTotal;
+    !isProductFiltered && visaoGeralMetaAnoTotal > 0 ? (visaoGeralFaturamentoEfetivoTotal / visaoGeralMetaAnoTotal) * 100 : 0;
+  const faturadoMenosMeta = isProductFiltered ? 0 : visaoGeralFaturamentoEfetivoTotal - visaoGeralMetaAnoTotal;
   
-  const resumoAnoData = [
-    { name: "Meta", Meta: visaoGeralMetaAnoTotal, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralMetaAnoTotal },
-    { name: "Faturado", Meta: 0, Faturado: visaoGeralFaturamentoEfetivoTotal, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralFaturamentoEfetivoTotal },
-    { name: "GAP", Meta: 0, Faturado: 0, Pipeline: gapPipeline, AProduzir: gapAProduzir, totalTop: -gapParaMeta },
-  ];
+  const resumoAnoData = isProductFiltered
+    ? [
+        { name: "Meta", Meta: 0, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: 0 },
+        { name: "Faturado", Meta: 0, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: 0 },
+        { name: "GAP", Meta: 0, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: 0 },
+      ]
+    : [
+        { name: "Meta", Meta: visaoGeralMetaAnoTotal, Faturado: 0, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralMetaAnoTotal },
+        { name: "Faturado", Meta: 0, Faturado: visaoGeralFaturamentoEfetivoTotal, Pipeline: 0, AProduzir: 0, totalTop: visaoGeralFaturamentoEfetivoTotal },
+        { name: "GAP", Meta: 0, Faturado: 0, Pipeline: gapPipeline, AProduzir: gapAProduzir, totalTop: -gapParaMeta },
+      ];
 
   const pipelineTotal = dashboardOpps.reduce((s, o) => s + periodAdjustedValue(o), 0);
   const emDesenvolvimentoValor = sumByStage("Desenvolvimento");
@@ -2087,9 +2132,9 @@ export default function App() {
         
         if (allocatedVal !== undefined && allocatedVal !== null && Number(allocatedVal) > 0 && o.value > 0) {
           const fraction = Number(allocatedVal) / o.value;
-          valForProduct = periodAdjustedValue(o) * fraction;
+          valForProduct = rawPeriodAdjustedValue(o) * fraction;
         } else {
-          valForProduct = periodAdjustedValue(o) / numProds;
+          valForProduct = rawPeriodAdjustedValue(o) / numProds;
         }
         
         return sum + valForProduct;
@@ -2118,9 +2163,10 @@ export default function App() {
     return { stageValues, total, emAberto, taxaConversao };
   }
 
-  const tvProductRows = allProducts.televisao.map(computeProductRow).filter((r) => r.hasAnyStageValue);
-  const digitalProductRows = allProducts.digital.map(computeProductRow).filter((r) => r.hasAnyStageValue);
-  const specialProductRows = allProducts.especiais.map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const productFilterMatches = (p) => dashboardProductFilter.length === 0 || dashboardProductFilter.includes(p);
+  const tvProductRows = allProducts.televisao.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const digitalProductRows = allProducts.digital.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const specialProductRows = allProducts.especiais.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
   const tvProductTotals = sumProductRows(tvProductRows);
   const digitalProductTotals = sumProductRows(digitalProductRows);
   const specialProductTotals = sumProductRows(specialProductRows);

@@ -227,19 +227,37 @@ export default function DashboardTab({
           <div
             className={
               "shrink-0 md:w-72 rounded-lg border p-4 flex flex-col items-center justify-center gap-1 " +
-              (metaAtingida ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200")
+              (dashboardProductFilter.length > 0
+                ? "bg-slate-50 border-slate-200"
+                : metaAtingida
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-rose-50 border-rose-200")
             }
           >
             <div className="text-sm font-bold text-slate-700">Meta</div>
-            <MetaGauge percent={visaoGeralAtingimentoPercent} positive={metaAtingida} />
-            <div className={"text-xl font-mono font-medium -mt-2 " + (metaAtingida ? "text-emerald-700" : "text-rose-700")}>
-              {formatBRL(faturadoMenosMeta)}
+            <MetaGauge
+              percent={dashboardProductFilter.length > 0 ? 0 : visaoGeralAtingimentoPercent}
+              positive={dashboardProductFilter.length > 0 ? false : metaAtingida}
+            />
+            <div
+              className={
+                "text-xl font-mono font-medium -mt-2 " +
+                (dashboardProductFilter.length > 0
+                  ? "text-slate-500"
+                  : metaAtingida
+                  ? "text-emerald-700"
+                  : "text-rose-700")
+              }
+            >
+              {formatBRL(dashboardProductFilter.length > 0 ? 0 : faturadoMenosMeta)}
             </div>
           </div>
         </div>
-        {!metaVisible && (
+        {(!metaVisible || dashboardProductFilter.length > 0) && (
           <div className="text-xs text-slate-400 mt-2">
-            Meta e GAP ficam zerados enquanto houver filtro de Produto, Agência ou Anunciante ativo.
+            {dashboardProductFilter.length > 0
+              ? "Os dados de Resultado ficam zerados enquanto houver filtro de Produto ativo (o faturamento não possui divisão por produto)."
+              : "Meta e GAP ficam zerados enquanto houver filtro de Agência ou Anunciante ativo."}
           </div>
         )}
       </div>
@@ -279,6 +297,7 @@ export default function DashboardTab({
         dashboardAdvertiserFilter={dashboardAdvertiserFilter}
         dashboardAgencyFilter={dashboardAgencyFilter}
         dashboardExecutivoFilter={dashboardExecutivoFilter}
+        dashboardProductFilter={dashboardProductFilter}
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
