@@ -1,7 +1,11 @@
 // Conexão com o Postgres. Lê DATABASE_URL do ambiente — já está definida
 // no docker-compose.yml do projeto:
 //   postgresql://postgres:redetv@db:5432/crm_redetv
-const { Pool } = require("pg");
+const { Pool, types } = require("pg");
+
+// OID 1082 = DATE no PostgreSQL. Retorna string no formato 'YYYY-MM-DD'
+// Previne conversão para JS Date (que gera UTC timestamp e problemas com inputs HTML5)
+types.setTypeParser(1082, (val) => val);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

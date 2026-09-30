@@ -182,8 +182,13 @@ router.post("/opportunities", async (req, res) => {
         id, body.title, body.executivo, executivoId, agencyIdToDb(body.agencyId), body.advertiserId,
         body.contactId || null, body.products || [], body.value || 0, body.stage || "Desenvolvimento",
         body.periodMonths || [], body.briefing || null, body.responsavel || "", body.tipo || "Novo",
-        body.versao || 1, body.status || "Pendente", body.observacao || "",
-        body.planDeliveryDate || null, body.createdAt || null, body.deliveryDate || null, body.expectedCloseDate || null,
+        body.versao || 1,
+        body.status !== undefined && body.status !== "" ? body.status : (body.solicitarPlanejamento ? "Pendente" : null),
+        body.observacao || "",
+        body.planDeliveryDate ? (String(body.planDeliveryDate).split("T")[0] || null) : null,
+        body.createdAt ? (String(body.createdAt).split("T")[0] || null) : null,
+        body.deliveryDate ? (String(body.deliveryDate).split("T")[0] || null) : null,
+        body.expectedCloseDate ? (String(body.expectedCloseDate).split("T")[0] || null) : null,
         body.productValues || '{}', JSON.stringify(body.attachments || [])
       ]
     );
@@ -279,12 +284,29 @@ router.put("/opportunities/:id", async (req, res) => {
   const values = [];
   let i = 1;
 
+  const DATE_FIELDS = ["createdAt", "deliveryDate", "expectedCloseDate", "planDeliveryDate"];
+  const NULLABLE_FK_FIELDS = ["contactId", "executivoId"];
+
   for (const [jsField, dbColumn] of Object.entries(FIELD_MAP)) {
     if (Object.prototype.hasOwnProperty.call(body, jsField)) {
       setClauses.push(`${dbColumn} = $${i}`);
       let val = body[jsField];
       if (jsField === "agencyId") {
         val = agencyIdToDb(val);
+      } else if (DATE_FIELDS.includes(jsField)) {
+        if (!val || (typeof val === "string" && !val.trim())) {
+          val = null;
+        } else if (typeof val === "string" && val.includes("T")) {
+          val = val.split("T")[0];
+        }
+      } else if (NULLABLE_FK_FIELDS.includes(jsField)) {
+        if (!val || (typeof val === "string" && !val.trim())) {
+          val = null;
+        }
+      } else if (jsField === "status") {
+        if (!val || (typeof val === "string" && !val.trim())) {
+          val = null;
+        }
       } else if (jsField === "attachments" || jsField === "productValues") {
         val = JSON.stringify(val || (jsField === "attachments" ? [] : {}));
       }

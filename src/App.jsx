@@ -36,6 +36,7 @@ import {
   HOBBIES,
   SPORTS,
   todayStr,
+  toInputDate,
   formatCNPJ,
   formatCelular,
   formatBRL,
@@ -1082,7 +1083,10 @@ export default function App() {
     const opp = opportunities.find((o) => o.id === oppId);
     if (!opp) return;
     setEditingOppId(opp.id);
-    const hasPlanningRequest = Boolean(opp.briefing || opp.deliveryDate || opp.stage === "Desenvolvimento");
+    const hasPlanningRequest = Boolean(
+      (opp.status && ["Pendente", "Desenvolvimento", "Aprovação"].includes(opp.status)) ||
+      opp.stage === "Desenvolvimento"
+    );
     setNewOppForm({
       title: opp.title || "",
       executivo: opp.executivo || "",
@@ -1093,11 +1097,12 @@ export default function App() {
       value: opp.value !== undefined && opp.value !== null ? String(opp.value) : "",
       periodMonths: opp.periodMonths || [],
       briefing: opp.briefing || "",
-      createdAt: opp.createdAt || todayStr(),
-      deliveryDate: opp.deliveryDate || "",
-      expectedCloseDate: opp.expectedCloseDate || "",
+      createdAt: toInputDate(opp.createdAt) || todayStr(),
+      deliveryDate: toInputDate(opp.deliveryDate),
+      expectedCloseDate: toInputDate(opp.expectedCloseDate),
       productValues: opp.productValues || {},
       stage: opp.stage || "Prospecção",
+      temperatura: ["Quente", "Morno", "Frio"].includes(opp.stage) ? opp.stage : "Morno",
       solicitarPlanejamento: hasPlanningRequest,
       attachments: opp.attachments || [],
     });
@@ -1153,9 +1158,26 @@ export default function App() {
       }
     }
 
-    const targetStage = newOppForm.solicitarPlanejamento
-      ? "Desenvolvimento"
-      : (newOppForm.temperatura || "Morno");
+    const existingOpp = editingOppId ? opportunities.find((o) => o.id === editingOppId) : null;
+
+    let targetStage;
+    let targetStatus;
+    let targetDeliveryDate;
+    let targetExpectedCloseDate;
+
+    if (newOppForm.solicitarPlanejamento) {
+      targetStage = "Desenvolvimento";
+      targetStatus = existingOpp?.status ? existingOpp.status : "Pendente";
+      targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || null;
+      targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || targetDeliveryDate || (existingOpp ? toInputDate(existingOpp.expectedCloseDate) : todayStr());
+    } else {
+      // Se não solicitar proposta ao planejamento, o card não deve ir para a aba Planejamento (status = null)
+      targetStage = newOppForm.temperatura || (existingOpp && existingOpp.stage !== "Desenvolvimento" ? existingOpp.stage : "Morno");
+      targetStatus = null;
+      // Preserva data de entrega histórica se já existir e o usuário não alterou, ou null se não houver
+      targetDeliveryDate = toInputDate(newOppForm.deliveryDate) || (existingOpp ? toInputDate(existingOpp.deliveryDate) : null);
+      targetExpectedCloseDate = toInputDate(newOppForm.expectedCloseDate) || (existingOpp ? toInputDate(existingOpp.expectedCloseDate) : todayStr());
+    }
 
     const payload = {
       title: newOppForm.title.trim(),
@@ -1167,10 +1189,11 @@ export default function App() {
       value: Number(newOppForm.value) || 0,
       periodMonths: newOppForm.periodMonths,
       briefing: newOppForm.solicitarPlanejamento ? newOppForm.briefing.trim() : (newOppForm.briefing || ""),
-      createdAt: newOppForm.createdAt,
-      deliveryDate: newOppForm.solicitarPlanejamento ? newOppForm.deliveryDate : "",
-      expectedCloseDate: newOppForm.expectedCloseDate || newOppForm.deliveryDate || todayStr(),
+      createdAt: toInputDate(newOppForm.createdAt) || (existingOpp ? toInputDate(existingOpp.createdAt) : todayStr()),
+      deliveryDate: targetDeliveryDate,
+      expectedCloseDate: targetExpectedCloseDate,
       stage: targetStage,
+      status: targetStatus,
       attachments: newOppForm.attachments || [],
     };
 
@@ -1920,7 +1943,7 @@ export default function App() {
   const planningGroups = [
     {
       label: "Em Aberto",
-      rows: sortByDeadline(opportunities.filter((o) => ["Pendente", "Desenvolvimento", "Aprovação"].includes(o.status))),
+      rows: sortByDeadline(opportunities.filter((o) => o.status && ["Pendente", "Desenvolvimento", "Aprovação"].includes(o.status))),
     },
     {
       label: "Entregue",
@@ -1929,7 +1952,7 @@ export default function App() {
     {
       label: "Finalizado",
       rows: opportunities
-        .filter((o) => PLANNING_FINALIZADA_ORDER.includes(o.status))
+        .filter((o) => o.status && PLANNING_FINALIZADA_ORDER.includes(o.status))
         .slice()
         .sort((a, b) => {
           const diff = PLANNING_FINALIZADA_ORDER.indexOf(a.status) - PLANNING_FINALIZADA_ORDER.indexOf(b.status);

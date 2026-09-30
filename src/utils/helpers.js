@@ -224,6 +224,13 @@ export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function toInputDate(d) {
+  if (!d) return "";
+  if (typeof d === "string") return d.split("T")[0];
+  if (d instanceof Date) return d.toISOString().split("T")[0];
+  return "";
+}
+
 export function toggleArrayValue(arr, val) {
   return arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val];
 }
@@ -389,16 +396,16 @@ export function normalizeOpportunity(o) {
     stage: STAGES.includes(stage) ? stage : "Desenvolvimento",
     periodMonths,
     briefing: o.briefing || "",
-    createdAt: o.createdAt || todayStr(),
-    deliveryDate: o.deliveryDate || "",
-    expectedCloseDate: o.expectedCloseDate || "",
+    createdAt: toInputDate(o.createdAt) || todayStr(),
+    deliveryDate: toInputDate(o.deliveryDate),
+    expectedCloseDate: toInputDate(o.expectedCloseDate),
     executivo: o.executivo || "",
     responsavel: o.responsavel || "",
     tipo: o.tipo || "Novo",
     versao: o.versao || 1,
-    status: o.status || "Pendente",
+    status: o.status || null,
     observacao: o.observacao || "",
-    planDeliveryDate: o.planDeliveryDate || "",
+    planDeliveryDate: toInputDate(o.planDeliveryDate),
     productValues: o.productValues || {},
   };
 }

@@ -444,7 +444,7 @@ export default function NewOpportunityModal({
                 <input
                   type="date"
                   required
-                  value={newOppForm.deliveryDate}
+                  value={newOppForm.deliveryDate || ""}
                   onChange={(e) => setNewOppForm({ ...newOppForm, deliveryDate: e.target.value })}
                   className="w-full border border-slate-200 rounded-md px-2.5 py-2 text-xs"
                 />
@@ -453,7 +453,7 @@ export default function NewOpportunityModal({
                 <label className="text-xs text-slate-700 mb-1 block font-semibold">Previsão fechamento</label>
                 <input
                   type="date"
-                  value={newOppForm.expectedCloseDate}
+                  value={newOppForm.expectedCloseDate || ""}
                   onChange={(e) => setNewOppForm({ ...newOppForm, expectedCloseDate: e.target.value })}
                   className="w-full border border-slate-200 rounded-md px-2.5 py-2 text-xs"
                 />
@@ -467,7 +467,7 @@ export default function NewOpportunityModal({
               <label className="text-xs text-slate-700 font-medium mb-1 block">Data de criação</label>
               <input
                 type="date"
-                value={newOppForm.createdAt}
+                value={newOppForm.createdAt || ""}
                 disabled
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-xs bg-slate-50 text-slate-500"
               />
@@ -477,7 +477,7 @@ export default function NewOpportunityModal({
               <input
                 type="date"
                 required
-                value={newOppForm.expectedCloseDate}
+                value={newOppForm.expectedCloseDate || ""}
                 onChange={(e) => setNewOppForm({ ...newOppForm, expectedCloseDate: e.target.value })}
                 className="w-full border border-slate-200 rounded-md px-3 py-2 text-xs"
               />

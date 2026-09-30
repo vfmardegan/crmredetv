@@ -42,6 +42,13 @@ function contactRowToJson(row) {
   };
 }
 
+function toDateOnly(d) {
+  if (!d) return null;
+  if (typeof d === "string") return d.split("T")[0];
+  if (d instanceof Date) return d.toISOString().split("T")[0];
+  return null;
+}
+
 function opportunityRowToJson(row) {
   // Desacoplamento dos anexos base64 ([BD-001]):
   // Remove o payload de dataUri do bootstrap para manter o JSON leve e performático.
@@ -68,15 +75,15 @@ function opportunityRowToJson(row) {
     stage: row.stage,
     periodMonths: row.period_months || [],
     briefing: row.briefing || "",
-    createdAt: row.data_criacao || "",
-    deliveryDate: row.data_entrega || "",
-    expectedCloseDate: row.previsao_fechamento || "",
+    createdAt: toDateOnly(row.data_criacao),
+    deliveryDate: toDateOnly(row.data_entrega),
+    expectedCloseDate: toDateOnly(row.previsao_fechamento),
     responsavel: row.responsavel || "",
     tipo: row.tipo || "Novo",
     versao: row.versao || 1,
-    status: row.status || "Pendente",
+    status: row.status || null,
     observacao: row.observacao || "",
-    planDeliveryDate: row.plan_delivery_date || "",
+    planDeliveryDate: toDateOnly(row.plan_delivery_date),
     winProbability: row.winProbability !== undefined ? row.winProbability : null,
     productValues: row.product_values || {},
     attachments: lightweightAttachments,
