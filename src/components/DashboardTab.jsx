@@ -136,10 +136,12 @@ export default function DashboardTab({
             const opt = advertiserFilterOptions.find((o) => o.value === v);
             return { label: "Anunciante: " + (opt ? opt.label : v), clear: () => setDashboardAdvertiserFilter(dashboardAdvertiserFilter.filter((x) => x !== v)) };
           }),
-          ...dashboardExecutivoFilter.map((v) => {
-            const ex = executivos.find((e) => e.id === v);
-            return { label: "Executivo: " + (ex ? ex.nome : v), clear: () => setDashboardExecutivoFilter(dashboardExecutivoFilter.filter((x) => x !== v)) };
-          }),
+          ...((userPerfil === "admin" || userPerfil === "diretor")
+            ? dashboardExecutivoFilter.map((v) => {
+                const ex = executivos.find((e) => e.id === v);
+                return { label: "Executivo: " + (ex ? ex.nome : v), clear: () => setDashboardExecutivoFilter(dashboardExecutivoFilter.filter((x) => x !== v)) };
+              })
+            : []),
         ].map((f, i) => (
           <span key={i} className="text-xs bg-slate-100 text-slate-600 pl-2 pr-1 py-1 rounded-md flex items-center gap-1">
             {f.label}

@@ -1694,19 +1694,37 @@ export default function App() {
       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
   }, [advertisers, clientSearchQuery, contactDaysFilter]);
 
+  const myExecId = useMemo(() => {
+    if (!user) return null;
+    if (user.executivo_id) return String(user.executivo_id);
+    const found = (executivos || []).find(
+      (e) =>
+        (e.nome && user.nome && e.nome.trim().toLowerCase() === user.nome.trim().toLowerCase()) ||
+        (e.email && user.email && e.email.trim().toLowerCase() === user.email.trim().toLowerCase())
+    );
+    return found ? String(found.id) : null;
+  }, [user, executivos]);
+
+  const effectiveDashboardExecutivoFilter = useMemo(() => {
+    if (user?.perfil === "executivo") {
+      return myExecId ? [myExecId] : [];
+    }
+    return dashboardExecutivoFilter;
+  }, [user?.perfil, myExecId, dashboardExecutivoFilter]);
+
   const executivoFilterSegmentos = useMemo(() => {
-    if (dashboardExecutivoFilter.length === 0) return null;
-    return Object.keys(segmentoExecutivo).filter((seg) => dashboardExecutivoFilter.includes(segmentoExecutivo[seg]));
-  }, [dashboardExecutivoFilter, segmentoExecutivo]);
+    if (effectiveDashboardExecutivoFilter.length === 0) return null;
+    return Object.keys(segmentoExecutivo).filter((seg) => effectiveDashboardExecutivoFilter.map(String).includes(String(segmentoExecutivo[seg])));
+  }, [effectiveDashboardExecutivoFilter, segmentoExecutivo]);
 
   const executivoFilterKeyAccountIds = useMemo(() => {
-    if (dashboardExecutivoFilter.length === 0) return [];
+    if (effectiveDashboardExecutivoFilter.length === 0) return [];
     const set = new Set();
-    dashboardExecutivoFilter.forEach((execId) => {
+    effectiveDashboardExecutivoFilter.forEach((execId) => {
       (executivoKeyAccounts[execId] || []).forEach((kaId) => set.add(kaId));
     });
     return Array.from(set);
-  }, [dashboardExecutivoFilter, executivoKeyAccounts]);
+  }, [effectiveDashboardExecutivoFilter, executivoKeyAccounts]);
 
   const executivoFilterKeyAccountClients = useMemo(() => {
     if (executivoFilterKeyAccountIds.length === 0) return [];
@@ -1719,9 +1737,9 @@ export default function App() {
   }, [executivoFilterKeyAccountClients]);
 
   const executivoFilterNames = useMemo(() => {
-    if (dashboardExecutivoFilter.length === 0) return [];
-    return executivos.filter((e) => dashboardExecutivoFilter.includes(e.id)).map((e) => e.nome);
-  }, [dashboardExecutivoFilter, executivos]);
+    if (effectiveDashboardExecutivoFilter.length === 0) return [];
+    return executivos.filter((e) => effectiveDashboardExecutivoFilter.map(String).includes(String(e.id))).map((e) => e.nome);
+  }, [effectiveDashboardExecutivoFilter, executivos]);
 
   const keyAccountExecByCodigo = useMemo(() => {
     const map = {};
@@ -1901,6 +1919,34 @@ export default function App() {
     .filter((a) => a.type === "Anunciante")
     .map((a) => ({ value: a.id, label: a.name }));
 
+  const dashboardAdvertiserFilterOptions = useMemo(() => {
+    if (user?.perfil === "executivo") {
+      const myKaSet = new Set((executivoKeyAccounts && myExecId && executivoKeyAccounts[myExecId]) || []);
+      const otherKaSet = new Set();
+      Object.entries(executivoKeyAccounts || {}).forEach(([exId, kaIds]) => {
+        if (String(exId) !== String(myExecId)) {
+          (kaIds || []).forEach((id) => otherKaSet.add(id));
+        }
+      });
+      const mySegs = Object.keys(segmentoExecutivo || {}).filter(
+        (seg) => String(segmentoExecutivo[seg]) === String(myExecId)
+      );
+
+      return (advertisers || [])
+        .filter((a) => {
+          if (a.type !== "Anunciante") return false;
+          if (myKaSet.has(a.id)) return true;
+          if (otherKaSet.has(a.id)) return false;
+          if (a.segmento && mySegs.some((s) => normalizeSegmentName(s) === normalizeSegmentName(a.segmento))) {
+            return true;
+          }
+          return false;
+        })
+        .map((a) => ({ value: a.id, label: a.name }));
+    }
+    return advertiserFilterOptions;
+  }, [user?.perfil, myExecId, executivoKeyAccounts, segmentoExecutivo, advertisers, advertiserFilterOptions]);
+
   const pipelineActiveFilters = [
     ...segmentFilter.map((v) => ({ type: "Segmento", label: v, clear: () => setSegmentFilter(segmentFilter.filter((x) => x !== v)) })),
     ...productFilter.map((v) => ({ type: "Produto", label: v, clear: () => setProductFilter(productFilter.filter((x) => x !== v)) })),
@@ -1924,9 +1970,9 @@ export default function App() {
       const adv = advertisers.find((a) => a.id === o.advertiserId);
       if (!adv || !segMatches(dashboardSegmentFilter, adv.segmento)) return false;
     }
-    if (dashboardExecutivoFilter.length > 0) {
+    if (effectiveDashboardExecutivoFilter.length > 0) {
       const kaOwnerExecId = keyAccountExecById[o.advertiserId] || (o.agencyId ? keyAccountExecById[o.agencyId] : null);
-      if (kaOwnerExecId && !dashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
+      if (kaOwnerExecId && !effectiveDashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
         return false;
       }
       const adv = clientByIdMap[o.advertiserId] || advertisers.find((a) => a.id === o.advertiserId);
@@ -2037,7 +2083,7 @@ export default function App() {
     const monthInScope = effectiveMonthsForResultado.includes(m);
     const hasActiveFilters =
       dashboardSegmentFilter.length > 0 ||
-      dashboardExecutivoFilter.length > 0 ||
+      effectiveDashboardExecutivoFilter.length > 0 ||
       dashboardAdvertiserFilter.length > 0;
 
     const efetivo = !monthInScope
@@ -2053,9 +2099,9 @@ export default function App() {
               if (!client) return false;
               if (dashboardSegmentFilter.length > 0 && !segMatches(dashboardSegmentFilter, client.segmento)) return false;
 
-              if (dashboardExecutivoFilter.length > 0) {
+              if (effectiveDashboardExecutivoFilter.length > 0) {
                 const kaOwnerExecId = keyAccountExecByCodigo[clientCod] || keyAccountExecById[client.id];
-                if (kaOwnerExecId && !dashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
+                if (kaOwnerExecId && !effectiveDashboardExecutivoFilter.map(String).includes(String(kaOwnerExecId))) {
                   return false;
                 }
                 const seg = clientSegmentByCodigo[clientCod] || client.segmento;
@@ -2081,8 +2127,8 @@ export default function App() {
 
     let meta = 0;
     if (monthInScope && metaVisible) {
-      if (dashboardExecutivoFilter.length > 0) {
-        dashboardExecutivoFilter.forEach((execId) => {
+      if (effectiveDashboardExecutivoFilter.length > 0) {
+        effectiveDashboardExecutivoFilter.forEach((execId) => {
           const execIdStr = String(execId);
           const execSegs = Object.keys(segmentoExecutivo).filter((seg) => String(segmentoExecutivo[seg]) === execIdStr);
           const execKaIds = executivoKeyAccounts[execId] || [];
@@ -2566,7 +2612,7 @@ export default function App() {
               setDashboardAgencyFilter={setDashboardAgencyFilter}
               dashboardAdvertiserFilter={dashboardAdvertiserFilter}
               setDashboardAdvertiserFilter={setDashboardAdvertiserFilter}
-              dashboardExecutivoFilter={dashboardExecutivoFilter}
+              dashboardExecutivoFilter={effectiveDashboardExecutivoFilter}
               setDashboardExecutivoFilter={setDashboardExecutivoFilter}
               dashboardYear={dashboardYear}
               setDashboardYear={setDashboardYear}
@@ -2574,7 +2620,7 @@ export default function App() {
               setDashboardMonths={setDashboardMonths}
               executivos={executivos}
               agencyFilterOptions={agencyFilterOptions}
-              advertiserFilterOptions={advertiserFilterOptions}
+              advertiserFilterOptions={dashboardAdvertiserFilterOptions}
               metaVisible={metaVisible}
               resumoAnoData={resumoAnoData}
               visaoGeralAtingimentoPercent={visaoGeralAtingimentoPercent}

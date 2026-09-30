@@ -195,8 +195,16 @@ export default function AdvertisersTab({
       return advertisers;
     }
 
+    const otherExecKeyAccountIds = new Set();
+    Object.entries(executivoKeyAccounts || {}).forEach(([exId, kaIds]) => {
+      if (String(exId) !== String(myExecId)) {
+        (kaIds || []).forEach((id) => otherExecKeyAccountIds.add(id));
+      }
+    });
+
     return advertisers.filter((a) => {
       if (myKeyAccountIds.has(a.id)) return true;
+      if (otherExecKeyAccountIds.has(a.id)) return false;
       if (a.segmento && mySegments.some((s) => normalizeSegmentName(s) === normalizeSegmentName(a.segmento))) {
         return true;
       }

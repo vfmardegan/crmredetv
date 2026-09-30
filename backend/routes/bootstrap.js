@@ -235,8 +235,44 @@ router.get("/bootstrap", async (req, res) => {
         !p.opportunity_id || allowedOppIds.has(p.opportunity_id)
       );
 
-      // 6. Faturamento Efetivo disponível para os relatórios da Visão Geral
-      filteredFaturamento = faturamentoRes.rows;
+      // Mapeamento de Key Accounts (por client_id e cliente_codigo) para resolução de precedência
+      const kaOwnerByClientId = {};
+      const kaOwnerByCodigo = {};
+      keyAccountsRes.rows.forEach((k) => {
+        kaOwnerByClientId[k.client_id] = k.executivo_id;
+      });
+      clientsRes.rows.forEach((c) => {
+        if (c.codigo && kaOwnerByClientId[c.id]) {
+          kaOwnerByCodigo[String(c.codigo).trim()] = kaOwnerByClientId[c.id];
+        }
+      });
+
+      // Mapeamento de segmento do cliente por código
+      const clientSegmentByCodigo = {};
+      clientsRes.rows.forEach((c) => {
+        if (c.codigo && c.segmento) {
+          clientSegmentByCodigo[String(c.codigo).trim()] = c.segmento;
+        }
+      });
+
+      // 6. Filtrar Faturamento Efetivo estritamente para os clientes da carteira permitida
+      filteredFaturamento = faturamentoRes.rows.filter((f) => {
+        const cod = String(f.cliente_codigo || "").trim();
+        if (!cod) return false;
+
+        const kaOwner = kaOwnerByCodigo[cod];
+        if (kaOwner) {
+          // Precedência absoluta da Key Account: pertence ao executivo que é dono da Key Account
+          return allowedExecIds.includes(kaOwner);
+        }
+
+        // Se não for Key Account de ninguém, verifica se o segmento pertence aos executivos permitidos
+        const seg = clientSegmentByCodigo[cod];
+        if (seg && allowedSegments.some((s) => s && s.trim().toLowerCase() === seg.trim().toLowerCase())) {
+          return true;
+        }
+        return false;
+      });
 
       // 7. Filtrar Metas
       filteredMetas = metasRes.rows.filter((m) => {
