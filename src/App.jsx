@@ -1780,6 +1780,43 @@ export default function App() {
       .map((e) => ({ value: e.id, label: e.nome }));
   }, [executivos, opportunities]);
 
+  const agencyFilterOptions = useMemo(() => [
+    { value: DIRECT_CLIENT_ID, label: DIRECT_CLIENT_OPTION.name },
+    ...advertisers.filter((a) => a.type === "Agência").map((a) => ({ value: a.id, label: a.name })),
+  ], [advertisers]);
+
+  const advertiserFilterOptions = useMemo(() => advertisers
+    .filter((a) => a.type === "Anunciante")
+    .map((a) => ({ value: a.id, label: a.name })), [advertisers]);
+
+  const dashboardAdvertiserFilterOptions = useMemo(() => {
+    if (user?.perfil === "executivo") {
+      const myKaSet = new Set((executivoKeyAccounts && myExecId && executivoKeyAccounts[myExecId]) || []);
+      const otherKaSet = new Set();
+      Object.entries(executivoKeyAccounts || {}).forEach(([exId, kaIds]) => {
+        if (String(exId) !== String(myExecId)) {
+          (kaIds || []).forEach((id) => otherKaSet.add(id));
+        }
+      });
+      const mySegs = Object.keys(segmentoExecutivo || {}).filter(
+        (seg) => String(segmentoExecutivo[seg]) === String(myExecId)
+      );
+
+      return (advertisers || [])
+        .filter((a) => {
+          if (a.type !== "Anunciante") return false;
+          if (myKaSet.has(a.id)) return true;
+          if (otherKaSet.has(a.id)) return false;
+          if (a.segmento && mySegs.some((s) => normalizeSegmentName(s) === normalizeSegmentName(a.segmento))) {
+            return true;
+          }
+          return false;
+        })
+        .map((a) => ({ value: a.id, label: a.name }));
+    }
+    return advertiserFilterOptions;
+  }, [user?.perfil, myExecId, executivoKeyAccounts, segmentoExecutivo, advertisers, advertiserFilterOptions]);
+
   if (!token || !user) {
     return (
       <Login
@@ -1910,42 +1947,6 @@ export default function App() {
     },
   ];
 
-  const agencyFilterOptions = [
-    { value: DIRECT_CLIENT_ID, label: DIRECT_CLIENT_OPTION.name },
-    ...advertisers.filter((a) => a.type === "Agência").map((a) => ({ value: a.id, label: a.name })),
-  ];
-
-  const advertiserFilterOptions = advertisers
-    .filter((a) => a.type === "Anunciante")
-    .map((a) => ({ value: a.id, label: a.name }));
-
-  const dashboardAdvertiserFilterOptions = useMemo(() => {
-    if (user?.perfil === "executivo") {
-      const myKaSet = new Set((executivoKeyAccounts && myExecId && executivoKeyAccounts[myExecId]) || []);
-      const otherKaSet = new Set();
-      Object.entries(executivoKeyAccounts || {}).forEach(([exId, kaIds]) => {
-        if (String(exId) !== String(myExecId)) {
-          (kaIds || []).forEach((id) => otherKaSet.add(id));
-        }
-      });
-      const mySegs = Object.keys(segmentoExecutivo || {}).filter(
-        (seg) => String(segmentoExecutivo[seg]) === String(myExecId)
-      );
-
-      return (advertisers || [])
-        .filter((a) => {
-          if (a.type !== "Anunciante") return false;
-          if (myKaSet.has(a.id)) return true;
-          if (otherKaSet.has(a.id)) return false;
-          if (a.segmento && mySegs.some((s) => normalizeSegmentName(s) === normalizeSegmentName(a.segmento))) {
-            return true;
-          }
-          return false;
-        })
-        .map((a) => ({ value: a.id, label: a.name }));
-    }
-    return advertiserFilterOptions;
-  }, [user?.perfil, myExecId, executivoKeyAccounts, segmentoExecutivo, advertisers, advertiserFilterOptions]);
 
   const pipelineActiveFilters = [
     ...segmentFilter.map((v) => ({ type: "Segmento", label: v, clear: () => setSegmentFilter(segmentFilter.filter((x) => x !== v)) })),
