@@ -2049,9 +2049,12 @@ export default function App() {
     return true;
   }
 
+  const OPEN_STAGES = ["Desenvolvimento", "Frio", "Morno", "Quente"];
+
   const allDashboardOpps = opportunities.filter(matchesDashboardFilters);
-  const pipelineTotalGeralValor = allDashboardOpps.reduce((s, o) => s + oppProductValue(o, dashboardProductFilter), 0);
-  const pipelineTotalGeralCount = allDashboardOpps.length;
+  const allDashboardOpenOpps = allDashboardOpps.filter((o) => OPEN_STAGES.includes(o.stage));
+  const pipelineTotalAbertoValor = allDashboardOpenOpps.reduce((s, o) => s + oppProductValue(o, dashboardProductFilter), 0);
+  const pipelineTotalAbertoCount = allDashboardOpenOpps.length;
 
   const dashboardOpps = opportunities.filter((o) => {
     if (!matchesDashboardFilters(o)) return false;
@@ -2064,10 +2067,10 @@ export default function App() {
 
   const periodLabel =
     dashboardMonths.length === 0
-      ? `Pipeline ${dashboardYear}`
+      ? `Pipeline ${dashboardYear} Aberto`
       : dashboardMonths.length === 1
-      ? `Pipeline ${dashboardMonths[0]}/${dashboardYear}`
-      : `Pipeline ${dashboardYear} (${dashboardMonths.length} meses)`;
+      ? `Pipeline ${dashboardMonths[0]}/${dashboardYear} Aberto`
+      : `Pipeline ${dashboardYear} (${dashboardMonths.length} meses) Aberto`;
 
   function oppProductValue(o, productFilter = dashboardProductFilter) {
     const totalVal = Number(o.value) || 0;
@@ -2258,8 +2261,9 @@ export default function App() {
       ];
 
   const pipelineTotal = dashboardOpps.reduce((s, o) => s + periodAdjustedValue(o), 0);
-  const pipelinePeriodoValor = pipelineTotal;
-  const pipelinePeriodoCount = dashboardOpps.length;
+  const dashboardOpenOpps = dashboardOpps.filter((o) => OPEN_STAGES.includes(o.stage));
+  const pipelinePeriodoValor = dashboardOpenOpps.reduce((s, o) => s + periodAdjustedValue(o), 0);
+  const pipelinePeriodoCount = dashboardOpenOpps.length;
   const emDesenvolvimentoValor = sumByStage("Desenvolvimento");
   const frioValor = sumByStage("Frio");
   const mornoValor = sumByStage("Morno");
@@ -2792,8 +2796,8 @@ export default function App() {
               visaoGeralFaturamentoEfetivoTotal={visaoGeralFaturamentoEfetivoTotal}
               visaoGeralFaturamentoPotencialTotal={visaoGeralFaturamentoPotencialTotal}
               visaoGeralFaturamentoData={visaoGeralFaturamentoData}
-              pipelineTotalGeralValor={pipelineTotalGeralValor}
-              pipelineTotalGeralCount={pipelineTotalGeralCount}
+              pipelineTotalGeralValor={pipelineTotalAbertoValor}
+              pipelineTotalGeralCount={pipelineTotalAbertoCount}
               pipelinePeriodoValor={pipelinePeriodoValor}
               pipelinePeriodoCount={pipelinePeriodoCount}
               periodLabel={periodLabel}
