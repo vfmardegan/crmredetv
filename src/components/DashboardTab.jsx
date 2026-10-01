@@ -67,6 +67,11 @@ export default function DashboardTab({
   visaoGeralFaturamentoPotencialTotal,
   visaoGeralFaturamentoData,
   pipelineTotal,
+  pipelineTotalGeralValor,
+  pipelineTotalGeralCount,
+  pipelinePeriodoValor,
+  pipelinePeriodoCount,
+  periodLabel,
   dashboardOpps,
   emDesenvolvimentoValor,
   emAbertoValor,
@@ -92,13 +97,15 @@ export default function DashboardTab({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 flex-wrap">
-        <MultiSelectFilterButton
-          label="Segmento"
-          options={SEGMENTOS.map((s) => ({ value: s, label: s }))}
-          selected={dashboardSegmentFilter}
-          onChange={setDashboardSegmentFilter}
-        />
+      {/* Menu Superior de Filtros Congelado (Sticky Top) */}
+      <div className="sticky -top-3 sm:-top-6 md:-top-8 z-30 bg-slate-50/95 backdrop-blur-md pt-2 pb-3.5 border-b border-slate-200/80 -mx-3 sm:-mx-6 md:-mx-8 px-3 sm:px-6 md:px-8 shadow-xs flex flex-col gap-2.5 transition-all">
+        <div className="flex items-center gap-2 flex-wrap">
+          <MultiSelectFilterButton
+            label="Segmento"
+            options={SEGMENTOS.map((s) => ({ value: s, label: s }))}
+            selected={dashboardSegmentFilter}
+            onChange={setDashboardSegmentFilter}
+          />
         <MultiSelectFilterButton
           label="Produtos"
           options={ALL_PRODUCTS.map((p) => ({ value: p, label: p }))}
@@ -199,6 +206,7 @@ export default function DashboardTab({
           )}
         </div>
       </div>
+    </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">
@@ -303,13 +311,46 @@ export default function DashboardTab({
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label="Pipeline Total" value={formatBRL(pipelineTotal)} sub={`${dashboardOpps.length} oportunidades`} />
-        <KpiCard label="Em Desenvolvimento" value={formatBRL(emDesenvolvimentoValor)} sub={`${countByStage("Desenvolvimento")} oportunidades`} />
-        <KpiCard label="Em Aberto" value={formatBRL(emAbertoValor)} sub={`${emAbertoCount} · frio, morno e quente`} />
-        <KpiCard label="Estimativa de Faturamento" value={formatBRL(estimativaFaturamento)} sub="0% frio + 10% morno + 70% quente" />
-        <KpiCard label="Fechados" value={formatBRL(fechadosValor)} sub={`${countByStage("Fechado")} oportunidades`} />
-        <KpiCard label="Negados" value={formatBRL(negadosValor)} sub={`${countByStage("Negado")} oportunidades`} />
-        <KpiCard label="Taxa de Conversão" value={`${Math.round(taxaConversao * 100)}%`} sub={`${countByStage("Fechado")} fechadas · ${countByStage("Negado")} negadas`} />
+        <KpiCard
+          label="Pipeline Total"
+          value={formatBRL(pipelineTotalGeralValor ?? pipelineTotal)}
+          sub={`${pipelineTotalGeralCount ?? dashboardOpps.length} oportunidades`}
+        />
+        <KpiCard
+          label={periodLabel || `Pipeline ${dashboardYear}`}
+          value={formatBRL(pipelinePeriodoValor ?? pipelineTotal)}
+          sub={`${pipelinePeriodoCount ?? dashboardOpps.length} oportunidades`}
+        />
+        <KpiCard
+          label="Em Desenvolvimento"
+          value={formatBRL(emDesenvolvimentoValor)}
+          sub={`${countByStage("Desenvolvimento")} oportunidades`}
+        />
+        <KpiCard
+          label="Em Aberto"
+          value={formatBRL(emAbertoValor)}
+          sub={`${emAbertoCount} · frio, morno e quente`}
+        />
+        <KpiCard
+          label="Estimativa de Faturamento"
+          value={formatBRL(estimativaFaturamento)}
+          sub="0% frio + 10% morno + 70% quente"
+        />
+        <KpiCard
+          label="Fechados"
+          value={formatBRL(fechadosValor)}
+          sub={`${countByStage("Fechado")} oportunidades`}
+        />
+        <KpiCard
+          label="Negados"
+          value={formatBRL(negadosValor)}
+          sub={`${countByStage("Negado")} oportunidades`}
+        />
+        <KpiCard
+          label="Taxa de Conversão"
+          value={`${Math.round(taxaConversao * 100)}%`}
+          sub={`${countByStage("Fechado")} fechadas · ${countByStage("Negado")} negadas`}
+        />
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">

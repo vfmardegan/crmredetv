@@ -2049,14 +2049,24 @@ export default function App() {
     return true;
   }
 
+  const allDashboardOpps = opportunities.filter(matchesDashboardFilters);
+  const pipelineTotalGeralValor = allDashboardOpps.reduce((s, o) => s + oppProductValue(o, dashboardProductFilter), 0);
+  const pipelineTotalGeralCount = allDashboardOpps.length;
+
   const dashboardOpps = opportunities.filter((o) => {
     if (!matchesDashboardFilters(o)) return false;
+    const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
     if (dashboardMonths.length > 0) {
-      const monthsInScope = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
-      return monthsInScope.some((m) => dashboardMonths.includes(m.split("-")[1]));
+      return monthsInYear.some((m) => dashboardMonths.includes(m.split("-")[1]));
     }
-    return true;
+    return monthsInYear.length > 0;
   });
+
+  const periodLabel = useMemo(() => {
+    if (dashboardMonths.length === 0) return `Pipeline ${dashboardYear}`;
+    if (dashboardMonths.length === 1) return `Pipeline ${dashboardMonths[0]}/${dashboardYear}`;
+    return `Pipeline ${dashboardYear} (${dashboardMonths.length} meses)`;
+  }, [dashboardYear, dashboardMonths]);
 
   function oppProductValue(o, productFilter = dashboardProductFilter) {
     const totalVal = Number(o.value) || 0;
@@ -2086,9 +2096,10 @@ export default function App() {
   }
 
   function rawPeriodAdjustedValue(o) {
-    if (dashboardMonths.length === 0) return Number(o.value) || 0;
     const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
-    const matched = monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]));
+    const matched = dashboardMonths.length > 0
+      ? monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]))
+      : monthsInYear;
     return rawMonthlyValueOfOpp(o) * matched.length;
   }
 
@@ -2099,9 +2110,10 @@ export default function App() {
   }
 
   function periodAdjustedValue(o) {
-    if (dashboardMonths.length === 0) return oppProductValue(o, dashboardProductFilter);
     const monthsInYear = (o.periodMonths || []).filter((m) => m.startsWith(dashboardYear + "-"));
-    const matched = monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]));
+    const matched = dashboardMonths.length > 0
+      ? monthsInYear.filter((m) => dashboardMonths.includes(m.split("-")[1]))
+      : monthsInYear;
     return monthlyValueOfOpp(o) * matched.length;
   }
 
@@ -2245,6 +2257,8 @@ export default function App() {
       ];
 
   const pipelineTotal = dashboardOpps.reduce((s, o) => s + periodAdjustedValue(o), 0);
+  const pipelinePeriodoValor = pipelineTotal;
+  const pipelinePeriodoCount = dashboardOpps.length;
   const emDesenvolvimentoValor = sumByStage("Desenvolvimento");
   const frioValor = sumByStage("Frio");
   const mornoValor = sumByStage("Morno");
@@ -2777,6 +2791,11 @@ export default function App() {
               visaoGeralFaturamentoEfetivoTotal={visaoGeralFaturamentoEfetivoTotal}
               visaoGeralFaturamentoPotencialTotal={visaoGeralFaturamentoPotencialTotal}
               visaoGeralFaturamentoData={visaoGeralFaturamentoData}
+              pipelineTotalGeralValor={pipelineTotalGeralValor}
+              pipelineTotalGeralCount={pipelineTotalGeralCount}
+              pipelinePeriodoValor={pipelinePeriodoValor}
+              pipelinePeriodoCount={pipelinePeriodoCount}
+              periodLabel={periodLabel}
               pipelineTotal={pipelineTotal}
               dashboardOpps={dashboardOpps}
               emDesenvolvimentoValor={emDesenvolvimentoValor}
