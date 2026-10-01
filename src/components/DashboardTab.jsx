@@ -104,8 +104,7 @@ export default function DashboardTab({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Menu Superior de Filtros Congelado (Sticky Top) */}
-      <div className="sticky -top-3 sm:-top-6 md:-top-8 z-30 bg-slate-50/95 backdrop-blur-md pt-2 pb-3.5 border-b border-slate-200/80 -mx-3 sm:-mx-6 md:-mx-8 px-3 sm:px-6 md:px-8 shadow-xs flex flex-col gap-2.5 transition-all">
+      <div className="sticky top-0 -mt-3 sm:-mt-6 md:-mt-8 -mx-3 sm:-mx-6 md:-mx-8 px-3 sm:px-6 md:px-8 pt-3 sm:pt-4 pb-3.5 z-30 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs flex flex-col gap-2.5">
         <div className="flex items-center gap-2 flex-wrap">
           <MultiSelectFilterButton
             label="Segmento"

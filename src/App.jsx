@@ -2476,7 +2476,7 @@ export default function App() {
   ].filter(Boolean);
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row">
+    <div className="w-full h-screen h-[100dvh] bg-slate-50 text-slate-900 flex flex-col md:flex-row overflow-hidden">
       {/* Mobile Drawer (Menu Lateral deslizante para smartphone) */}
       {mobileMenuOpen && (
         <div
@@ -2557,7 +2557,7 @@ export default function App() {
       )}
 
       {/* Desktop Sidebar (100% inalterada em telas desktop md:) */}
-      <aside className="hidden md:flex w-56 shrink-0 bg-slate-900 text-slate-100 flex-col">
+      <aside className="hidden md:flex w-56 shrink-0 bg-slate-900 text-slate-100 flex-col h-full">
         <div className="p-5 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
@@ -2605,7 +2605,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 flex flex-col">
+      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <div className="px-4 py-3 sm:px-6 md:px-8 md:py-5 border-b border-slate-200 bg-white flex items-center justify-between relative shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -2737,7 +2737,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="p-3 sm:p-6 md:p-8 overflow-y-auto flex-1">
+        <div className="p-3 sm:p-6 md:p-8 overflow-y-auto flex-1 min-h-0">
           {errorMsg && (
             <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-md mb-6 flex items-center justify-between text-sm">
               <span>{errorMsg}</span>
