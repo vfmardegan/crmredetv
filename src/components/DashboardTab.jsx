@@ -95,6 +95,13 @@ export default function DashboardTab({
   segmentoExecutivo = {},
   executivoKeyAccounts = {},
 }) {
+  const periodSubtitle =
+    dashboardMonths.length === 0
+      ? dashboardYear
+      : dashboardMonths.length === 1
+      ? `${dashboardMonths[0]}/${dashboardYear}`
+      : `${dashboardYear} · ${dashboardMonths.length} meses`;
+
   return (
     <div className="flex flex-col gap-6">
       {/* Menu Superior de Filtros Congelado (Sticky Top) */}
@@ -354,7 +361,7 @@ export default function DashboardTab({
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
-        <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Total</div>
+        <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Total <span className="text-slate-400 font-normal">({periodSubtitle})</span></div>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={stageData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
@@ -376,7 +383,7 @@ export default function DashboardTab({
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
-        <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Mensal <span className="text-slate-400 font-normal">({dashboardYear})</span></div>
+        <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Mensal <span className="text-slate-400 font-normal">({periodSubtitle})</span></div>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={monthlyOpenData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
