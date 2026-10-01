@@ -2062,11 +2062,12 @@ export default function App() {
     return monthsInYear.length > 0;
   });
 
-  const periodLabel = useMemo(() => {
-    if (dashboardMonths.length === 0) return `Pipeline ${dashboardYear}`;
-    if (dashboardMonths.length === 1) return `Pipeline ${dashboardMonths[0]}/${dashboardYear}`;
-    return `Pipeline ${dashboardYear} (${dashboardMonths.length} meses)`;
-  }, [dashboardYear, dashboardMonths]);
+  const periodLabel =
+    dashboardMonths.length === 0
+      ? `Pipeline ${dashboardYear}`
+      : dashboardMonths.length === 1
+      ? `Pipeline ${dashboardMonths[0]}/${dashboardYear}`
+      : `Pipeline ${dashboardYear} (${dashboardMonths.length} meses)`;
 
   function oppProductValue(o, productFilter = dashboardProductFilter) {
     const totalVal = Number(o.value) || 0;
