@@ -585,7 +585,8 @@ export default function AdvertisersTab({
               title="Atualizar ou sincronizar base de clientes via planilha CSV"
             >
               <Upload size={14} />
-              <span>Atualizar Base (CSV)</span>
+              <span className="hidden sm:inline">Atualizar Base (CSV)</span>
+              <span className="sm:hidden">CSV</span>
             </button>
           )}
 

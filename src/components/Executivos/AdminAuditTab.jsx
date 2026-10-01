@@ -16,14 +16,14 @@ export default function AdminAuditTab() {
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 p-5 mt-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h3 className="font-semibold text-slate-800 text-sm">Histórico de Alterações de Acesso</h3>
         <input
           type="text"
           placeholder="Buscar por usuário, ação ou alvo..."
           value={auditSearch}
           onChange={(e) => setAuditSearch(e.target.value)}
-          className="border border-slate-200 rounded-md px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-slate-400"
+          className="border border-slate-200 rounded-md px-3 py-1.5 text-xs w-full sm:w-64 focus:outline-none focus:border-slate-400"
         />
       </div>
 

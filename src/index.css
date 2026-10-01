@@ -57,3 +57,12 @@ html, body, #root {
 .always-visible-scrollbar::-webkit-scrollbar-thumb:active {
   background-color: #475569;
 }
+
+/* Previne zoom automático do iOS Safari em inputs com font-size menor que 16px */
+@media screen and (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

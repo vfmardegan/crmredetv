@@ -2467,7 +2467,7 @@ export default function App() {
         >
           {/* Backdrop escurecido com fechamento ao toque */}
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
 

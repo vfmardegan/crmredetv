@@ -318,7 +318,7 @@ export default function Login({ onLoginSuccess }) {
 
       {showLgpdModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 text-slate-300 shadow-2xl relative animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 text-slate-300 shadow-2xl relative animate-in fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <ShieldAlert size={18} className="text-rose-500" />
@@ -357,7 +357,7 @@ export default function Login({ onLoginSuccess }) {
 
       {showForgotModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 text-slate-300 shadow-2xl relative animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 text-slate-300 shadow-2xl relative animate-in fade-in max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                 <KeyRound size={18} className="text-amber-400" />

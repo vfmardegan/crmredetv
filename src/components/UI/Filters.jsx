@@ -29,7 +29,7 @@ export function MultiSelectFilterButton({ label, options, selected, onChange, se
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 w-64 bg-white border border-slate-200 rounded-md shadow-sm p-2 max-h-80 overflow-y-auto">
+          <div className="absolute z-20 mt-1 right-0 sm:right-auto sm:left-0 w-64 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-md shadow-sm p-2 max-h-80 overflow-y-auto">
             <input
               type="text"
               autoFocus
@@ -92,7 +92,7 @@ export function PeriodFilterButton({ selected, onChange }) {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 w-72 bg-white border border-slate-200 rounded-md shadow-sm p-2">
+          <div className="absolute z-20 mt-1 right-0 sm:right-auto sm:left-0 w-72 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-md shadow-sm p-2">
             {selected.length > 0 && (
               <button
                 type="button"

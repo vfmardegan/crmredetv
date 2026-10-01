@@ -287,19 +287,19 @@ export default function PipelineKanbanTab({
                             <button
                               type="button"
                               onClick={() => openEditOpportunity(o.id)}
-                              className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
+                              className="text-slate-400 hover:text-slate-700 p-1.5 rounded transition-colors"
                               title="Editar Oportunidade"
                             >
-                              <Pencil size={12} />
+                              <Pencil size={13} />
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => setSelectedOppId(o.id)}
-                            className="text-slate-400 hover:text-rose-600 p-0.5 rounded transition-colors"
+                            className="text-slate-400 hover:text-rose-600 p-1.5 rounded transition-colors"
                             title="Ver card completo"
                           >
-                            <Maximize2 size={12} />
+                            <Maximize2 size={13} />
                           </button>
                         </div>
                       </div>

@@ -341,7 +341,7 @@ export default function AdminUsersTab({
               }
             }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-4 shadow-xl border border-slate-200 animate-slide-up"
+            className="bg-white rounded-lg p-6 w-full max-w-md flex flex-col gap-4 shadow-xl border border-slate-200 animate-slide-up max-h-[92vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h2 id="modal-create-user-title" className="font-semibold text-slate-800">
