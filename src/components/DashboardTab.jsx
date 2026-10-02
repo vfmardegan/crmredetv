@@ -20,6 +20,7 @@ import {
   YEARS,
   MONTHS,
   formatBRL,
+  formatMillionsBRL,
   toggleArrayValue,
   STAGES
 } from "../utils/helpers";
@@ -57,6 +58,28 @@ function RotatedTick90({ x, y, payload }) {
       </text>
     </g>
   );
+}
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = React.useState(
+    () => typeof window !== "undefined" && window.innerWidth < breakpoint
+  );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = (e) => setIsMobile(e.matches);
+    setIsMobile(mql.matches);
+    if (mql.addEventListener) {
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    } else {
+      mql.addListener(onChange);
+      return () => mql.removeListener(onChange);
+    }
+  }, [breakpoint]);
+
+  return isMobile;
 }
 
 export default function DashboardTab({
@@ -114,6 +137,8 @@ export default function DashboardTab({
   segmentoExecutivo = {},
   executivoKeyAccounts = {},
 }) {
+  const isMobile = useIsMobile(768);
+
   const periodSubtitle =
     dashboardMonths.length === 0
       ? dashboardYear
@@ -395,7 +420,7 @@ export default function DashboardTab({
           <BarChart data={stageData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
             <XAxis dataKey="stage" interval={0} height={105} tick={<RotatedTick90 />} />
-            <Tooltip formatter={(v) => formatBRL(v)} />
+            <Tooltip formatter={(v) => (isMobile ? `${formatMillionsBRL(v)} (${formatBRL(v)})` : formatBRL(v))} />
             <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
               {stageData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={STAGE_CHART_COLORS[entry.stage] || "#94a3b8"} />
@@ -403,8 +428,8 @@ export default function DashboardTab({
               <LabelList
                 dataKey="valor"
                 position="top"
-                formatter={(v) => formatBRL(v)}
-                style={{ fontSize: 13, fill: "#334155" }}
+                formatter={(v) => (isMobile ? formatMillionsBRL(v) : formatBRL(v))}
+                style={{ fontSize: isMobile ? 11 : 13, fill: "#334155" }}
               />
             </Bar>
           </BarChart>
@@ -422,7 +447,12 @@ export default function DashboardTab({
             <Bar dataKey="Frio" stackId="pipeline" fill="#3b82f6" name="Frio" />
             <Bar dataKey="Morno" stackId="pipeline" fill="#eab308" name="Morno" />
             <Bar dataKey="Quente" stackId="pipeline" fill="#f97316" name="Quente" radius={[4, 4, 0, 0]}>
-              <LabelList dataKey="total" position="top" formatter={(v) => formatBRL(v)} style={{ fontSize: 12, fill: "#334155" }} />
+              <LabelList
+                dataKey="total"
+                position="top"
+                formatter={(v) => (isMobile ? (v > 0 ? formatMillionsBRL(v) : "") : formatBRL(v))}
+                style={{ fontSize: isMobile ? 10 : 12, fill: "#334155" }}
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>

@@ -172,6 +172,17 @@ export function formatBRL(v) {
   }).format(v || 0);
 }
 
+export function formatMillionsBRL(v) {
+  if (!v || v === 0) return "R$ 0M";
+  const millions = v / 1000000;
+  if (millions < 0.01) return "< R$ 0,01M";
+  const formatted = Number(millions.toFixed(2)).toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  return `R$ ${formatted}M`;
+}
+
 export function formatThousandsBR(digits) {
   if (!digits) return "";
   return Number(digits).toLocaleString("pt-BR");
