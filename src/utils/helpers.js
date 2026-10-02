@@ -51,7 +51,14 @@ export const TV_PRODUCTS = [
   "Vizinhos em Guerra",
 ];
 
-export const SPECIAL_PROJECTS = ["Bezona", "Eleições 2026", "Liga Monstro", "Liga Universitária"];
+export const SPECIAL_PROJECTS = [
+  "Bezona",
+  "Eleições 2026",
+  "Eventos Proprietários",
+  "Liga Monstro",
+  "Liga Universitária",
+  "Ravenna R10",
+];
 
 export const DIGITAL_PRODUCTS = [
   "Esportes",

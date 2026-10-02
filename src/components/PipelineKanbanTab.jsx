@@ -13,6 +13,7 @@ import {
 import { MultiSelectFilterButton, PeriodFilterButton } from "./UI/Filters";
 
 export default function PipelineKanbanTab({
+  productFilterOptions,
   segmentFilter,
   setSegmentFilter,
   productFilter,
@@ -192,7 +193,7 @@ export default function PipelineKanbanTab({
         />
         <MultiSelectFilterButton
           label="Produtos"
-          options={ALL_PRODUCTS.map((p) => ({ value: p, label: p }))}
+          options={(productFilterOptions || ALL_PRODUCTS).map((p) => ({ value: p, label: p }))}
           selected={productFilter}
           onChange={setProductFilter}
         />

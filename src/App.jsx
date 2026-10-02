@@ -1901,6 +1901,20 @@ export default function App() {
     return advertiserFilterOptions;
   }, [user?.perfil, myExecId, executivoKeyAccounts, segmentoExecutivo, advertisers, advertiserFilterOptions]);
 
+  const productFilterOptions = useMemo(() => {
+    const set = new Set();
+    if (allProducts) {
+      (allProducts.televisao || []).forEach((p) => p && set.add(String(p).trim()));
+      (allProducts.digital || []).forEach((p) => p && set.add(String(p).trim()));
+      (allProducts.especiais || []).forEach((p) => p && set.add(String(p).trim()));
+    }
+    (opportunities || []).forEach((o) => {
+      (o.products || []).forEach((p) => p && set.add(String(p).trim()));
+    });
+    ALL_PRODUCTS.forEach((p) => set.add(p));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [allProducts, opportunities]);
+
   if (!token || !user) {
     return (
       <Login
@@ -2352,9 +2366,27 @@ export default function App() {
   }
 
   const productFilterMatches = (p) => dashboardProductFilter.length === 0 || dashboardProductFilter.includes(p);
-  const tvProductRows = allProducts.televisao.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
-  const digitalProductRows = allProducts.digital.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
-  const specialProductRows = allProducts.especiais.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const knownProducts = new Set([
+    ...(allProducts?.televisao || []),
+    ...(allProducts?.digital || []),
+    ...(allProducts?.especiais || []),
+  ]);
+  const extraProducts = [];
+  opportunities.forEach((o) => {
+    (o.products || []).forEach((p) => {
+      const trimmed = p && String(p).trim();
+      if (trimmed && !knownProducts.has(trimmed) && !extraProducts.includes(trimmed)) {
+        extraProducts.push(trimmed);
+      }
+    });
+  });
+  const specialList = [
+    ...(allProducts?.especiais || []),
+    ...extraProducts,
+  ];
+  const tvProductRows = (allProducts?.televisao || []).filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const digitalProductRows = (allProducts?.digital || []).filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
+  const specialProductRows = specialList.filter(productFilterMatches).map(computeProductRow).filter((r) => r.hasAnyStageValue);
   const tvProductTotals = sumProductRows(tvProductRows);
   const digitalProductTotals = sumProductRows(digitalProductRows);
   const specialProductTotals = sumProductRows(specialProductRows);
@@ -2800,6 +2832,7 @@ export default function App() {
           <React.Suspense fallback={<TabLoadingFallback />}>
           {view === "dashboard" && hasPermission(user.perfil, "can_view_dashboard") && (
             <DashboardTab
+              productFilterOptions={productFilterOptions}
               dashboardSegmentFilter={dashboardSegmentFilter}
               setDashboardSegmentFilter={setDashboardSegmentFilter}
               dashboardProductFilter={dashboardProductFilter}
@@ -2858,6 +2891,7 @@ export default function App() {
 
           {view === "pipeline" && (
             <PipelineKanbanTab
+              productFilterOptions={productFilterOptions}
               segmentFilter={segmentFilter}
               setSegmentFilter={setSegmentFilter}
               productFilter={productFilter}

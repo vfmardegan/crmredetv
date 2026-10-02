@@ -8,7 +8,7 @@ const CATEGORIES = [
   { key: "especiais", label: "Projetos Especiais",  icon: Star,   color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-200",  dot: "bg-amber-500" },
 ];
 
-export default function AdminProductsTab() {
+export default function AdminProductsTab({ onRefreshData }) {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("televisao");
@@ -46,6 +46,7 @@ export default function AdminProductsTab() {
     try {
       await apiPut(`/admin/produtos/${p.id}`, { ativo: nextAtivo });
       load();
+      onRefreshData?.();
     } catch (err) {
       setError(err.message || "Erro ao atualizar status do produto.");
     } finally {
@@ -62,6 +63,7 @@ export default function AdminProductsTab() {
       await apiPost("/admin/produtos", { nome: newName.trim(), categoria: activeCategory });
       setNewName("");
       load();
+      onRefreshData?.();
     } catch (err) {
       setError(err.message || "Erro ao adicionar produto.");
     } finally {
@@ -77,6 +79,7 @@ export default function AdminProductsTab() {
       await apiPut(`/admin/produtos/${id}`, { nome: editingName.trim() });
       setEditingId(null);
       load();
+      onRefreshData?.();
     } catch (err) {
       setError(err.message || "Erro ao atualizar produto.");
     } finally {
@@ -91,6 +94,7 @@ export default function AdminProductsTab() {
     try {
       await apiDelete(`/admin/produtos/${id}`);
       load();
+      onRefreshData?.();
     } catch (err) {
       setError(err.message || "Erro ao remover produto.");
     } finally {

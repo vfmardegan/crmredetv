@@ -164,7 +164,7 @@ export default function AccessTab({ executivos, currentUser, proposalTemplates, 
       ) : adminSubTab === "metas" ? (
         <AdminMetasTab onRefreshData={onRefreshData} />
       ) : adminSubTab === "produtos" ? (
-        <AdminProductsTab />
+        <AdminProductsTab onRefreshData={onRefreshData} />
       ) : adminSubTab === "propostas" ? (
         <AdminProposalsTab proposalTemplates={proposalTemplates} onRefresh={onRefreshProposals} />
       ) : (

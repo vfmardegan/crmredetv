@@ -83,6 +83,7 @@ function useIsMobile(breakpoint = 768) {
 }
 
 export default function DashboardTab({
+  productFilterOptions,
   dashboardSegmentFilter,
   setDashboardSegmentFilter,
   dashboardProductFilter,
@@ -161,7 +162,7 @@ export default function DashboardTab({
             />
             <MultiSelectFilterButton
               label="Produtos"
-              options={ALL_PRODUCTS.map((p) => ({ value: p, label: p }))}
+              options={(productFilterOptions || ALL_PRODUCTS).map((p) => ({ value: p, label: p }))}
               selected={dashboardProductFilter}
               onChange={setDashboardProductFilter}
             />
