@@ -2276,7 +2276,7 @@ export default function App() {
   const taxaConversao = fechadosValor + negadosValor > 0 ? fechadosValor / (fechadosValor + negadosValor) : 0;
 
   const stageData = STAGES.map((s) => ({
-    stage: s.length > 12 ? s.slice(0, 12) + "…" : s,
+    stage: s,
     valor: sumByStage(s),
   }));
 

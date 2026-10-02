@@ -40,6 +40,25 @@ const STAGE_CHART_COLORS = {
   "Cancelado":        "#64748b",
 };
 
+function RotatedTick90({ x, y, payload }) {
+  if (!payload || payload.value === undefined) return null;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={6}
+        y={0}
+        textAnchor="start"
+        dominantBaseline="central"
+        fill="#64748b"
+        fontSize={11}
+        transform="rotate(90)"
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
+
 export default function DashboardTab({
   dashboardSegmentFilter,
   setDashboardSegmentFilter,
@@ -104,70 +123,74 @@ export default function DashboardTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <MultiSelectFilterButton
-            label="Segmento"
-            options={SEGMENTOS.map((s) => ({ value: s, label: s }))}
-            selected={dashboardSegmentFilter}
-            onChange={setDashboardSegmentFilter}
-          />
-        <MultiSelectFilterButton
-          label="Produtos"
-          options={ALL_PRODUCTS.map((p) => ({ value: p, label: p }))}
-          selected={dashboardProductFilter}
-          onChange={setDashboardProductFilter}
-        />
-        <MultiSelectFilterButton
-          label="Agência"
-          options={agencyFilterOptions}
-          selected={dashboardAgencyFilter}
-          onChange={setDashboardAgencyFilter}
-        />
-        <MultiSelectFilterButton
-          label="Anunciante"
-          options={advertiserFilterOptions}
-          selected={dashboardAdvertiserFilter}
-          onChange={setDashboardAdvertiserFilter}
-        />
-        {(userPerfil === "admin" || userPerfil === "diretor") && (
-          <MultiSelectFilterButton
-            label="Executivo"
-            options={executivos.map((ex) => ({ value: ex.id, label: ex.nome }))}
-            selected={dashboardExecutivoFilter}
-            onChange={setDashboardExecutivoFilter}
-          />
-        )}
-        {[
-          ...dashboardSegmentFilter.map((v) => ({ label: "Segmento: " + v, clear: () => setDashboardSegmentFilter(dashboardSegmentFilter.filter((x) => x !== v)) })),
-          ...dashboardProductFilter.map((v) => ({ label: "Produto: " + v, clear: () => setDashboardProductFilter(dashboardProductFilter.filter((x) => x !== v)) })),
-          ...dashboardAgencyFilter.map((v) => {
-            const opt = agencyFilterOptions.find((o) => o.value === v);
-            return { label: "Agência: " + (opt ? opt.label : v), clear: () => setDashboardAgencyFilter(dashboardAgencyFilter.filter((x) => x !== v)) };
-          }),
-          ...dashboardAdvertiserFilter.map((v) => {
-            const opt = advertiserFilterOptions.find((o) => o.value === v);
-            return { label: "Anunciante: " + (opt ? opt.label : v), clear: () => setDashboardAdvertiserFilter(dashboardAdvertiserFilter.filter((x) => x !== v)) };
-          }),
-          ...((userPerfil === "admin" || userPerfil === "diretor")
-            ? dashboardExecutivoFilter.map((v) => {
-                const ex = executivos.find((e) => e.id === v);
-                return { label: "Executivo: " + (ex ? ex.nome : v), clear: () => setDashboardExecutivoFilter(dashboardExecutivoFilter.filter((x) => x !== v)) };
-              })
-            : []),
-        ].map((f, i) => (
-          <span key={i} className="text-xs bg-slate-100 text-slate-600 pl-2 pr-1 py-1 rounded-md flex items-center gap-1">
-            {f.label}
-            <button type="button" onClick={f.clear} className="hover:text-slate-900">
-              <X size={11} />
-            </button>
-          </span>
-        ))}
-      </div>
+      <div className="flex flex-col gap-3">
+        {/* Filtros Gerais */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-slate-400">Geral</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <MultiSelectFilterButton
+              label="Segmento"
+              options={SEGMENTOS.map((s) => ({ value: s, label: s }))}
+              selected={dashboardSegmentFilter}
+              onChange={setDashboardSegmentFilter}
+            />
+            <MultiSelectFilterButton
+              label="Produtos"
+              options={ALL_PRODUCTS.map((p) => ({ value: p, label: p }))}
+              selected={dashboardProductFilter}
+              onChange={setDashboardProductFilter}
+            />
+            <MultiSelectFilterButton
+              label="Agência"
+              options={agencyFilterOptions}
+              selected={dashboardAgencyFilter}
+              onChange={setDashboardAgencyFilter}
+            />
+            <MultiSelectFilterButton
+              label="Anunciante"
+              options={advertiserFilterOptions}
+              selected={dashboardAdvertiserFilter}
+              onChange={setDashboardAdvertiserFilter}
+            />
+            {(userPerfil === "admin" || userPerfil === "diretor") && (
+              <MultiSelectFilterButton
+                label="Executivo"
+                options={executivos.map((ex) => ({ value: ex.id, label: ex.nome }))}
+                selected={dashboardExecutivoFilter}
+                onChange={setDashboardExecutivoFilter}
+              />
+            )}
+            {[
+              ...dashboardSegmentFilter.map((v) => ({ label: "Segmento: " + v, clear: () => setDashboardSegmentFilter(dashboardSegmentFilter.filter((x) => x !== v)) })),
+              ...dashboardProductFilter.map((v) => ({ label: "Produto: " + v, clear: () => setDashboardProductFilter(dashboardProductFilter.filter((x) => x !== v)) })),
+              ...dashboardAgencyFilter.map((v) => {
+                const opt = agencyFilterOptions.find((o) => o.value === v);
+                return { label: "Agência: " + (opt ? opt.label : v), clear: () => setDashboardAgencyFilter(dashboardAgencyFilter.filter((x) => x !== v)) };
+              }),
+              ...dashboardAdvertiserFilter.map((v) => {
+                const opt = advertiserFilterOptions.find((o) => o.value === v);
+                return { label: "Anunciante: " + (opt ? opt.label : v), clear: () => setDashboardAdvertiserFilter(dashboardAdvertiserFilter.filter((x) => x !== v)) };
+              }),
+              ...((userPerfil === "admin" || userPerfil === "diretor")
+                ? dashboardExecutivoFilter.map((v) => {
+                    const ex = executivos.find((e) => e.id === v);
+                    return { label: "Executivo: " + (ex ? ex.nome : v), clear: () => setDashboardExecutivoFilter(dashboardExecutivoFilter.filter((x) => x !== v)) };
+                  })
+                : []),
+            ].map((f, i) => (
+              <span key={i} className="text-xs bg-slate-100 text-slate-600 pl-2 pr-1 py-1 rounded-md flex items-center gap-1">
+                {f.label}
+                <button type="button" onClick={f.clear} className="hover:text-slate-900">
+                  <X size={11} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
 
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 w-16 shrink-0">Ano</span>
+        {/* Filtro Ano */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-xs font-medium text-slate-400">Ano</span>
           <div className="flex flex-wrap gap-1.5">
             {YEARS.map((y) => (
               <button
@@ -184,8 +207,21 @@ export default function DashboardTab({
             ))}
           </div>
         </div>
-        <div className="flex items-start gap-2 flex-wrap sm:flex-nowrap">
-          <span className="text-xs text-slate-400 w-16 shrink-0 pt-1.5">Meses</span>
+
+        {/* Filtro Mês */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-400">Mês</span>
+            {dashboardMonths.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDashboardMonths([])}
+                className="text-xs text-rose-600 hover:text-rose-700"
+              >
+                Limpar meses
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {MONTHS.map((m) => (
               <label
@@ -205,14 +241,8 @@ export default function DashboardTab({
               </label>
             ))}
           </div>
-          {dashboardMonths.length > 0 && (
-            <button type="button" onClick={() => setDashboardMonths([])} className="text-xs text-rose-600 hover:text-rose-700 self-start pt-1.5">
-              Limpar meses
-            </button>
-          )}
         </div>
       </div>
-    </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">
@@ -287,10 +317,10 @@ export default function DashboardTab({
             Faturamento {formatBRL(visaoGeralFaturamentoEfetivoTotal)} · Pipeline {formatBRL(visaoGeralFaturamentoPotencialTotal)}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={visaoGeralFaturamentoData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 13, fill: "#64748b" }} />
+            <XAxis dataKey="month" interval={0} height={45} tick={<RotatedTick90 />} />
             <Tooltip content={<ResultadoMensalTooltip />} />
             <Legend wrapperStyle={{ fontSize: 13 }} />
             <Bar dataKey="Faturamento" stackId="fat" fill="#059669" name="Faturamento" />
@@ -361,10 +391,10 @@ export default function DashboardTab({
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Total <span className="text-slate-400 font-normal">({periodSubtitle})</span></div>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={320}>
           <BarChart data={stageData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-            <XAxis dataKey="stage" tick={{ fontSize: 13, fill: "#64748b" }} />
+            <XAxis dataKey="stage" interval={0} height={105} tick={<RotatedTick90 />} />
             <Tooltip formatter={(v) => formatBRL(v)} />
             <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
               {stageData.map((entry, index) => (
@@ -383,10 +413,10 @@ export default function DashboardTab({
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
         <div className="text-sm font-medium text-slate-700 mb-3">Pipeline Mensal <span className="text-slate-400 font-normal">({periodSubtitle})</span></div>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={260}>
           <BarChart data={monthlyOpenData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 13, fill: "#64748b" }} />
+            <XAxis dataKey="month" interval={0} height={45} tick={<RotatedTick90 />} />
             <Tooltip content={<StageStackTooltip />} />
             <Legend wrapperStyle={{ fontSize: 13 }} />
             <Bar dataKey="Frio" stackId="pipeline" fill="#3b82f6" name="Frio" />
@@ -404,12 +434,12 @@ export default function DashboardTab({
           <table className="w-full text-xs border-collapse whitespace-nowrap">
             <thead>
               <tr className="text-slate-500 border-b border-slate-200">
-                <th className="py-2 pr-3 font-medium text-left">Produto</th>
+                <th className="py-2 pr-3 font-medium text-left">Programa</th>
+                <th className="py-2 px-3 font-medium text-right">Valor Total</th>
+                <th className="py-2 px-3 font-medium text-right">Em Aberto</th>
                 {STAGES.map((s) => (
                   <th key={s} className="py-2 px-3 font-medium text-right">{s}</th>
                 ))}
-                <th className="py-2 px-3 font-medium text-right">Total</th>
-                <th className="py-2 px-3 font-medium text-right">Em Aberto</th>
                 <th className="py-2 pl-3 font-medium text-right">Taxa Conv.</th>
               </tr>
             </thead>
@@ -423,10 +453,11 @@ export default function DashboardTab({
                 "Digital": "bg-violet-50 text-violet-800 border-violet-200",
                 "Projetos Especiais": "bg-amber-50 text-amber-800 border-amber-200",
               };
+              const colSpanTotal = STAGES.length + 4;
               return (
                 <tbody key={group.label}>
                   <tr>
-                    <td colSpan={10} className="pt-4 pb-0 pl-0">
+                    <td colSpan={colSpanTotal} className="pt-4 pb-0 pl-0">
                       <div className={"text-sm font-bold uppercase tracking-wide px-3 py-2 rounded-md border " + headerStyles[group.label]}>
                         {group.label}
                       </div>
@@ -434,29 +465,29 @@ export default function DashboardTab({
                   </tr>
                   {group.rows.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="py-2 text-slate-300">Nenhuma oportunidade nesse grupo, no período filtrado.</td>
+                      <td colSpan={colSpanTotal} className="py-2 text-slate-300">Nenhuma oportunidade nesse grupo, no período filtrado.</td>
                     </tr>
                   )}
                   {group.rows.map((r) => (
                     <tr key={r.product} className="border-b border-slate-50 text-slate-600">
-                      <td className="py-1.5 pr-3 text-slate-700">{r.product}</td>
+                      <td className="py-1.5 pr-3 text-slate-700 font-medium">{r.product}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-900">{r.total > 0 ? formatBRL(r.total) : "—"}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-medium text-slate-700">{r.emAberto > 0 ? formatBRL(r.emAberto) : "—"}</td>
                       {STAGES.map((s) => (
                         <td key={s} className="py-1.5 px-3 text-right font-mono">{r.stageValues[s] > 0 ? formatBRL(r.stageValues[s]) : "—"}</td>
                       ))}
-                      <td className="py-1.5 px-3 text-right font-mono text-slate-800">{r.total > 0 ? formatBRL(r.total) : "—"}</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{r.emAberto > 0 ? formatBRL(r.emAberto) : "—"}</td>
                       <td className="py-1.5 pl-3 text-right font-mono">{r.taxaConversao === null ? "—" : `${Math.round(r.taxaConversao * 100)}%`}</td>
                     </tr>
                   ))}
                   {group.rows.length > 0 && (
-                    <tr className="border-t border-slate-200 font-medium text-slate-800">
-                      <td className="py-1.5 pr-3">Total {group.label}</td>
+                    <tr className="border-t border-slate-200 font-medium text-slate-800 bg-slate-50/50">
+                      <td className="py-1.5 pr-3 font-bold">Total {group.label}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">{group.totals.total > 0 ? formatBRL(group.totals.total) : "—"}</td>
+                      <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800">{group.totals.emAberto > 0 ? formatBRL(group.totals.emAberto) : "—"}</td>
                       {STAGES.map((s) => (
                         <td key={s} className="py-1.5 px-3 text-right font-mono">{group.totals.stageValues[s] > 0 ? formatBRL(group.totals.stageValues[s]) : "—"}</td>
                       ))}
-                      <td className="py-1.5 px-3 text-right font-mono">{group.totals.total > 0 ? formatBRL(group.totals.total) : "—"}</td>
-                      <td className="py-1.5 px-3 text-right font-mono">{group.totals.emAberto > 0 ? formatBRL(group.totals.emAberto) : "—"}</td>
-                      <td className="py-1.5 pl-3 text-right font-mono">{group.totals.taxaConversao === null ? "—" : `${Math.round(group.totals.taxaConversao * 100)}%`}</td>
+                      <td className="py-1.5 pl-3 text-right font-mono font-bold">{group.totals.taxaConversao === null ? "—" : `${Math.round(group.totals.taxaConversao * 100)}%`}</td>
                     </tr>
                   )}
                 </tbody>

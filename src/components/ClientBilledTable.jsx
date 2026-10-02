@@ -399,7 +399,7 @@ export default function ClientBilledTable({
       {/* Janela de rolagem: ~15 linhas visíveis na tela inicial com scroll vertical e lateral */}
       <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-inner">
         <div className="max-h-[590px] overflow-y-auto overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse whitespace-nowrap min-w-[700px]">
+          <table className="w-full text-xs text-left border-collapse whitespace-nowrap min-w-[460px] sm:min-w-[700px]">
             {/* Cabeçalho Fixo (Sticky Top) */}
             <thead className="sticky top-0 bg-slate-100 z-10 text-slate-700 font-semibold border-b border-slate-200 shadow-sm">
               <tr>
@@ -407,21 +407,21 @@ export default function ClientBilledTable({
 
                 <th
                   onClick={() => handleSort("codigo")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors w-24 text-center font-mono"
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors w-24 text-center font-mono hidden sm:table-cell"
                 >
                   Código {getSortIcon("codigo")}
                 </th>
 
                 <th
                   onClick={() => handleSort("nomeFantasia")}
-                  className="py-2.5 px-4 cursor-pointer hover:bg-slate-200 transition-colors min-w-[260px]"
+                  className="py-2.5 px-4 cursor-pointer hover:bg-slate-200 transition-colors min-w-[200px] sm:min-w-[260px]"
                 >
                   Nome Fantasia {getSortIcon("nomeFantasia")}
                 </th>
 
                 <th
                   onClick={() => handleSort("type")}
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors text-center w-28"
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-200 transition-colors text-center w-28 hidden sm:table-cell"
                 >
                   Tipo {getSortIcon("type")}
                 </th>
@@ -470,7 +470,7 @@ export default function ClientBilledTable({
                       {idx + 1}
                     </td>
 
-                    <td className="py-2 px-3 text-center font-mono text-slate-500 font-medium">
+                    <td className="py-2 px-3 text-center font-mono text-slate-500 font-medium hidden sm:table-cell">
                       {row.codigo}
                     </td>
 
@@ -487,7 +487,7 @@ export default function ClientBilledTable({
                       </div>
                     </td>
 
-                    <td className="py-2 px-3 text-center">
+                    <td className="py-2 px-3 text-center hidden sm:table-cell">
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${
                           row.type === "Agência"
@@ -516,11 +516,14 @@ export default function ClientBilledTable({
               <tfoot className="sticky bottom-0 bg-slate-100 z-10 font-bold text-slate-800 border-t-2 border-slate-300 shadow-sm">
                 <tr>
                   <td className="py-2.5 px-3 text-center text-slate-400 font-mono">Σ</td>
-                  <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-500">
+                  <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-500 hidden sm:table-cell">
                     {sortedRows.length} clientes
                   </td>
-                  <td colSpan={3} className="py-2.5 px-4 text-left font-bold text-slate-800">
+                  <td colSpan={3} className="py-2.5 px-4 text-left font-bold text-slate-800 hidden sm:table-cell">
                     TOTAL DO PERÍODO SELECIONADO
+                  </td>
+                  <td colSpan={2} className="py-2.5 px-4 text-left font-bold text-slate-800 sm:hidden">
+                    TOTAL ({sortedRows.length} clientes)
                   </td>
                   <td className="py-2.5 px-5 text-right font-mono text-sm font-extrabold text-emerald-800 bg-emerald-100/70 border-l border-emerald-200">
                     {formatBRL(totalGeral)}
