@@ -10,6 +10,7 @@ export default defineConfig({
     allowedHosts: true // Permite conexões de qualquer host externo (ex: DNS público da AWS)
   },
   build: {
+    emptyOutDir: false,
     rollupOptions: {
       output: {
         entryFileNames: `assets/[name]-[hash].js`,

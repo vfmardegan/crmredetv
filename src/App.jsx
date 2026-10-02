@@ -67,14 +67,43 @@ import {
   AnyClientSearchField
 } from "./components/UI/SearchFields";
 
-const DashboardTab = React.lazy(() => import("./components/DashboardTab"));
-const PipelineKanbanTab = React.lazy(() => import("./components/PipelineKanbanTab"));
-const PlanningTab = React.lazy(() => import("./components/PlanningTab"));
-const AdvertisersTab = React.lazy(() => import("./components/AdvertisersTab"));
-const ContactsTab = React.lazy(() => import("./components/ContactsTab"));
-const ProposalsTab = React.lazy(() => import("./components/ProposalsTab"));
-const ExecutivosTab = React.lazy(() => import("./components/ExecutivosTab"));
-const AccessTab = React.lazy(() => import("./components/AccessTab"));
+function lazyWithRetry(componentImport) {
+  return React.lazy(async () => {
+    const pageHasBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem("crm_chunk_retry_refreshed") || "false"
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem("crm_chunk_retry_refreshed", "false");
+      return component;
+    } catch (error) {
+      if (!pageHasBeenForceRefreshed) {
+        window.sessionStorage.setItem("crm_chunk_retry_refreshed", "true");
+        window.location.reload();
+        return { default: () => null };
+      }
+      throw error;
+    }
+  });
+}
+
+// Handler global para erros de carregamento de novos chunks após deploys
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", (event) => {
+    event.preventDefault();
+    window.location.reload();
+  });
+}
+
+const DashboardTab = lazyWithRetry(() => import("./components/DashboardTab"));
+const PipelineKanbanTab = lazyWithRetry(() => import("./components/PipelineKanbanTab"));
+const PlanningTab = lazyWithRetry(() => import("./components/PlanningTab"));
+const AdvertisersTab = lazyWithRetry(() => import("./components/AdvertisersTab"));
+const ContactsTab = lazyWithRetry(() => import("./components/ContactsTab"));
+const ProposalsTab = lazyWithRetry(() => import("./components/ProposalsTab"));
+const ExecutivosTab = lazyWithRetry(() => import("./components/ExecutivosTab"));
+const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
 
 function TabLoadingFallback() {
   return (
