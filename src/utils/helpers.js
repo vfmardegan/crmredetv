@@ -173,14 +173,11 @@ export function formatBRL(v) {
 }
 
 export function formatMillionsBRL(v) {
-  if (!v || v === 0) return "R$ 0M";
-  const millions = v / 1000000;
-  if (millions < 0.01) return "< R$ 0,01M";
-  const formatted = Number(millions.toFixed(2)).toLocaleString("pt-BR", {
-    minimumFractionDigits: 0,
+  const millions = (v || 0) / 1000000;
+  return millions.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return `R$ ${formatted}M`;
 }
 
 export function formatThousandsBR(digits) {

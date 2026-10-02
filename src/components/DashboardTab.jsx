@@ -420,7 +420,7 @@ export default function DashboardTab({
           <BarChart data={stageData} margin={{ top: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" vertical={false} />
             <XAxis dataKey="stage" interval={0} height={105} tick={<RotatedTick90 />} />
-            <Tooltip formatter={(v) => (isMobile ? `${formatMillionsBRL(v)} (${formatBRL(v)})` : formatBRL(v))} />
+            <Tooltip formatter={(v) => formatBRL(v)} />
             <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
               {stageData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={STAGE_CHART_COLORS[entry.stage] || "#94a3b8"} />
@@ -434,6 +434,11 @@ export default function DashboardTab({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        {isMobile && (
+          <div className="text-xs text-slate-400 mt-2">
+            Valores em milhões de reais.
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
@@ -456,6 +461,11 @@ export default function DashboardTab({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+        {isMobile && (
+          <div className="text-xs text-slate-400 mt-2">
+            Valores em milhões de reais.
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-5">
