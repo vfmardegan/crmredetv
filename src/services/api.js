@@ -94,7 +94,77 @@ export async function iaSummarize(advertiserId, interactionNote, history, intera
   return apiPost("/ia/summarize", { advertiserId, interactionNote, history, interactionId });
 }
 
-export async function iaTranscribeAudio(audioBase64, mimeType) {
+export async function iaTranscribeAudio(audioSource, mimeType) {
+  // 1. Tenta obter credenciais autenticadas do Whisper via GET leve (permitido pelo CloudFront WAF)
+  let whisperConfig = null;
+  try {
+    whisperConfig = await apiGet("/ia/whisper-config");
+  } catch (cfgErr) {
+    console.warn("Falha ao obter whisper-config:", cfgErr);
+  }
+
+  if (whisperConfig && whisperConfig.apiKey) {
+    let fileBlob = audioSource;
+    if (typeof audioSource === "string") {
+      const base64Data = audioSource.includes(";base64,")
+        ? audioSource.split(";base64,").pop()
+        : audioSource;
+      const binaryStr = atob(base64Data);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      fileBlob = new Blob([bytes], { type: mimeType || "audio/webm" });
+    }
+
+    let ext = "mp3";
+    const lowerMime = (mimeType || "").toLowerCase();
+    if (lowerMime.includes("webm")) ext = "webm";
+    else if (lowerMime.includes("mp4") || lowerMime.includes("m4a") || lowerMime.includes("aac")) ext = "m4a";
+    else if (lowerMime.includes("wav")) ext = "wav";
+    else if (lowerMime.includes("ogg")) ext = "ogg";
+
+    const formData = new FormData();
+    formData.append("file", fileBlob, `audio.${ext}`);
+    formData.append("model", whisperConfig.model || "whisper-1");
+    formData.append("language", whisperConfig.language || "pt");
+    formData.append("temperature", "0.2");
+
+    const openAiRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${whisperConfig.apiKey}`,
+      },
+      body: formData,
+    });
+
+    const responseData = await openAiRes.json().catch(() => ({}));
+
+    if (!openAiRes.ok) {
+      if (
+        responseData?.error?.code === "credit_balance_exhausted" ||
+        responseData?.error?.type === "insufficient_quota"
+      ) {
+        throw new Error("Saldo de créditos esgotado na OpenAI.");
+      }
+      throw new Error(responseData?.error?.message || `Erro da OpenAI: ${openAiRes.status}`);
+    }
+
+    return {
+      transcription: (responseData.text || "").trim(),
+    };
+  }
+
+  // Fallback para rota proxy do backend caso whisperConfig falhe
+  let audioBase64 = audioSource;
+  if (typeof audioSource !== "string") {
+    audioBase64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(audioSource);
+    });
+  }
   return apiPost("/ia/transcribe", { audioBase64, mimeType });
 }
 

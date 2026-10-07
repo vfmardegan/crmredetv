@@ -114,6 +114,20 @@ Responda apenas com um JSON válido, sem blocos de código markdown ou texto exp
   }
 });
 
+// GET /ia/whisper-config — retorna configuração para transcrição direta via OpenAI Whisper no cliente (bypass WAF)
+router.get("/ia/whisper-config", requirePermission("can_record_audio"), (req, res) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(503).json({
+      error: "O serviço de transcrição OpenAI Whisper não está configurado (chave OPENAI_API_KEY ausente no servidor).",
+    });
+  }
+  res.json({
+    apiKey: process.env.OPENAI_API_KEY,
+    model: "whisper-1",
+    language: "pt",
+  });
+});
+
 // POST /ia/transcribe — transcreve áudios com alta precisão usando OpenAI Whisper
 router.post("/ia/transcribe", requirePermission("can_record_audio"), async (req, res) => {
   const { audioBase64, mimeType } = req.body;

@@ -86,8 +86,7 @@ export default function AudioRecorder({ onTranscribeComplete, onError }) {
   async function processAudioBlob(blob, mimeType) {
     setLoading(true);
     try {
-      const base64 = await blobToBase64(blob);
-      const result = await iaTranscribeAudio(base64, mimeType);
+      const result = await iaTranscribeAudio(blob, mimeType);
       if (onTranscribeComplete) {
         onTranscribeComplete(result);
       }
@@ -114,10 +113,10 @@ export default function AudioRecorder({ onTranscribeComplete, onError }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limite de 15MB
-    const MAX_SIZE = 15 * 1024 * 1024;
+    // Limite de 25MB (limite suportado pela API do Whisper)
+    const MAX_SIZE = 25 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      if (onError) onError("O arquivo de áudio excede o limite máximo de 15 MB. Por favor, envie um trecho menor ou áudio comprimido.");
+      if (onError) onError("O arquivo de áudio excede o limite máximo de 25 MB do Whisper. Por favor, envie um trecho menor ou áudio comprimido.");
       e.target.value = "";
       return;
     }
