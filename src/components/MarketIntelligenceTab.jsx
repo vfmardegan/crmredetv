@@ -43,42 +43,72 @@ export default function MarketIntelligenceTab({
     loadNews();
   }, []);
 
-  // Determina os segmentos pertencentes ao usuário logado
+  // Permissão total: Especialistas, Diretores e Administradores veem todo o mercado
+  const isFullAccess = !currentUser || ["admin", "diretor", "especialista"].includes(currentUser.perfil);
+
+  // Determina os segmentos pertencentes à carteira do executivo
   const mySegments = useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.perfil === "admin" || currentUser.perfil === "diretor") {
-      return []; // Admins/Diretores veem tudo por padrão
-    }
+    if (!currentUser || isFullAccess) return [];
     const execIdStr = String(currentUser.executivo_id || currentUser.id || "");
     return Object.keys(segmentoExecutivo || {}).filter(
       (seg) => String(segmentoExecutivo[seg]) === execIdStr
     );
-  }, [currentUser, segmentoExecutivo]);
+  }, [currentUser, isFullAccess, segmentoExecutivo]);
 
-  // Contagem de notícias por segmento
+  // Função auxiliar para identificar notícias gerais de agências
+  function isAgencyNews(item) {
+    if (!item) return false;
+    const seg = (item.segmento_crm || "").toLowerCase();
+    if (seg.includes("agência") || seg.includes("agencias")) return true;
+    if ((!item.anunciante_mencionado || item.anunciante_mencionado === "N/A") && item.agencia_mencionada && item.agencia_mencionada !== "N/A") {
+      return true;
+    }
+    if (Array.isArray(item.tags) && item.tags.some(t => t.toLowerCase().includes("agência") || t.toLowerCase().includes("agencias"))) {
+      return true;
+    }
+    return false;
+  }
+
+  // Base de notícias aplicável ao usuário
+  // Especialistas e Administradores -> Todas as notícias
+  // Executivos -> Apenas sua carteira de segmentos + notícias gerais de agências
+  const scopedNews = useMemo(() => {
+    if (isFullAccess) return news;
+    return news.filter((item) => mySegments.includes(item.segmento_crm) || isAgencyNews(item));
+  }, [news, isFullAccess, mySegments]);
+
+  // Contagem de notícias por segmento dentro do escopo permitido
   const segmentCounts = useMemo(() => {
     const counts = {};
-    for (const item of news) {
+    for (const item of scopedNews) {
       const seg = item.segmento_crm || "Outros";
       counts[seg] = (counts[seg] || 0) + 1;
     }
     return counts;
-  }, [news]);
+  }, [scopedNews]);
 
-  // Contagem para "Meus Segmentos"
-  const myNewsCount = useMemo(() => {
-    if (mySegments.length === 0) return 0;
-    return news.filter((item) => mySegments.includes(item.segmento_crm)).length;
-  }, [news, mySegments]);
+  // Segmentos disponíveis para pílulas
+  // Especialistas e Administradores -> Todos os segmentos mapeados
+  // Executivos -> Apenas os seus segmentos + agências
+  const availableSegments = useMemo(() => {
+    if (isFullAccess) {
+      return Object.keys(segmentCounts);
+    }
+    return Object.keys(segmentCounts).filter(
+      (seg) => mySegments.includes(seg) || seg.toLowerCase().includes("agência") || seg.toLowerCase().includes("agencias")
+    );
+  }, [isFullAccess, segmentCounts, mySegments]);
 
   // Filtra as notícias com base nas seleções atuais
   const filteredNews = useMemo(() => {
-    return news.filter((item) => {
+    return scopedNews.filter((item) => {
       // 1. Filtro de segmento
-      if (selectedSegment === "my") {
-        if (!mySegments.includes(item.segmento_crm)) return false;
-      } else if (selectedSegment !== "all") {
-        if (item.segmento_crm !== selectedSegment) return false;
+      if (selectedSegment !== "all") {
+        if (selectedSegment === "agencias") {
+          if (!isAgencyNews(item)) return false;
+        } else if (item.segmento_crm !== selectedSegment) {
+          return false;
+        }
       }
 
       // 2. Filtro por tipo de gatilho
@@ -111,7 +141,7 @@ export default function MarketIntelligenceTab({
 
       return true;
     });
-  }, [news, selectedSegment, mySegments, triggerFilter, search]);
+  }, [scopedNews, selectedSegment, triggerFilter, search]);
 
   // Cor temática suave para cada segmento
   function getSegmentBadgeColor(seg) {
@@ -144,13 +174,20 @@ export default function MarketIntelligenceTab({
       {/* 1. Header do Radar de Mercado */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-              <Sparkles size={22} />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
-              Radar de Mercado
-            </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                <Sparkles size={22} />
+              </span>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
+                Radar de Mercado
+              </h1>
+            </div>
+            {!isFullAccess && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200 w-fit">
+                Minha Carteira & Agências
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -216,7 +253,7 @@ export default function MarketIntelligenceTab({
 
         {/* 3. Pílulas de Segmentos Comerciais */}
         <div className="mt-4 flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-          {/* Todos */}
+          {/* Botão de visão geral */}
           <button
             type="button"
             onClick={() => setSelectedSegment("all")}
@@ -226,33 +263,18 @@ export default function MarketIntelligenceTab({
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            <span>Todos os Segmentos</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${selectedSegment === "all" ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-700"}`}>
-              {news.length}
+            <span>{isFullAccess ? "Todos os Segmentos" : "Minha Carteira & Agências"}</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                selectedSegment === "all" ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-700"
+              }`}
+            >
+              {scopedNews.length}
             </span>
           </button>
 
-          {/* Meus Segmentos (se houver segmentos vinculados) */}
-          {mySegments.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedSegment("my")}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                selectedSegment === "my"
-                  ? "bg-amber-500 text-white shadow-sm ring-2 ring-amber-200"
-                  : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
-              }`}
-            >
-              <Star size={13} className={selectedSegment === "my" ? "text-white" : "text-amber-500"} />
-              <span>Meus Segmentos</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${selectedSegment === "my" ? "bg-amber-600 text-white" : "bg-amber-200 text-amber-900"}`}>
-                {myNewsCount}
-              </span>
-            </button>
-          )}
-
-          {/* Segmentos que possuem notícias */}
-          {Object.entries(segmentCounts).map(([segName, count]) => (
+          {/* Segmentos disponíveis conforme o perfil */}
+          {availableSegments.map((segName) => (
             <button
               key={segName}
               type="button"
@@ -264,8 +286,12 @@ export default function MarketIntelligenceTab({
               }`}
             >
               <span>{segName}</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${selectedSegment === segName ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-600"}`}>
-                {count}
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  selectedSegment === segName ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-600"
+                }`}
+              >
+                {segmentCounts[segName] || 0}
               </span>
             </button>
           ))}
@@ -281,9 +307,13 @@ export default function MarketIntelligenceTab({
       ) : filteredNews.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <Globe size={40} className="mx-auto text-slate-300 mb-3" />
-          <h3 className="text-base font-bold text-slate-700">Nenhuma notícia encontrada</h3>
+          <h3 className="text-base font-bold text-slate-700">
+            {isFullAccess ? "Nenhuma notícia encontrada" : "Nenhuma oportunidade mapeada para a sua carteira"}
+          </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-            Não há movimentações registradas com os filtros selecionados. Tente limpar a busca ou selecionar outro segmento.
+            {isFullAccess
+              ? "Não há movimentações registradas com os filtros selecionados. Tente limpar a busca ou selecionar outro segmento."
+              : "Não encontramos movimentações recentes para os segmentos comerciais da sua carteira ou notícias de agências no momento."}
           </p>
           {(selectedSegment !== "all" || triggerFilter !== "all" || search) && (
             <button
