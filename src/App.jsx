@@ -2584,7 +2584,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
 
   const viewTitles = {
     dashboard: "Visão Geral",
-    intelligence: "Radar de Mercado & Inteligência",
+    intelligence: "Radar de Mercado",
     pipeline: "Pipeline comercial",
     planning: "Pipeline Planejamento",
     advertisers: "Clientes",

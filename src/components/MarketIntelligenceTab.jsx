@@ -144,22 +144,13 @@ export default function MarketIntelligenceTab({
       {/* 1. Header do Radar de Mercado */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                <Sparkles size={22} />
-              </span>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
-                Radar de Mercado & Inteligência
-              </h1>
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                <Zap size={13} className="text-indigo-500" />
-                {news.length} Oportunidades Mapeadas
-              </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Varredura contínua de notícias do mercado publicitário, contas e anunciantes com gatilhos comerciais para prospecção ativa.
-            </p>
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+              <Sparkles size={22} />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
+              Radar de Mercado
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -349,36 +340,41 @@ export default function MarketIntelligenceTab({
                 </div>
 
                 {/* Título Principal */}
-                <h3 className="text-base font-bold text-slate-900 leading-snug tracking-tight mb-3">
+                <h3 className="text-base font-bold text-slate-900 leading-snug tracking-tight mb-2">
                   {item.titulo_original}
                 </h3>
 
-                {/* Bloco de Gatilho Comercial (Sales Trigger) */}
-                <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg p-3 mb-3">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
-                    <Zap size={13} className="text-amber-600" />
-                    <span>Gatilho Comercial</span>
-                  </div>
-                  <p className="text-xs text-amber-950 font-medium leading-relaxed">
-                    {item.gatilho_comercial}
-                  </p>
-                </div>
-
-                {/* Resumo Executivo */}
+                {/* Texto da Matéria / Resumo Executivo */}
                 <p className="text-xs text-slate-600 leading-relaxed mb-3">
                   {item.resumo_executivo}
                 </p>
 
-                {/* Ação Sugerida (se houver) */}
-                {item.acao_sugerida && (
-                  <div className="bg-slate-50 border border-slate-100 rounded-md p-2.5 mb-3 flex items-start gap-2">
-                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-slate-700 leading-snug">
-                      <span className="font-bold text-slate-800">Ação Recomendada: </span>
-                      {item.acao_sugerida}
+                {/* Box Único: Gatilho Comercial & Ação Recomendada */}
+                <div className="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 mb-3 flex flex-col gap-2.5">
+                  {/* Gatilho Comercial */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">
+                      <Zap size={13} className="text-amber-600 shrink-0" />
+                      <span>Gatilho Comercial</span>
+                    </div>
+                    <p className="text-xs text-amber-950 font-medium leading-relaxed pl-5">
+                      {item.gatilho_comercial}
                     </p>
                   </div>
-                )}
+
+                  {/* Ação Recomendada (se houver) */}
+                  {item.acao_sugerida && (
+                    <div className="pt-2 border-t border-amber-200/60">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">
+                        <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                        <span>Ação Recomendada</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed pl-5">
+                        {item.acao_sugerida}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Metadados: Anunciante e Agência */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
