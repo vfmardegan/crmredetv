@@ -146,18 +146,37 @@ router.post("/ia/transcribe", requirePermission("can_record_audio"), async (req,
     else if (lowerMime.includes("wav")) filename = "audio.wav";
     else if (lowerMime.includes("ogg")) filename = "audio.ogg";
 
-    // 4. Cria arquivo virtual suportado pelo SDK da OpenAI
-    const audioFile = await toFile(buffer, filename, { type: mimeType });
+    // 4. Monta o multipart/form-data nativo
+    const blob = new Blob([buffer], { type: mimeType });
+    const formData = new FormData();
+    formData.append("file", blob, filename);
+    formData.append("model", "whisper-1");
+    formData.append("language", "pt");
+    formData.append("temperature", "0.2");
 
-    // 5. Executa a transcrição com Whisper-1 em Português
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-1",
-      language: "pt",
-      temperature: 0.2,
+    // 5. Executa a requisição nativa à API da OpenAI
+    const openAiRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: formData,
     });
 
-    const textoTranscrito = (transcription.text || "").trim();
+    const responseData = await openAiRes.json();
+
+    if (!openAiRes.ok) {
+      if (responseData?.error?.code === "credit_balance_exhausted" || responseData?.error?.type === "insufficient_quota") {
+        return res.status(402).json({
+          error: "Saldo de créditos esgotado na OpenAI. Adicione créditos em https://platform.openai.com/settings/organization/billing/ para transcrever áudios.",
+        });
+      }
+      return res.status(openAiRes.status).json({
+        error: responseData?.error?.message || "Erro retornado pela API da OpenAI ao transcrever áudio.",
+      });
+    }
+
+    const textoTranscrito = (responseData.text || "").trim();
 
     // Retorna o texto transcrito puro (e mantém campos legados para retrocompatibilidade)
     res.json({
