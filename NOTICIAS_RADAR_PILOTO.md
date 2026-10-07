@@ -25,7 +25,7 @@
 
 ### 1. Ipiranga transfere conta publicitária para a AlmapBBDO
 * **Fonte:** PropMark | **Data:** 06/10/2026
-* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/almapbbdo-assume-conta-publicitaria-da-ipiranga/)
+* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/agencias/ipiranga-escolhe-almapbbdo-como-nova-agencia-de-publicidade/)
 * **Segmento CRM:** `Petroquímica`
 * **Anunciante:** Ipiranga
 * **Agência:** AlmapBBDO
@@ -43,7 +43,7 @@ Agendar reunião de apresentação com a diretoria de mídia da AlmapBBDO. Ofert
 
 ### 2. Artplan conquista a conta de publicidade do Bling (Locaweb Company)
 * **Fonte:** PropMark | **Data:** 05/10/2026
-* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/artplan-conquista-conta-de-publicidade-do-bling/)
+* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/agencias/artplan-assume-conta-do-bling-e-apresenta-nova-campanha-da-marca/)
 * **Segmento CRM:** `Tech e E-Commerce`
 * **Anunciante:** Bling (Locaweb Company)
 * **Agência:** Artplan
@@ -61,7 +61,7 @@ Apresentar pacotes de branded content e merchandising no programa *Dinheiro na C
 
 ### 3. Galeria vence concorrência e assume Flutter Brazil (Betnacional e Betfair)
 * **Fonte:** Meio & Mensagem | **Data:** 03/10/2026
-* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/comunicacao/galeria-vence-concorrencia-flutter-brazil)
+* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/comunicacao/galeria-sera-a-agencia-principal-da-flutter-brazil-em-2026)
 * **Segmento CRM:** `Apostas Esportivas`
 * **Anunciante:** Flutter Brazil (Betnacional / Betfair)
 * **Agência:** Galeria
@@ -97,7 +97,7 @@ Agendar café de relacionamento ou apresentação executiva com a assessoria da 
 
 ### 5. Neutrox escolhe AKM como nova parceira de comunicação após concorrência
 * **Fonte:** PropMark | **Data:** 01/10/2026
-* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/neutrox-escolhe-akm-para-comunicacao-e-trade/)
+* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/agencias/akm-e-a-nova-agencia-de-comunicacao-da-neutrox/)
 * **Segmento CRM:** `Higiene e Beleza`
 * **Anunciante:** Neutrox (Grupo Flora)
 * **Agência:** AKM
@@ -115,7 +115,7 @@ Apresentar plano de mídia com cobertura nacional focado na temporada de férias
 
 ### 6. Oliver Haider é promovido a Diretor de Marketing do Grupo Porto
 * **Fonte:** Meio & Mensagem | **Data:** 29/09/2026
-* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/gente/oliver-haider-promovido-a-diretor-de-marketing-da-porto)
+* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/gente/oliver-haider-e-promovido-a-cmo-do-grupo-porto)
 * **Segmento CRM:** `Financeiro e Seguros`
 * **Anunciante:** Grupo Porto (Porto Seguro / Porto Saúde / Porto Bank)
 * **Agência:** N/A
@@ -133,7 +133,7 @@ Agendar alinhamento institucional para apresentar projetos especiais ligados à 
 
 ### 7. Monks assume gestão de mídia e estratégia digital da Ypê
 * **Fonte:** PropMark | **Data:** 27/09/2026
-* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/monks-conquista-conta-digital-e-midia-da-ype/)
+* **Link Original:** [Acessar Matéria no PropMark](https://propmark.com.br/agencias/monks-e-a-nova-agencia-digital-da-ype/)
 * **Segmento CRM:** `Higiene e Beleza`
 * **Anunciante:** Ypê (Química Amparo)
 * **Agência:** Monks
@@ -151,7 +151,7 @@ Apresentar pacotes integrados que combinam TV linear com distribuição digital 
 
 ### 8. Jotacom conquista a conta de comunicação da Midea Carrier no Brasil
 * **Fonte:** Meio & Mensagem | **Data:** 25/09/2026
-* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/comunicacao/jotacom-conquista-conta-da-midea-carrier)
+* **Link Original:** [Acessar Matéria no Meio & Mensagem](https://www.meioemensagem.com.br/comunicacao/danca-das-contas-midea-carrier-natura-e-outros)
 * **Segmento CRM:** `Eletro-Eletrônicos`
 * **Anunciante:** Midea Carrier
 * **Agência:** Jotacom
