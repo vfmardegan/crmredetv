@@ -529,6 +529,7 @@ export const PERMISSIONS = {
     "can_view_executivos",
     "can_view_contacts",
     "can_edit_contacts",
+    "can_record_audio",
     "can_edit_opportunities"
   ],
   executivo: [
