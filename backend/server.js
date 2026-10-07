@@ -15,6 +15,7 @@ const iaRoutes = require("./routes/ia");
 const calendarRoutes = require("./routes/calendar");
 const notificationsRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
+const intelligenceRoutes = require("./routes/intelligence");
 
 const authRoutes = require("./routes/auth");
 const requireAuth = require("./routes/authMiddleware");
@@ -169,6 +170,7 @@ protectedRouter.use(iaRoutes);
 protectedRouter.use(adminRoutes);
 protectedRouter.use(calendarRoutes);
 protectedRouter.use(notificationsRoutes);
+protectedRouter.use(intelligenceRoutes);
 app.use("/api/v1", protectedRouter);
 
 // Cria o servidor HTTP e inicializa o WebSocketServer acoplado

@@ -205,3 +205,11 @@ export function requestGoogleScopes(callback) {
   });
   client.requestCode();
 }
+
+export async function getMarketNews(params = {}) {
+  const query = new URLSearchParams();
+  if (params.segmento) query.set("segmento", params.segmento);
+  if (params.search) query.set("search", params.search);
+  const qStr = query.toString();
+  return apiGet(`/intelligence/news${qStr ? `?${qStr}` : ""}`);
+}

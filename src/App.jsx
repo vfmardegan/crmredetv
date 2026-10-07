@@ -104,6 +104,7 @@ const ContactsTab = lazyWithRetry(() => import("./components/ContactsTab"));
 const ProposalsTab = lazyWithRetry(() => import("./components/ProposalsTab"));
 const ExecutivosTab = lazyWithRetry(() => import("./components/ExecutivosTab"));
 const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
+const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketIntelligenceTab"));
 
 function TabLoadingFallback() {
   return (
@@ -1442,6 +1443,61 @@ export default function App() {
     setShowNewOpportunity(true);
   }
 
+  function handleCreateOpportunityFromNews(item) {
+    if (!item) return;
+    const advNorm = (item.anunciante_mencionado || "").toLowerCase().trim();
+    const ageNorm = (item.agencia_mencionada || "").toLowerCase().trim();
+
+    const matchedAdv = advNorm && advNorm !== "n/a"
+      ? advertisers.find(
+          (a) =>
+            a.type === "Anunciante" &&
+            ((a.nomeFantasia && a.nomeFantasia.toLowerCase().includes(advNorm)) ||
+             (a.razaoSocial && a.razaoSocial.toLowerCase().includes(advNorm)))
+        )
+      : null;
+
+    const matchedAge = ageNorm && ageNorm !== "n/a"
+      ? advertisers.find(
+          (a) =>
+            a.type === "Agência" &&
+            ((a.nomeFantasia && a.nomeFantasia.toLowerCase().includes(ageNorm)) ||
+             (a.razaoSocial && a.razaoSocial.toLowerCase().includes(ageNorm)))
+        )
+      : null;
+
+    const segOwnerId = segmentoExecutivo ? segmentoExecutivo[item.segmento_crm] : null;
+    const segExec = segOwnerId ? executivos.find((e) => String(e.id) === String(segOwnerId)) : null;
+    const defaultExec =
+      user?.perfil === "executivo"
+        ? executivos.find((e) => String(e.id) === String(user?.executivo_id))?.nome || user?.nome || ""
+        : segExec?.nome || "";
+
+    const titleTarget = item.anunciante_mencionado && item.anunciante_mencionado !== "N/A"
+      ? item.anunciante_mencionado
+      : item.titulo_original;
+
+    setEditingOppId(null);
+    setNewOppForm({
+      ...emptyOppForm(),
+      title: `Prospecção - ${titleTarget}`,
+      advertiserId: matchedAdv ? matchedAdv.id : "",
+      agencyId: matchedAge ? matchedAge.id : "",
+      executivo: defaultExec,
+      stage: "Prospecção",
+      temperatura: "Frio",
+      briefing: `Origem: Radar de Mercado (${item.fonte || "Notícias"} - ${item.data_publicacao || ""})
+URL: ${item.url || ""}
+
+Resumo Executivo:
+${item.resumo_executivo || ""}
+
+Gatilho Comercial:
+${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${item.acao_sugerida}` : ""}`,
+    });
+    setShowNewOpportunity(true);
+  }
+
   function openSendProposal(templateId, contactId) {
     const targetTemplateId = templateId || (proposalTemplates.length > 0 ? proposalTemplates[0].id : "");
     const template = proposalTemplates.find((t) => t.id === targetTemplateId);
@@ -2528,16 +2584,19 @@ export default function App() {
 
   const viewTitles = {
     dashboard: "Visão Geral",
+    intelligence: "Radar de Mercado & Inteligência",
     pipeline: "Pipeline comercial",
     planning: "Pipeline Planejamento",
     advertisers: "Clientes",
     contacts: "Contatos",
     proposals: "Propostas",
     executivos: "Executivos",
+    access: "Gestão e Acessos",
   };
 
   const navItems = [
     hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
+    { id: "intelligence", label: "Radar de Mercado", icon: Sparkles },
     { id: "pipeline", label: "Pipeline", icon: GitBranch },
     { id: "advertisers", label: "Clientes", icon: Building2 },
     { id: "contacts", label: "Contatos", icon: Users },
@@ -2897,6 +2956,14 @@ export default function App() {
               faturamentoEfetivo={faturamentoEfetivo}
               segmentoExecutivo={segmentoExecutivo}
               executivoKeyAccounts={executivoKeyAccounts}
+            />
+          )}
+
+          {view === "intelligence" && (
+            <MarketIntelligenceTab
+              currentUser={user}
+              segmentoExecutivo={segmentoExecutivo}
+              onCreateOpportunityFromNews={handleCreateOpportunityFromNews}
             />
           )}
 

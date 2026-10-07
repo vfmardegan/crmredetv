@@ -266,7 +266,170 @@ const initDb = async () => {
       ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS deve_trocar_senha BOOLEAN DEFAULT FALSE;
     `);
 
-    console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos e alocações de oportunidades verificados.");
+    // 21. Tabela de Notícias de Inteligência de Mercado & Radar Comercial
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS market_news (
+        id text primary key,
+        data_publicacao date not null,
+        fonte text not null,
+        url text not null,
+        titulo_original text not null,
+        segmento_crm text not null,
+        anunciante_mencionado text,
+        agencia_mencionada text,
+        resumo_executivo text not null,
+        gatilho_comercial text not null,
+        acao_sugerida text,
+        tags text[] default '{}',
+        created_at timestamptz not null default now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_market_news_data ON market_news (data_publicacao DESC);
+      CREATE INDEX IF NOT EXISTS idx_market_news_seg ON market_news (segmento_crm);
+    `);
+
+    // Seed inicial de notícias do Radar de Mercado se tabela estiver vazia
+    const countNewsRes = await pool.query("SELECT COUNT(*) FROM market_news");
+    if (parseInt(countNewsRes.rows[0].count, 10) === 0) {
+      const initialNews = [
+        {
+          id: "noticia_01_almap_ipiranga",
+          data_publicacao: "2026-10-06",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/almapbbdo-assume-conta-publicitaria-da-ipiranga/",
+          titulo_original: "AlmapBBDO assume conta de publicidade da Ipiranga após concorrência",
+          segmento_crm: "Petroquímica",
+          anunciante_mencionado: "Ipiranga",
+          agencia_mencionada: "AlmapBBDO",
+          resumo_executivo: "A Ipiranga concluiu seu processo de concorrência e transferiu sua conta de publicidade para a AlmapBBDO. A agência será responsável por todo o planejamento criativo, campanhas institucionais e ações de varejo de combustíveis e conveniência (AmPm). O novo ciclo prevê forte investimento em alcance nacional e formatos de massa.",
+          gatilho_comercial: "Troca de agência publicitária — janela aberta para apresentação de formatos proprietários e ações de merchandising na grade da RedeTV! antes do fechamento do split anual.",
+          acao_sugerida: "Abordar a equipe de mídia da AlmapBBDO para apresentar as cotas do Operação de Risco e patrocínio esportivo.",
+          tags: ["Ipiranga", "AlmapBBDO", "Petroquímica", "Troca de Agência", "Varejo"]
+        },
+        {
+          id: "noticia_02_artplan_bling",
+          data_publicacao: "2026-10-05",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/artplan-conquista-conta-de-publicidade-do-bling/",
+          titulo_original: "Artplan conquista a conta de publicidade do Bling",
+          segmento_crm: "Tech e E-Commerce",
+          anunciante_mencionado: "Bling (Locaweb Company)",
+          agencia_mencionada: "Artplan",
+          resumo_executivo: "O sistema de gestão e e-commerce Bling, pertencente à Locaweb Company, escolheu a Artplan como sua nova agência de publicidade. O objetivo é expandir o conhecimento da marca entre pequenas e médias empresas em todo o território nacional. A estratégia contemplará mídia de massa e formatos de conteúdo corporativo.",
+          gatilho_comercial: "Contratação de agência de grande porte para estratégia de branding em massa de software de gestão para empreendedores.",
+          acao_sugerida: "Apresentar à Artplan formatos no Dinheiro na Conta e inserções na grade diária para falar com o público microempreendedor.",
+          tags: ["Bling", "Locaweb", "Artplan", "Tech e E-Commerce", "SaaS", "PMEs"]
+        },
+        {
+          id: "noticia_03_galeria_flutter",
+          data_publicacao: "2026-10-03",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/comunicacao/galeria-vence-concorrencia-flutter-brazil",
+          titulo_original: "Galeria vence concorrência e assume a conta da Flutter Brazil (Betnacional e Betfair)",
+          segmento_crm: "Apostas Esportivas",
+          anunciante_mencionado: "Flutter Brazil (Betnacional / Betfair)",
+          agencia_mencionada: "Galeria",
+          resumo_executivo: "A Flutter Brazil unificou o atendimento de suas principais marcas (Betnacional e Betfair) na agência Galeria após longa concorrência. A conta prevê alocação maciça de mídia em transmissões esportivas e programas de entretenimento de alta audiência. O plano busca consolidar as marcas sob o novo ambiente regulatório do setor de apostas.",
+          gatilho_comercial: "Definição de nova agência de longo prazo para as maiores operadoras de apostas do país com verba pesada em TV aberta e esportes.",
+          acao_sugerida: "Levar à Galeria pacotes de patrocínio de transmissões esportivas e branded content no entretenimento popular.",
+          tags: ["Flutter Brazil", "Betnacional", "Betfair", "Galeria", "Apostas Esportivas", "Futebol"]
+        },
+        {
+          id: "noticia_04_leroy_cmo",
+          data_publicacao: "2026-10-02",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/gente/carolina-braune-assume-como-cmo-da-leroy-merlin-brasil",
+          titulo_original: "Carolina Braune assume como Chief Marketing Officer da Leroy Merlin Brasil",
+          segmento_crm: "Construção, Imobiliário e Decoração",
+          anunciante_mencionado: "Leroy Merlin",
+          agencia_mencionada: "N/A",
+          resumo_executivo: "A Leroy Merlin Brasil anunciou Carolina Braune como sua nova CMO para liderar branding, retail media e experiência omnichannel. A executiva assume com a missão de renovar a presença da varejista em campanhas de reformas, sazonalidades e projetos de casa. A mudança indica revisão das parcerias e cronogramas de mídia do varejo para o fim de ano.",
+          gatilho_comercial: "Nova CMO contratada — oportunidade para agendar reunião de apresentação institucional e propor projetos temáticos de casa e reforma.",
+          acao_sugerida: "Solicitar reunião de apresentação com a assessoria da nova CMO para projetos de merchandising de reforma e casa no A Tarde É Sua.",
+          tags: ["Leroy Merlin", "Carolina Braune", "CMO", "Construção, Imobiliário e Decoração", "Varejo"]
+        },
+        {
+          id: "noticia_05_akm_neutrox",
+          data_publicacao: "2026-10-01",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/neutrox-escolhe-akm-para-comunicacao-e-trade/",
+          titulo_original: "Neutrox escolhe AKM como nova parceira de comunicação após concorrência",
+          segmento_crm: "Higiene e Beleza",
+          anunciante_mencionado: "Neutrox (Flora)",
+          agencia_mencionada: "AKM",
+          resumo_executivo: "A marca de cuidados capilares Neutrox, do Grupo Flora, selecionou a AKM para liderar suas estratégias de comunicação, ativações e mídia. O movimento visa acelerar a penetração da marca em praças regionais e canais populares com forte apelo visual. A campanha de verão é a primeira grande entrega prevista no escopo.",
+          gatilho_comercial: "Troca de agência e preparação para campanha de verão de bens de consumo populares de higiene.",
+          acao_sugerida: "Enviar proposta de ativações para a temporada de verão em programas de variedades populares da emissora.",
+          tags: ["Neutrox", "Flora", "AKM", "Higiene e Beleza", "Campanha de Verão"]
+        },
+        {
+          id: "noticia_06_porto_cmo",
+          data_publicacao: "2026-09-29",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/gente/oliver-haider-promovido-a-diretor-de-marketing-da-porto",
+          titulo_original: "Oliver Haider é promovido a Diretor de Marketing do Grupo Porto",
+          segmento_crm: "Financeiro e Seguros",
+          anunciante_mencionado: "Grupo Porto",
+          agencia_mencionada: "N/A",
+          resumo_executivo: "O Grupo Porto oficializou a promoção de Oliver Haider à Diretoria de Marketing da holding. O executivo assume a missão de acelerar o ecossistema que integra seguros, serviços financeiros, Porto Saúde e Porto Bank. A nova gestão reforçará investimentos em TV e patrocínios de relevância comunitária e segurança no trânsito.",
+          gatilho_comercial: "Nova liderança de marketing em grande conglomerado financeiro/segurador com apetite para programas de serviços e trânsito.",
+          acao_sugerida: "Agendar café de relacionamento com Oliver Haider destacando a audiência qualificada das atrações jornalísticas e prestação de serviços.",
+          tags: ["Grupo Porto", "Oliver Haider", "Financeiro e Seguros", "Liderança", "Seguros"]
+        },
+        {
+          id: "noticia_07_monks_ype",
+          data_publicacao: "2026-09-27",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/monks-conquista-conta-digital-e-midia-da-ype/",
+          titulo_original: "Monks assume gestão de mídia e estratégia digital da Ypê",
+          segmento_crm: "Higiene e Beleza",
+          anunciante_mencionado: "Ypê (Química Amparo)",
+          agencia_mencionada: "Monks",
+          resumo_executivo: "A Química Amparo entregou à Monks o escopo de mídia e estratégia criativa para a marca Ypê. A marca busca integrar mais estreitamente suas ações de TV tradicional com crossmedia e ativações digitais. A revisão da estratégia ocorre às vésperas do planejamento anual de 2027.",
+          gatilho_comercial: "Nova agência gerindo mídia de gigante de consumo massivo — oportunidade de crossmedia TV + Digital.",
+          acao_sugerida: "Apresentar pacotes integrados que combinam TV linear com distribuição digital e menções nas redes sociais dos talentos da casa.",
+          tags: ["Ypê", "Química Amparo", "Monks", "Higiene e Beleza", "Crossmedia"]
+        },
+        {
+          id: "noticia_08_midea_carrier",
+          data_publicacao: "2026-09-25",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/comunicacao/jotacom-conquista-conta-da-midea-carrier",
+          titulo_original: "Jotacom conquista a conta de comunicação da Midea Carrier no Brasil",
+          segmento_crm: "Eletro-Eletrônicos",
+          anunciante_mencionado: "Midea Carrier",
+          agencia_mencionada: "Jotacom",
+          resumo_executivo: "A Midea Carrier selecionou a Jotacom como sua nova agência de comunicação integrada no Brasil. O escopo abrange o lançamento de novas linhas de ar-condicionado residencial e eletrodomésticos inteligentes para a temporada de verão. A marca planeja intensificar presença em mídias de alta visibilidade e programas vespertinos.",
+          gatilho_comercial: "Conquista de conta às vésperas da temporada de alta demanda (verão) para eletrodomésticos e climatização.",
+          acao_sugerida: "Ofertar cotas sazonais de verão com inserções testemunhais na grade vespertina.",
+          tags: ["Midea Carrier", "Jotacom", "Eletro-Eletrônicos", "Climatização", "Verão"]
+        }
+      ];
+
+      for (const item of initialNews) {
+        await pool.query(
+          `INSERT INTO market_news (id, data_publicacao, fonte, url, titulo_original, segmento_crm, anunciante_mencionado, agencia_mencionada, resumo_executivo, gatilho_comercial, acao_sugerida, tags)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            item.id,
+            item.data_publicacao,
+            item.fonte,
+            item.url,
+            item.titulo_original,
+            item.segmento_crm,
+            item.anunciante_mencionado,
+            item.agencia_mencionada,
+            item.resumo_executivo,
+            item.gatilho_comercial,
+            item.acao_sugerida,
+            item.tags
+          ]
+        );
+      }
+      console.log(`[SEED] ${initialNews.length} notícias iniciais de inteligência de mercado inseridas com sucesso.`);
+    }
+
+    console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos, alocações de oportunidades e inteligência de mercado verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);
   }
