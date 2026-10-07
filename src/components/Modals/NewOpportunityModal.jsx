@@ -389,7 +389,7 @@ export default function NewOpportunityModal({
                 <label className="text-xs text-slate-700 block font-semibold">Briefing para o planejamento comercial *</label>
                 <AudioRecorder
                   onTranscribeComplete={(result) => {
-                    const text = result?.transcricao || result?.briefing || "";
+                    const text = result?.transcription || result?.transcricao || result?.briefing || result?.text || "";
                     if (!text) return;
                     setNewOppForm((prev) => ({
                       ...prev,

@@ -150,8 +150,15 @@ export async function iaTranscribeAudio(audioSource, mimeType) {
       throw new Error(responseData?.error?.message || `Erro da OpenAI: ${openAiRes.status}`);
     }
 
+    const text = (responseData.text || "").trim();
     return {
-      transcription: (responseData.text || "").trim(),
+      transcription: text,
+      transcricao: text,
+      briefing: text,
+      text: text,
+      resumo: text,
+      proxima_acao: "",
+      risco: "baixo",
     };
   }
 

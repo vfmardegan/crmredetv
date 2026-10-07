@@ -1378,16 +1378,21 @@ export default function App() {
 
   async function saveTranscriptionToTimeline() {
     if (!transcriptionPreviewData) return;
-    const { clientId, transcricao, resumo, proxima_acao, risco } = transcriptionPreviewData;
+    const { clientId } = transcriptionPreviewData;
+    const pureText =
+      transcriptionPreviewData.transcricao ||
+      transcriptionPreviewData.transcription ||
+      transcriptionPreviewData.briefing ||
+      transcriptionPreviewData.text ||
+      "";
     
-    const formattedNote = `Reunião Gravada & Transcrita por IA:\n\nRESUMO:\n${resumo}\n\nTRANSCRIÇÃO:\n${transcricao}`;
     const interaction = {
       id: uid(),
       date: todayStr(),
-      note: formattedNote,
-      aiSummary: resumo,
-      aiNextAction: proxima_acao,
-      aiRisk: risco,
+      note: pureText,
+      aiSummary: pureText,
+      aiNextAction: "",
+      aiRisk: "baixo",
     };
     
     setAdvertisers((prev) =>
@@ -1411,7 +1416,13 @@ export default function App() {
 
   function handleCreateOpportunityFromTranscription() {
     if (!transcriptionPreviewData) return;
-    const { clientId, briefing, proxima_acao } = transcriptionPreviewData;
+    const { clientId } = transcriptionPreviewData;
+    const pureText =
+      transcriptionPreviewData.briefing ||
+      transcriptionPreviewData.transcricao ||
+      transcriptionPreviewData.transcription ||
+      transcriptionPreviewData.text ||
+      "";
     const advertiser = advertisers.find((a) => a.id === clientId);
     
     const myExecName = user?.perfil === "executivo"
@@ -1423,7 +1434,7 @@ export default function App() {
       executivo: myExecName,
       advertiserId: clientId || "",
       agencyId: (advertiser && advertiser.type === "Agência") ? advertiser.id : "",
-      briefing: `Briefing gerado por IA a partir de gravação:\n\n${briefing}\n\nPróxima Ação:\n${proxima_acao}`,
+      briefing: pureText,
       title: `Oportunidade - ${advertiser ? (advertiser.nomeFantasia || advertiser.razaoSocial) : ""}`,
     });
     
@@ -3774,7 +3785,7 @@ export default function App() {
                 <span className="p-1 bg-rose-50 rounded-md text-rose-500">
                   <Mic size={18} />
                 </span>
-                <h2 id="modal-transc-title" className="font-semibold text-slate-800">Resultado do Processamento por IA (Gemini)</h2>
+                <h2 id="modal-transc-title" className="font-semibold text-slate-800">Resultado da Transcrição de Áudio (OpenAI Whisper)</h2>
               </div>
               <button 
                 type="button"
@@ -3797,7 +3808,7 @@ export default function App() {
                 <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Transcrição Completa (Verbatim)</div>
                 <textarea
                   readOnly
-                  value={transcriptionPreviewData.transcricao}
+                  value={transcriptionPreviewData.transcricao || transcriptionPreviewData.transcription || transcriptionPreviewData.briefing || ""}
                   className="w-full flex-1 border border-slate-200 rounded-lg p-3 text-xs text-slate-650 bg-slate-50 resize-none font-mono focus:outline-none"
                 />
               </div>
@@ -3813,7 +3824,7 @@ export default function App() {
                     transcriptionPreviewData.risco === "médio" || transcriptionPreviewData.risco === "medio" ? "bg-amber-50 text-amber-700 border-amber-200" :
                     "bg-emerald-50 text-emerald-700 border-emerald-200"
                   }`}>
-                    Risco {transcriptionPreviewData.risco}
+                    Risco {transcriptionPreviewData.risco || "baixo"}
                   </span>
                 </div>
 
@@ -3821,7 +3832,7 @@ export default function App() {
                 <div>
                   <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Resumo da Reunião</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 leading-relaxed">
-                    {transcriptionPreviewData.resumo}
+                    {transcriptionPreviewData.resumo || transcriptionPreviewData.transcricao || transcriptionPreviewData.transcription || ""}
                   </div>
                 </div>
 
@@ -3829,7 +3840,7 @@ export default function App() {
                 <div>
                   <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Briefing Comercial Sugerido</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
-                    {transcriptionPreviewData.briefing}
+                    {transcriptionPreviewData.briefing || transcriptionPreviewData.transcricao || transcriptionPreviewData.transcription || ""}
                   </div>
                 </div>
 
@@ -3837,7 +3848,7 @@ export default function App() {
                 <div>
                   <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Próximos Passos (Ações)</div>
                   <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-slate-700 font-medium">
-                    {transcriptionPreviewData.proxima_acao}
+                    {transcriptionPreviewData.proxima_acao || "Transcrição direta concluída"}
                   </div>
                 </div>
               </div>

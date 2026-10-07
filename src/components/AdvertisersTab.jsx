@@ -972,7 +972,7 @@ export default function AdvertisersTab({
                   </div>
                   <AudioRecorder
                     onTranscribeComplete={(result) => {
-                      const text = result?.transcricao || result?.briefing || "";
+                      const text = result?.transcription || result?.transcricao || result?.briefing || result?.text || "";
                       if (!text) return;
                       setNoteDraft((prev) => (prev ? `${prev}\n\n${text}` : text));
                     }}
