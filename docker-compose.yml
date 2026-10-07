@@ -54,6 +54,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ALLOW_DEV_MOCK_LOGIN=${ALLOW_DEV_MOCK_LOGIN:-false}
     volumes:
       - ./backend:/usr/src/app

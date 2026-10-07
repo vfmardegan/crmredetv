@@ -389,9 +389,11 @@ export default function NewOpportunityModal({
                 <label className="text-xs text-slate-700 block font-semibold">Briefing para o planejamento comercial *</label>
                 <AudioRecorder
                   onTranscribeComplete={(result) => {
+                    const text = result?.transcricao || result?.briefing || "";
+                    if (!text) return;
                     setNewOppForm((prev) => ({
                       ...prev,
-                      briefing: `Briefing gerado por IA a partir de gravação:\n\n${result.briefing}\n\nPróxima Ação:\n${result.proxima_acao}`
+                      briefing: prev.briefing ? `${prev.briefing}\n\n${text}` : text,
                     }));
                   }}
                   onError={(err) => alert(err)}

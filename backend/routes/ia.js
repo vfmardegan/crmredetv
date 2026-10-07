@@ -1,14 +1,20 @@
 const express = require("express");
 const { GoogleGenAI } = require("@google/genai");
+const OpenAI = require("openai");
+const { toFile } = OpenAI;
 const { pool } = require("../db");
 const { requirePermission } = require("../utils/acl");
 const { isClientAllowedForUser } = require("../utils/portfolio");
 
 const router = express.Router();
 
-// Inicializa o cliente da Gemini API.
-// Ele lê automaticamente a variável de ambiente GEMINI_API_KEY.
+// Inicializa o cliente da Gemini API (resumos)
 const ai = new GoogleGenAI({});
+
+// Inicializa o cliente da OpenAI (Whisper)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "",
+});
 
 router.post("/ia/summarize", async (req, res) => {
   const { advertiserId, interactionNote, history, interactionId } = req.body;
@@ -108,7 +114,7 @@ Responda apenas com um JSON válido, sem blocos de código markdown ou texto exp
   }
 });
 
-// POST /ia/transcribe — transcreve e resume reuniões a partir de áudio base64
+// POST /ia/transcribe — transcreve áudios com alta precisão usando OpenAI Whisper
 router.post("/ia/transcribe", requirePermission("can_record_audio"), async (req, res) => {
   const { audioBase64, mimeType } = req.body;
 
@@ -116,62 +122,55 @@ router.post("/ia/transcribe", requirePermission("can_record_audio"), async (req,
     return res.status(400).json({ error: "Parâmetros audioBase64 e mimeType são obrigatórios." });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.OPENAI_API_KEY) {
     return res.status(503).json({
-      error: "O serviço de Inteligência Artificial Gemini não está configurado (chave GEMINI_API_KEY ausente no servidor).",
+      error: "O serviço de transcrição OpenAI Whisper não está configurado (chave OPENAI_API_KEY ausente no servidor).",
     });
   }
 
   try {
-    // Limpa o prefixo do dataURI se houver
-    let base64Data = audioBase64;
+    // 1. Limpa o prefixo do dataURI se houver
+    let cleanBase64 = audioBase64;
     if (audioBase64.includes(";base64,")) {
-      base64Data = audioBase64.split(";base64,").pop();
+      cleanBase64 = audioBase64.split(";base64,").pop();
     }
 
-    const systemInstruction = `Você é um assistente de inteligência comercial para um CRM de TV brasileira.
-Sua tarefa é ouvir o áudio de uma reunião ou briefing e gerar a transcrição literal, o resumo comercial, um briefing estruturado, as próximas ações e o nível de risco.
+    // 2. Converte base64 para Buffer binário
+    const buffer = Buffer.from(cleanBase64, "base64");
 
-Retorne APENAS um objeto JSON válido, sem decorações ou formatação markdown (\`\`\`json). Use o formato exato:
-{
-  "transcricao": "Texto integral transcrito...",
-  "resumo": "Resumo executivo da conversa...",
-  "briefing": "Detalhamento de produtos, verbas e escopo do briefing comercial...",
-  "proxima_acao": "Próximos passos práticos...",
-  "risco": "baixo|médio|alto"
-}`;
+    // 3. Determina extensão apropriada para o Whisper
+    let filename = "audio.mp3";
+    const lowerMime = (mimeType || "").toLowerCase();
+    if (lowerMime.includes("webm")) filename = "audio.webm";
+    else if (lowerMime.includes("mp4") || lowerMime.includes("m4a") || lowerMime.includes("aac")) filename = "audio.m4a";
+    else if (lowerMime.includes("wav")) filename = "audio.wav";
+    else if (lowerMime.includes("ogg")) filename = "audio.ogg";
 
-    // Fazer a chamada multimodal à API Gemini
-    const interaction = await ai.interactions.create({
-      model: "gemini-2.5-flash",
-      input: [
-        { text: "Analise e transcreva o áudio anexado." },
-        { inlineData: { data: base64Data, mimeType: mimeType } }
-      ],
-      system_instruction: systemInstruction
+    // 4. Cria arquivo virtual suportado pelo SDK da OpenAI
+    const audioFile = await toFile(buffer, filename, { type: mimeType });
+
+    // 5. Executa a transcrição com Whisper-1 em Português
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: "whisper-1",
+      language: "pt",
+      temperature: 0.2,
     });
 
-    const outputText = interaction.output_text || "";
-    const cleanJsonText = outputText.replace(/```json|```/g, "").trim();
+    const textoTranscrito = (transcription.text || "").trim();
 
-    let parsedResult;
-    try {
-      parsedResult = JSON.parse(cleanJsonText);
-    } catch (parseErr) {
-      console.warn("Falha ao parsear JSON de áudio da IA, tentando extrair ou encapsular:", cleanJsonText);
-      parsedResult = {
-        transcricao: outputText,
-        resumo: "Resumo executivo não pôde ser gerado em JSON.",
-        briefing: outputText,
-        proxima_acao: "Definir na próxima reunião.",
-        risco: "baixo"
-      };
-    }
-
-    res.json(parsedResult);
+    // Retorna o texto transcrito puro (e mantém campos legados para retrocompatibilidade)
+    res.json({
+      transcricao: textoTranscrito,
+      resumo: textoTranscrito,
+      briefing: textoTranscrito,
+      proxima_acao: "",
+      risco: "baixo",
+    });
   } catch (err) {
-    console.error("Erro na transcrição de áudio por IA:", err);
-    res.status(500).json({ error: "Erro ao processar o áudio com a inteligência artificial." });
+    console.error("Erro na transcrição de áudio com OpenAI Whisper:", err);
+    const errorMessage = err?.message || "Erro ao processar o áudio com a inteligência artificial.";
+    res.status(500).json({ error: errorMessage });
   }
 });
 

@@ -24,8 +24,26 @@ export default function AudioRecorder({ onTranscribeComplete, onError }) {
     setRecordingSeconds(0);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      // Detecta formato compatível com o navegador atual (Safari/iOS vs Chrome/Firefox)
+      let selectedMimeType = "audio/webm";
+      if (typeof MediaRecorder.isTypeSupported === "function") {
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          selectedMimeType = "audio/webm;codecs=opus";
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          selectedMimeType = "audio/webm";
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          selectedMimeType = "audio/mp4";
+        } else if (MediaRecorder.isTypeSupported("audio/aac")) {
+          selectedMimeType = "audio/aac";
+        }
+      }
+
+      const options = selectedMimeType ? { mimeType: selectedMimeType } : {};
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
+
+      const recordingMimeType = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -34,8 +52,8 @@ export default function AudioRecorder({ onTranscribeComplete, onError }) {
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        await processAudioBlob(audioBlob, "audio/webm");
+        const audioBlob = new Blob(audioChunksRef.current, { type: recordingMimeType });
+        await processAudioBlob(audioBlob, recordingMimeType);
         // Para todas as tracks do stream para liberar o microfone
         stream.getTracks().forEach((track) => track.stop());
       };
@@ -96,12 +114,18 @@ export default function AudioRecorder({ onTranscribeComplete, onError }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Formatos aceitos
-    const allowedTypes = ["audio/mp3", "audio/mpeg", "audio/wav", "audio/webm", "audio/x-m4a", "audio/m4a", "audio/ogg"];
+    // Limite de 15MB
+    const MAX_SIZE = 15 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      if (onError) onError("O arquivo de áudio excede o limite máximo de 15 MB. Por favor, envie um trecho menor ou áudio comprimido.");
+      e.target.value = "";
+      return;
+    }
+
     let mimeType = file.type || "audio/mp3";
 
     // Correção para alguns navegadores
-    if (file.name.endsWith(".m4a") && mimeType === "") {
+    if (file.name.endsWith(".m4a") && (!mimeType || mimeType === "")) {
       mimeType = "audio/x-m4a";
     }
 

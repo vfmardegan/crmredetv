@@ -971,7 +971,11 @@ export default function AdvertisersTab({
                     </button>
                   </div>
                   <AudioRecorder
-                    onTranscribeComplete={onTranscribeComplete}
+                    onTranscribeComplete={(result) => {
+                      const text = result?.transcricao || result?.briefing || "";
+                      if (!text) return;
+                      setNoteDraft((prev) => (prev ? `${prev}\n\n${text}` : text));
+                    }}
                     onError={(err) => alert(err)}
                   />
                 </div>
