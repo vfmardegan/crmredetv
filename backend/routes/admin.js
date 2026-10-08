@@ -26,7 +26,7 @@ function requireAdmin(req, res, next) {
   }
 }
 
-router.use(requireAdmin);
+router.use("/admin", requireAdmin);
 
 // Lista todos os usuários do sistema
 router.get("/admin/users", async (req, res) => {

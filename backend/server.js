@@ -167,10 +167,10 @@ protectedRouter.use(opportunitiesRoutes);
 protectedRouter.use(proposalsRoutes);
 protectedRouter.use(executivosRoutes);
 protectedRouter.use(iaRoutes);
+protectedRouter.use(intelligenceRoutes);
 protectedRouter.use(adminRoutes);
 protectedRouter.use(calendarRoutes);
 protectedRouter.use(notificationsRoutes);
-protectedRouter.use(intelligenceRoutes);
 app.use("/api/v1", protectedRouter);
 
 // Cria o servidor HTTP e inicializa o WebSocketServer acoplado
