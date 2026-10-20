@@ -222,22 +222,27 @@ export function createProjectFromOpportunity({ opportunity, anuncianteNome, agen
   const newId = `PROJ-2026-${idSeq}`;
 
   const entregasFormatadas = entregas.map((item, idx) => {
-    const contratadas = Number(item.insercoesContratadas) || 1;
-    const unitario = Number(item.valorUnitario) || 0;
+    const contratadas = Number(item.insercoes ?? item.insercoesContratadas) || 1;
+    const unitario = Number(item.valorUnitarioLiquido ?? item.valorUnitario) || 0;
+    const cob = item.cobertura || item.praca || "NACIONAL";
     return {
       id: `ent-${Date.now()}-${idx}`,
       programa: item.programa || "Programa a Definir",
-      formato: item.formato || "Spot 30\"",
-      praca: item.praca || "Nacional (Rede)",
+      cobertura: cob,
+      praca: cob,
+      formato: item.formato || "COMERCIAL 30\"",
       valorUnitario: unitario,
+      valorUnitarioLiquido: unitario,
       insercoesContratadas: contratadas,
+      insercoes: contratadas,
       insercoesVeiculadas: 0,
       saldoRestante: contratadas,
+      investimentoTotalLiquido: Number(item.investimentoTotalLiquido) || contratadas * unitario
     };
   });
 
   const valorTotal = entregasFormatadas.reduce(
-    (acc, it) => acc + it.insercoesContratadas * it.valorUnitario,
+    (acc, it) => acc + (it.investimentoTotalLiquido || it.insercoesContratadas * it.valorUnitario),
     0
   );
 

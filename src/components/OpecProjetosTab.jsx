@@ -459,7 +459,7 @@ export default function OpecProjetosTab({ currentUser, onNavigate }) {
                         <tr key={ent.id} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3">
                             <span className="font-semibold text-slate-900 block">{ent.programa}</span>
-                            <span className="text-[10px] text-slate-500">{ent.formato} • {ent.praca}</span>
+                            <span className="text-[10px] text-slate-500">{ent.formato} • {ent.cobertura || ent.praca}</span>
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-medium text-slate-800">
                             {formatBRL(ent.valorUnitario)}
