@@ -617,13 +617,14 @@ export default function App() {
     });
   }
 
-  function handleConfirmFechamentoOpec({ opportunity, anuncianteNome, agenciaNome, entregas }) {
+  function handleConfirmFechamentoOpec({ opportunity, anuncianteNome, agenciaNome, entregas, investimentoLiquido }) {
     const oppId = opportunity.id;
     const oldOpps = [...opportunities];
+    const finalValue = investimentoLiquido !== undefined ? investimentoLiquido : opportunity.value;
     setOpportunities((prev) =>
-      prev.map((o) => (o.id === oppId ? { ...o, stage: "Fechado" } : o))
+      prev.map((o) => (o.id === oppId ? { ...o, stage: "Fechado", value: finalValue } : o))
     );
-    apiPut(`/opportunities/${oppId}`, { stage: "Fechado" }).catch((e) => {
+    apiPut(`/opportunities/${oppId}`, { stage: "Fechado", value: finalValue }).catch((e) => {
       console.error(e);
       setOpportunities(oldOpps);
       setErrorMsg(e.message || "Não foi possível salvar o fechamento no servidor.");
@@ -631,7 +632,7 @@ export default function App() {
 
     try {
       createProjectFromOpportunity({
-        opportunity,
+        opportunity: { ...opportunity, value: finalValue },
         anuncianteNome,
         agenciaNome,
         entregas
