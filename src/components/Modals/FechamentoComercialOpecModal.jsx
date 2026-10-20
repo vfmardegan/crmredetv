@@ -1,5 +1,6 @@
 // src/components/Modals/FechamentoComercialOpecModal.jsx
 import React, { useState } from "react";
+import * as XLSX from "xlsx";
 import {
   X,
   FileSpreadsheet,
@@ -9,6 +10,21 @@ import {
   Upload,
   Loader2
 } from "lucide-react";
+
+// Utilitários de formatação e máscara para Moeda Brasileira (R$ 1.000.000,00)
+function formatBRL(value) {
+  const num = Number(value) || 0;
+  return num.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function parseBRLDigits(str) {
+  const cleanDigits = String(str || "").replace(/\D/g, "");
+  if (!cleanDigits) return 0;
+  return Number(cleanDigits) / 100;
+}
 
 export default function FechamentoComercialOpecModal({
   isOpen,
@@ -20,12 +36,12 @@ export default function FechamentoComercialOpecModal({
 }) {
   if (!isOpen || !opportunity) return null;
 
-  // Investimento Líquido vem preenchido da oportunidade e sincroniza com a tabela ou edição livre
-  const [investimentoLiquido, setInvestimentoLiquido] = useState(
-    () => Number(opportunity.value) || 0
-  );
+  // Valor numérico e string mascarada de Investimento Líquido no padrão R$ 1.000.000,00
+  const initialValue = Number(opportunity.value) || 0;
+  const [investimentoLiquido, setInvestimentoLiquido] = useState(initialValue);
+  const [investimentoLiquidoStr, setInvestimentoLiquidoStr] = useState(formatBRL(initialValue));
 
-  // Controle do upload obrigatório da planilha padrão
+  // Controle de upload da planilha padrão
   const [planilhaCarregada, setPlanilhaCarregada] = useState(false);
   const [nomeArquivoPlanilha, setNomeArquivoPlanilha] = useState("");
   const [isLendoPlanilha, setIsLendoPlanilha] = useState(false);
@@ -37,21 +53,21 @@ export default function FechamentoComercialOpecModal({
 
   // Catálogo oficial de Programas extraídos da grade e planilha padrão RedeTV!
   const programasSugeridos = [
+    "SUPERPOP",
+    "REDETV! NEWS",
+    "OPERAÇÃO DE RISCO",
+    "A TARDE É SUA",
     "REDETV! NOTÍCIAS 1ª EDIÇÃO",
+    "REDETV! NOTÍCIAS 2ª EDIÇÃO",
     "FICA COM A GENTE",
     "BOLA NA REDE",
-    "A TARDE É SUA",
-    "REDETV! NOTÍCIAS 2ª EDIÇÃO",
     "BRASIL DO POVO",
-    "REDETV! NEWS",
     "RAPIDINHAS DA FAMA",
     "TV FAMA",
     "SENSACIONAL",
     "É NOTÍCIA",
     "O GRANDE VENCEDOR",
-    "SUPERPOP",
     "DINHEIRO NA CONTA",
-    "OPERAÇÃO DE RISCO",
     "LIGA MONSTRO COMBATE",
     "LEITURA DINÂMICA",
     "MEGA SONHO",
@@ -102,8 +118,19 @@ export default function FechamentoComercialOpecModal({
     "CITAÇÃO COM MANUSEIO 10\"",
     "DROPS/PÍLULA 30\"",
     "TOP DE 5 SEGUNDOS",
-    "VHT BREAK COMERCIAL (5\")"
+    "VHT INTEGRADA DE ABERTURA 5\"",
+    "VHT INTEGRADA DE ENCERRAMENTO 5\"",
+    "VHT BREAK COMERCIAL (5\")",
+    "INTERVENÇÃO NA TELA 15\""
   ];
+
+  // Máscara interativa do Investimento Líquido ao digitar
+  function handleInvestimentoInputChange(e) {
+    const raw = e.target.value;
+    const num = parseBRLDigits(raw);
+    setInvestimentoLiquido(num);
+    setInvestimentoLiquidoStr(formatBRL(num));
+  }
 
   function addRow() {
     setEntregas((prev) => [
@@ -140,180 +167,176 @@ export default function FechamentoComercialOpecModal({
     );
   }
 
-  // Parse inteligente de CSV respeitando quebras e aspas
-  function parseCsvLines(csvText) {
-    const rawLines = csvText.split(/\r?\n/);
-    const parsed = [];
-
-    // Localiza a linha do cabeçalho
-    let headerIdx = -1;
-    for (let i = 0; i < rawLines.length; i++) {
-      if (rawLines[i].toUpperCase().includes("PROGRAMA") && rawLines[i].toUpperCase().includes("COBERTURA")) {
-        headerIdx = i;
-        break;
-      }
-    }
-
-    if (headerIdx === -1) return [];
-
-    // Lê linhas subsequentes até a próxima seção ou linha vazia com muitos delimitadores
-    for (let i = headerIdx + 1; i < rawLines.length; i++) {
-      const line = rawLines[i].trim();
-      if (!line) continue;
-
-      // Se atingir a tabela de formatos/preços do rodapé
-      if (line.startsWith(",,,,,,,,,,") || line.startsWith("FORMATO,CONVERSÃO")) {
-        break;
-      }
-
-      // Regex para split de CSV tratando campos entre aspas
-      const cols = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-      const cleanCols = cols.map((c) => c.replace(/^"|"$/g, "").trim());
-
-      const prog = cleanCols[0];
-      const cobertura = cleanCols[1] || "NACIONAL";
-      const formato = cleanCols[2] || "COMERCIAL 30\"";
-      const insercoes = parseFloat(cleanCols[6]?.replace(/\./g, "").replace(",", ".")) || 0;
-      const unitLiquido = parseFloat(cleanCols[11]?.replace(/\./g, "").replace(",", ".")) || 0;
-      const totalLiquido = parseFloat(cleanCols[12]?.replace(/\./g, "").replace(",", ".")) || (insercoes * unitLiquido);
-
-      if (prog && prog !== "-" && (insercoes > 0 || unitLiquido > 0 || prog.length > 2)) {
-        parsed.push({
-          id: `imp-${i}`,
-          programa: prog,
-          cobertura: cobertura,
-          formato: formato,
-          insercoes: insercoes || 10,
-          valorUnitarioLiquido: unitLiquido || 15000,
-          investimentoTotalLiquido: totalLiquido || ((insercoes || 10) * (unitLiquido || 15000))
-        });
-      }
-    }
-
-    return parsed;
-  }
-
-  // Importação da Planilha Padrão RedeTV!
+  // Leitura real e precisa de arquivo Excel (.xlsx / .xls) ou .csv via SheetJS (xlsx)
   function handleExcelUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsLendoPlanilha(true);
     setNomeArquivoPlanilha(file.name);
-    setUploadFeedback(`Lendo e identificando entregas em "${file.name}"...`);
+    setUploadFeedback(`Lendo e processando dados reais de "${file.name}"...`);
 
     const reader = new FileReader();
 
     reader.onload = (evt) => {
-      setTimeout(() => {
-        try {
-          const content = evt.target.result;
-          let itensExtraidos = [];
+      try {
+        const buffer = evt.target.result;
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-          if (typeof content === "string") {
-            itensExtraidos = parseCsvLines(content);
-          }
+        const parsedEntregas = [];
 
-          // Se a planilha subida for o modelo de template com linhas da grade ainda vazias,
-          // populamos com exemplos fieis baseados na grade oficial enviada
-          if (itensExtraidos.length === 0) {
-            itensExtraidos = [
-              {
-                id: "imp-1",
-                programa: "SUPERPOP",
-                cobertura: "NACIONAL",
-                formato: "COMERCIAL 30\"",
-                insercoes: 24,
-                valorUnitarioLiquido: 18000,
-                investimentoTotalLiquido: 432000
-              },
-              {
-                id: "imp-2",
-                programa: "REDETV! NEWS",
-                cobertura: "NACIONAL",
-                formato: "ASSINATURA EM CHAMADAS 5\"",
-                insercoes: 30,
-                valorUnitarioLiquido: 12000,
-                investimentoTotalLiquido: 360000
-              },
-              {
-                id: "imp-3",
-                programa: "OPERAÇÃO DE RISCO",
-                cobertura: "SÃO PAULO",
-                formato: "COMERCIAL 30\"",
-                insercoes: 12,
-                valorUnitarioLiquido: 15000,
-                investimentoTotalLiquido: 180000
+        // Localiza a linha do cabeçalho da proposta
+        let headerRowIdx = -1;
+        let colMap = {
+          programa: 0,
+          cobertura: 1,
+          formato: 2,
+          insercoes: 6,
+          unitarioLiquido: 11,
+          totalLiquido: 12
+        };
+
+        for (let i = 0; i < sheetData.length; i++) {
+          const row = sheetData[i];
+          if (!Array.isArray(row)) continue;
+          const rowText = row.map((cell) => String(cell || "").toUpperCase().trim()).join(" | ");
+
+          if (rowText.includes("PROGRAMA") && (rowText.includes("COBERTURA") || rowText.includes("FORMATO"))) {
+            headerRowIdx = i;
+
+            const liquidoCols = [];
+            row.forEach((cell, colIdx) => {
+              const h = String(cell || "").toUpperCase().replace(/\r?\n/g, " ").trim();
+              if (h === "PROGRAMA") colMap.programa = colIdx;
+              else if (h === "COBERTURA") colMap.cobertura = colIdx;
+              else if (h === "FORMATO") colMap.formato = colIdx;
+              else if (h.includes("INSERÇ")) colMap.insercoes = colIdx;
+              else if (h.includes("LÍQUIDO") || h.includes("LIQUIDO")) {
+                liquidoCols.push(colIdx);
               }
-            ];
-          }
+            });
 
-          setEntregas(itensExtraidos);
+            if (liquidoCols.length >= 2) {
+              colMap.unitarioLiquido = liquidoCols[0];
+              colMap.totalLiquido = liquidoCols[1];
+            } else if (liquidoCols.length === 1) {
+              colMap.totalLiquido = liquidoCols[0];
+            }
+            break;
+          }
+        }
+
+        if (headerRowIdx !== -1) {
+          for (let i = headerRowIdx + 1; i < sheetData.length; i++) {
+            const row = sheetData[i];
+            if (!Array.isArray(row) || row.length === 0) continue;
+
+            const progRaw = String(row[colMap.programa] || "").trim();
+            const firstCellUpper = progRaw.toUpperCase();
+
+            // Interrompe ao chegar na seção de tabela auxiliar de formatos e preços
+            if (
+              firstCellUpper.startsWith("FORMATO") ||
+              firstCellUpper.includes("CONVERSÃO") ||
+              firstCellUpper.startsWith("DIA") ||
+              firstCellUpper.startsWith("HORA")
+            ) {
+              break;
+            }
+
+            // Se o nome do programa estiver em branco, verifica se é a linha de total de inserções da proposta
+            if (!progRaw) {
+              const insCell = row[colMap.insercoes];
+              const insNum =
+                typeof insCell === "number"
+                  ? insCell
+                  : parseFloat(String(insCell || "").replace(/\./g, "").replace(",", "."));
+              if (insNum > 0 && parsedEntregas.length > 0) {
+                // Linha de total consolidado encontrada! Encerra a leitura das entregas.
+                break;
+              }
+              continue;
+            }
+
+            // Pula linhas que repitam o cabeçalho
+            if (firstCellUpper === "PROGRAMA") continue;
+
+            const coberturaRaw = String(row[colMap.cobertura] || "NACIONAL").trim();
+            const formatoRaw = String(row[colMap.formato] || "COMERCIAL 30\"").trim();
+
+            // Inserções
+            const insVal = row[colMap.insercoes];
+            const insercoes =
+              typeof insVal === "number"
+                ? insVal
+                : parseFloat(String(insVal || "").replace(/\./g, "").replace(",", ".")) || 0;
+
+            // Valor Unitário Líquido (coluna 11)
+            const unitVal = row[colMap.unitarioLiquido];
+            let unitarioLiquido =
+              typeof unitVal === "number"
+                ? unitVal
+                : parseFloat(String(unitVal || "").replace(/\./g, "").replace(",", ".")) || 0;
+
+            // Investimento Total Líquido (coluna 12)
+            const totVal = row[colMap.totalLiquido];
+            let totalLiquido =
+              typeof totVal === "number"
+                ? totVal
+                : parseFloat(String(totVal || "").replace(/\./g, "").replace(",", ".")) || 0;
+
+            // Se um dos valores estiver ausente, recalcula automaticamente
+            if (totalLiquido === 0 && insercoes > 0 && unitarioLiquido > 0) {
+              totalLiquido = insercoes * unitarioLiquido;
+            } else if (unitarioLiquido === 0 && insercoes > 0 && totalLiquido > 0) {
+              unitarioLiquido = totalLiquido / insercoes;
+            }
+
+            if (progRaw.length >= 2) {
+              parsedEntregas.push({
+                id: `imp-${i}-${Date.now()}`,
+                programa: progRaw.toUpperCase(),
+                cobertura: coberturaRaw.toUpperCase(),
+                formato: formatoRaw,
+                insercoes: Math.round(insercoes),
+                valorUnitarioLiquido: Math.round(unitarioLiquido * 100) / 100,
+                investimentoTotalLiquido: Math.round(totalLiquido * 100) / 100
+              });
+            }
+          }
+        }
+
+        if (parsedEntregas.length > 0) {
+          setEntregas(parsedEntregas);
           setPlanilhaCarregada(true);
 
-          // Atualiza o Investimento Líquido com o total consolidado da tabela
-          const totalCalc = itensExtraidos.reduce(
+          // Soma o Investimento Total Líquido exato da planilha
+          const totalConsolidado = parsedEntregas.reduce(
             (acc, r) => acc + (Number(r.investimentoTotalLiquido) || 0),
             0
           );
-          if (totalCalc > 0) {
-            setInvestimentoLiquido(totalCalc);
-          }
-
-          setUploadFeedback(`Planilha "${file.name}" importada com sucesso. ${itensExtraidos.length} entregas identificadas abaixo.`);
-        } catch (err) {
-          console.error("Erro ao analisar planilha:", err);
-          setUploadFeedback(`Arquivo "${file.name}" carregado.`);
-          setPlanilhaCarregada(true);
-        } finally {
-          setIsLendoPlanilha(false);
+          setInvestimentoLiquido(totalConsolidado);
+          setInvestimentoLiquidoStr(formatBRL(totalConsolidado));
+          setUploadFeedback(
+            `✅ Planilha "${file.name}" lida com sucesso! ${parsedEntregas.length} entregas identificadas.`
+          );
+        } else {
+          setUploadFeedback(
+            `Nenhuma linha de proposta preenchida encontrada em "${file.name}". Verifique se o arquivo possui as linhas preenchidas abaixo do cabeçalho.`
+          );
         }
-      }, 500);
+      } catch (err) {
+        console.error("Erro ao analisar planilha:", err);
+        setUploadFeedback(`Erro ao processar "${file.name}". Verifique a estrutura do arquivo.`);
+      } finally {
+        setIsLendoPlanilha(false);
+      }
     };
 
-    // Lê como texto se for csv, ou simula leitura se for binário (.xlsx)
-    if (file.name.endsWith(".csv")) {
-      reader.readAsText(file, "UTF-8");
-    } else {
-      // Para arquivos .xlsx
-      setTimeout(() => {
-        const itensMock = [
-          {
-            id: "imp-1",
-            programa: "SUPERPOP",
-            cobertura: "NACIONAL",
-            formato: "COMERCIAL 30\"",
-            insercoes: 24,
-            valorUnitarioLiquido: 18000,
-            investimentoTotalLiquido: 432000
-          },
-          {
-            id: "imp-2",
-            programa: "REDETV! NEWS",
-            cobertura: "NACIONAL",
-            formato: "ASSINATURA EM CHAMADAS 5\"",
-            insercoes: 30,
-            valorUnitarioLiquido: 12000,
-            investimentoTotalLiquido: 360000
-          },
-          {
-            id: "imp-3",
-            programa: "OPERAÇÃO DE RISCO",
-            cobertura: "SÃO PAULO",
-            formato: "COMERCIAL 30\"",
-            insercoes: 12,
-            valorUnitarioLiquido: 15000,
-            investimentoTotalLiquido: 180000
-          }
-        ];
-        setEntregas(itensMock);
-        setPlanilhaCarregada(true);
-        setIsLendoPlanilha(false);
-        const totalCalc = itensMock.reduce((acc, r) => acc + r.investimentoTotalLiquido, 0);
-        setInvestimentoLiquido(totalCalc);
-        setUploadFeedback(`Planilha "${file.name}" importada com sucesso. ${itensMock.length} entregas identificadas abaixo.`);
-      }, 600);
-    }
+    reader.readAsArrayBuffer(file);
   }
 
   const totalInsercoes = entregas.reduce(
@@ -334,7 +357,7 @@ export default function FechamentoComercialOpecModal({
       agenciaNome: agencyName,
       entregas: entregas.map((ent) => ({
         ...ent,
-        praca: ent.cobertura, // compatibilidade com backend/serviços existentes
+        praca: ent.cobertura,
         valorUnitario: ent.valorUnitarioLiquido,
         insercoesContratadas: ent.insercoes
       })),
@@ -390,23 +413,18 @@ export default function FechamentoComercialOpecModal({
               </div>
             </div>
 
-            {/* Investimento Líquido editável */}
+            {/* Investimento Líquido com máscara monetária R$ 1.000.000,00 */}
             <div className="sm:text-right bg-white sm:bg-transparent p-3 sm:p-0 rounded-lg border sm:border-0 border-slate-200">
               <label className="text-[11px] text-slate-500 uppercase font-semibold tracking-wider block mb-1">
                 Investimento Líquido
               </label>
               <div className="relative inline-block w-full sm:w-auto">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 font-semibold text-xs sm:text-sm">
-                  R$
-                </span>
                 <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={investimentoLiquido}
-                  onChange={(e) => setInvestimentoLiquido(Number(e.target.value))}
-                  className="pl-9 pr-3 py-1.5 text-base sm:text-lg font-bold text-slate-900 font-mono bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full sm:w-44 text-right shadow-2xs"
-                  placeholder="0,00"
+                  type="text"
+                  value={investimentoLiquidoStr}
+                  onChange={handleInvestimentoInputChange}
+                  className="px-3 py-1.5 text-base sm:text-lg font-bold text-slate-900 font-mono bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 w-full sm:w-52 text-right shadow-2xs tracking-tight"
+                  placeholder="R$ 0,00"
                 />
               </div>
             </div>
@@ -449,7 +467,7 @@ export default function FechamentoComercialOpecModal({
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     {planilhaCarregada
                       ? `Arquivo selecionado: ${nomeArquivoPlanilha}`
-                      : "Faça o upload do modelo padrão da RedeTV! (.csv ou .xlsx) para identificar as entregas contratadas."}
+                      : "Faça o upload do Excel (.xlsx, .xls) ou .csv padrão da RedeTV! para carregar as entregas contratadas."}
                   </div>
                 </div>
               </div>
@@ -463,12 +481,12 @@ export default function FechamentoComercialOpecModal({
                 ) : (
                   <>
                     <Upload size={15} className="text-slate-500" />
-                    {planilhaCarregada ? "Substituir Planilha" : "Escolher Planilha (.csv, .xlsx)"}
+                    {planilhaCarregada ? "Substituir Planilha" : "Escolher Planilha (.xlsx, .csv)"}
                   </>
                 )}
                 <input
                   type="file"
-                  accept=".csv,.xlsx,.xls"
+                  accept=".xlsx,.xls,.csv"
                   className="hidden"
                   disabled={isLendoPlanilha}
                   onChange={handleExcelUpload}
@@ -497,8 +515,8 @@ export default function FechamentoComercialOpecModal({
                 <div>
                   <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
                     Entregas Contratadas por Programa
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      Identificadas na Planilha
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Extraídas da Planilha ({entregas.length})
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
@@ -534,47 +552,50 @@ export default function FechamentoComercialOpecModal({
                       <tr key={row.id} className="hover:bg-slate-50/60">
                         {/* 1. Programa */}
                         <td className="py-2 px-3">
-                          <select
+                          <input
+                            type="text"
                             value={row.programa}
-                            onChange={(e) => updateRow(row.id, "programa", e.target.value)}
+                            onChange={(e) => updateRow(row.id, "programa", e.target.value.toUpperCase())}
                             className="w-full py-1 px-2 border border-slate-200 rounded-md bg-white font-medium text-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
+                            list="programas-list"
+                          />
+                          <datalist id="programas-list">
                             {programasSugeridos.map((prog) => (
-                              <option key={prog} value={prog}>
-                                {prog}
-                              </option>
+                              <option key={prog} value={prog} />
                             ))}
-                          </select>
+                          </datalist>
                         </td>
 
                         {/* 2. Cobertura */}
                         <td className="py-2 px-3">
-                          <select
+                          <input
+                            type="text"
                             value={row.cobertura}
-                            onChange={(e) => updateRow(row.id, "cobertura", e.target.value)}
+                            onChange={(e) => updateRow(row.id, "cobertura", e.target.value.toUpperCase())}
                             className="w-full py-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
+                            list="coberturas-list"
+                          />
+                          <datalist id="coberturas-list">
                             {coberturasSugeridas.map((c) => (
-                              <option key={c} value={c}>
-                                {c}
-                              </option>
+                              <option key={c} value={c} />
                             ))}
-                          </select>
+                          </datalist>
                         </td>
 
                         {/* 3. Formato */}
                         <td className="py-2 px-3">
-                          <select
+                          <input
+                            type="text"
                             value={row.formato}
                             onChange={(e) => updateRow(row.id, "formato", e.target.value)}
                             className="w-full py-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
+                            list="formatos-list"
+                          />
+                          <datalist id="formatos-list">
                             {formatosSugeridos.map((f) => (
-                              <option key={f} value={f}>
-                                {f}
-                              </option>
+                              <option key={f} value={f} />
                             ))}
-                          </select>
+                          </datalist>
                         </td>
 
                         {/* 4. Inserções */}
@@ -590,16 +611,18 @@ export default function FechamentoComercialOpecModal({
 
                         {/* 5. Valor Unitário Líquido */}
                         <td className="py-2 px-3 text-right">
-                          <div className="relative inline-block w-28">
-                            <span className="absolute inset-y-0 left-0 pl-1.5 flex items-center pointer-events-none text-slate-400 text-[10px]">
+                          <div className="relative inline-block w-32">
+                            <span className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-slate-400 text-[10px]">
                               R$
                             </span>
                             <input
                               type="number"
                               min="0"
-                              step="500"
+                              step="0.01"
                               value={row.valorUnitarioLiquido}
-                              onChange={(e) => updateRow(row.id, "valorUnitarioLiquido", Number(e.target.value))}
+                              onChange={(e) =>
+                                updateRow(row.id, "valorUnitarioLiquido", Number(e.target.value))
+                              }
                               className="w-full pl-6 pr-2 py-1 text-right border border-slate-200 rounded-md bg-white font-mono text-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none"
                             />
                           </div>
@@ -607,10 +630,7 @@ export default function FechamentoComercialOpecModal({
 
                         {/* 6. Investimento Total Líquido */}
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                          {Number(row.investimentoTotalLiquido || 0).toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL"
-                          })}
+                          {formatBRL(row.investimentoTotalLiquido)}
                         </td>
 
                         {/* Ação: Excluir */}
@@ -638,10 +658,7 @@ export default function FechamentoComercialOpecModal({
                       </td>
                       <td></td>
                       <td className="py-2.5 px-3 text-right font-bold text-rose-600 font-mono">
-                        {totalInvestimentoLiquidoTabela.toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL"
-                        })}
+                        {formatBRL(totalInvestimentoLiquidoTabela)}
                       </td>
                       <td></td>
                     </tr>
@@ -659,7 +676,7 @@ export default function FechamentoComercialOpecModal({
                 Aguardando importação da Planilha Padrão
               </h4>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1">
-                Suba o modelo da planilha com as colunas Programa, Cobertura, Formato, Inserções, Valor Unitário Líquido e Investimento Total Líquido para validar e enviar para a OPEC.
+                Suba a planilha comercial com os programas, coberturas, formatos, inserções e valores contratados para liberar a validação e o envio para a OPEC.
               </p>
             </div>
           )}
