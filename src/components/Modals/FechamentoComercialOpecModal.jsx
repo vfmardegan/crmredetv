@@ -336,6 +336,13 @@ export default function FechamentoComercialOpecModal({
       }
     };
 
+    reader.onerror = (err) => {
+      console.error("Erro no FileReader:", err);
+      setIsLendoPlanilha(false);
+      setUploadFeedback(`Erro ao ler o arquivo "${file.name}". Tente novamente.`);
+    };
+
+    reader.readAsArrayBuffer(file);
   }
 
   const totalInsercoes = entregas.reduce(
@@ -499,6 +506,9 @@ export default function FechamentoComercialOpecModal({
                     accept=".xlsx,.xls,.csv"
                     className="hidden"
                     disabled={isLendoPlanilha}
+                    onClick={(e) => {
+                      e.target.value = null;
+                    }}
                     onChange={handleExcelUpload}
                   />
                 </label>
