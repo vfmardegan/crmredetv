@@ -18,7 +18,11 @@ import {
   Pencil,
   Menu,
   Activity,
-  Compass
+  Compass,
+  ChevronDown,
+  ChevronRight,
+  Tv,
+  FileSpreadsheet
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -109,6 +113,7 @@ const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
 const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketIntelligenceTab"));
 const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
 const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
+const OpecPedidoInsercaoTab = lazyWithRetry(() => import("./components/OpecPedidoInsercaoTab"));
 
 function TabLoadingFallback() {
   return (
@@ -215,6 +220,8 @@ export default function App() {
     return "dashboard";
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [comercialMenuOpen, setComercialMenuOpen] = useState(true);
+  const [opecMenuOpen, setOpecMenuOpen] = useState(true);
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -2689,9 +2696,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     engajamento: "Engajamento",
     pipelineEstrategico: "Plano de Ação",
     access: "Gestão e Acessos",
+    opecPedidoInsercao: "OPEC • Pedido de Inserção",
   };
 
-  const navItems = [
+  const comercialNavItems = [
     hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
     user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
     { id: "intelligence", label: "Radar de Mercado", icon: Sparkles },
@@ -2703,6 +2711,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
     hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
     hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
+  ].filter(Boolean);
+
+  const opecNavItems = [
+    { id: "opecPedidoInsercao", label: "Pedido de Inserção", icon: FileSpreadsheet },
   ].filter(Boolean);
 
   return (
@@ -2726,9 +2738,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               <div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                  <span className="text-sm font-medium">CRM Comercial</span>
+                  <span className="text-sm font-semibold">CRM RedeTV!</span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">Mercado anunciante</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Comercial & OPEC</div>
               </div>
               <button
                 type="button"
@@ -2740,25 +2752,85 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </button>
             </div>
 
-            <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-              {navItems.map((item) => (
+            <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
+              {/* Dropdown Comercial (Mobile) */}
+              <div>
                 <button
-                  key={item.id}
-                  onClick={() => {
-                    setView(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm text-left transition-colors " +
-                    (view === item.id
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                  }
+                  type="button"
+                  onClick={() => setComercialMenuOpen(!comercialMenuOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors"
                 >
-                  <item.icon size={18} />
-                  {item.label}
+                  <div className="flex items-center gap-2">
+                    <Briefcase size={14} className="text-rose-500" />
+                    <span>Comercial</span>
+                  </div>
+                  {comercialMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
-              ))}
+
+                {comercialMenuOpen && (
+                  <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-slate-800 ml-3">
+                    {comercialNavItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setView(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={
+                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                          (view === item.id
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                        }
+                      >
+                        <item.icon size={16} />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Dropdown OPEC (Mobile) */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setOpecMenuOpen(!opecMenuOpen)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Tv size={14} className="text-indigo-400" />
+                    <span>Opec</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 normal-case tracking-normal">
+                      Novo
+                    </span>
+                  </div>
+                  {opecMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+
+                {opecMenuOpen && (
+                  <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-indigo-900/40 ml-3">
+                    {opecNavItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setView(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={
+                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                          (view === item.id
+                            ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                        }
+                      >
+                        <item.icon size={16} />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </nav>
 
             <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
@@ -2786,31 +2858,96 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
         </div>
       )}
 
-      {/* Desktop Sidebar (100% inalterada em telas desktop md:) */}
-      <aside className="hidden md:flex w-56 shrink-0 bg-slate-900 text-slate-100 flex-col">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-60 shrink-0 bg-slate-900 text-slate-100 flex-col">
         <div className="p-5 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            <span className="text-sm font-medium">CRM Comercial</span>
+            <span className="text-sm font-semibold tracking-wide">CRM RedeTV!</span>
           </div>
-          <div className="text-xs text-slate-400 mt-1">Mercado anunciante</div>
+          <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
+            <span>Comercial</span>
+            <span className="text-slate-600">•</span>
+            <span className="text-indigo-400 font-medium">OPEC</span>
+          </div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-1">
-          {navItems.map((item) => (
+        <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
+          {/* Dropdown Comercial (Desktop) */}
+          <div>
             <button
-              key={item.id}
-              onClick={() => setView(item.id)}
-              className={
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                (view === item.id
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-              }
+              type="button"
+              onClick={() => setComercialMenuOpen(!comercialMenuOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors group"
             >
-              <item.icon size={16} />
-              {item.label}
+              <div className="flex items-center gap-2">
+                <Briefcase size={14} className="text-rose-500" />
+                <span>Comercial</span>
+              </div>
+              <span className="text-slate-400 group-hover:text-slate-200">
+                {comercialMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
             </button>
-          ))}
+
+            {comercialMenuOpen && (
+              <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-slate-800 ml-3">
+                {comercialNavItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setView(item.id)}
+                    className={
+                      "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                      (view === item.id
+                        ? "bg-slate-800 text-white font-medium"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                    }
+                  >
+                    <item.icon size={15} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Dropdown OPEC (Desktop) */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => setOpecMenuOpen(!opecMenuOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors group"
+            >
+              <div className="flex items-center gap-2">
+                <Tv size={14} className="text-indigo-400" />
+                <span>Opec</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 normal-case tracking-normal">
+                  Novo
+                </span>
+              </div>
+              <span className="text-slate-400 group-hover:text-slate-200">
+                {opecMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            </button>
+
+            {opecMenuOpen && (
+              <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-indigo-900/40 ml-3">
+                {opecNavItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setView(item.id)}
+                    className={
+                      "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                      (view === item.id
+                        ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                    }
+                  >
+                    <item.icon size={15} />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
         <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -3226,6 +3363,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               onRefreshData={reloadBootstrapData}
               allProducts={allProducts}
             />
+          )}
+
+          {view === "opecPedidoInsercao" && (
+            <OpecPedidoInsercaoTab currentUser={user} />
           )}
           </React.Suspense>
         </div>
