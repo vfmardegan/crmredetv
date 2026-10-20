@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  Download,
   Loader2
 } from "lucide-react";
 
@@ -124,12 +125,35 @@ export default function FechamentoComercialOpecModal({
     "INTERVENÇÃO NA TELA 15\""
   ];
 
-  // Máscara interativa do Investimento Líquido ao digitar
+  // Máscara interativa do Investimento Líquido ao digitar no modelo R$ 1.000.000,00
   function handleInvestimentoInputChange(e) {
     const raw = e.target.value;
     const num = parseBRLDigits(raw);
     setInvestimentoLiquido(num);
     setInvestimentoLiquidoStr(formatBRL(num));
+  }
+
+  // Gera e baixa o arquivo com o modelo padrão simplificado exato
+  function handleDownloadModeloPadrao() {
+    const header = [
+      "PROGRAMA",
+      "COBERTURA",
+      "FORMATO",
+      "INSERÇÕES",
+      "VALOR UNITÁRIO LÍQUIDO",
+      "INVESTIMENTO TOTAL LÍQUIDO"
+    ];
+    const sampleRows = [
+      ["SUPERPOP", "NACIONAL", "VHT INTEGRADA DE ABERTURA 5\"", 52, 1116.64, 58065.02],
+      ["SUPERPOP", "NACIONAL", "COMERCIAL 30\"", 52, 4466.54, 232260.08],
+      ["SUPERPOP", "NACIONAL", "MERCHANDISING 60\"", 52, 8933.08, 464520.16],
+      ["SUPERPOP", "NACIONAL", "INTERVENÇÃO NA TELA 15\"", 104, 3349.91, 348390.12],
+      ["SUPERPOP", "NACIONAL", "VHT INTEGRADA DE ENCERRAMENTO 5\"", 52, 1116.64, 58065.02]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([header, ...sampleRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modelo Padrão");
+    XLSX.writeFile(wb, "Modelo_Padrao_Fechamento_RedeTV.xlsx");
   }
 
   function addRow() {
@@ -194,9 +218,9 @@ export default function FechamentoComercialOpecModal({
           programa: 0,
           cobertura: 1,
           formato: 2,
-          insercoes: 6,
-          unitarioLiquido: 11,
-          totalLiquido: 12
+          insercoes: 3,
+          unitarioLiquido: 4,
+          totalLiquido: 5
         };
 
         for (let i = 0; i < sheetData.length; i++) {
@@ -214,16 +238,23 @@ export default function FechamentoComercialOpecModal({
               else if (h === "COBERTURA") colMap.cobertura = colIdx;
               else if (h === "FORMATO") colMap.formato = colIdx;
               else if (h.includes("INSERÇ")) colMap.insercoes = colIdx;
-              else if (h.includes("LÍQUIDO") || h.includes("LIQUIDO")) {
+              else if (h.includes("UNITÁRIO") && (h.includes("LÍQUIDO") || h.includes("LIQUIDO"))) {
+                colMap.unitarioLiquido = colIdx;
+              } else if (h.includes("TOTAL") && (h.includes("LÍQUIDO") || h.includes("LIQUIDO"))) {
+                colMap.totalLiquido = colIdx;
+              } else if (h.includes("LÍQUIDO") || h.includes("LIQUIDO")) {
                 liquidoCols.push(colIdx);
               }
             });
 
-            if (liquidoCols.length >= 2) {
-              colMap.unitarioLiquido = liquidoCols[0];
-              colMap.totalLiquido = liquidoCols[1];
-            } else if (liquidoCols.length === 1) {
-              colMap.totalLiquido = liquidoCols[0];
+            // Fallback caso as colunas de líquido não tenham "UNITÁRIO" explícito no cabeçalho
+            if (colMap.unitarioLiquido === undefined || colMap.totalLiquido === undefined) {
+              if (liquidoCols.length >= 2) {
+                if (colMap.unitarioLiquido === undefined) colMap.unitarioLiquido = liquidoCols[0];
+                if (colMap.totalLiquido === undefined) colMap.totalLiquido = liquidoCols[1];
+              } else if (liquidoCols.length === 1) {
+                if (colMap.totalLiquido === undefined) colMap.totalLiquido = liquidoCols[0];
+              }
             }
             break;
           }
@@ -274,14 +305,14 @@ export default function FechamentoComercialOpecModal({
                 ? insVal
                 : parseFloat(String(insVal || "").replace(/\./g, "").replace(",", ".")) || 0;
 
-            // Valor Unitário Líquido (coluna 11)
+            // Valor Unitário Líquido
             const unitVal = row[colMap.unitarioLiquido];
             let unitarioLiquido =
               typeof unitVal === "number"
                 ? unitVal
                 : parseFloat(String(unitVal || "").replace(/\./g, "").replace(",", ".")) || 0;
 
-            // Investimento Total Líquido (coluna 12)
+            // Investimento Total Líquido
             const totVal = row[colMap.totalLiquido];
             let totalLiquido =
               typeof totVal === "number"
@@ -467,31 +498,43 @@ export default function FechamentoComercialOpecModal({
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     {planilhaCarregada
                       ? `Arquivo selecionado: ${nomeArquivoPlanilha}`
-                      : "Faça o upload do Excel (.xlsx, .xls) ou .csv padrão da RedeTV! para carregar as entregas contratadas."}
+                      : "Faça o upload da planilha (.xlsx, .csv) com as 6 colunas padrão para carregar as entregas contratadas."}
                   </div>
                 </div>
               </div>
 
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs shrink-0">
-                {isLendoPlanilha ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin text-rose-600" />
-                    Lendo Planilha...
-                  </>
-                ) : (
-                  <>
-                    <Upload size={15} className="text-slate-500" />
-                    {planilhaCarregada ? "Substituir Planilha" : "Escolher Planilha (.xlsx, .csv)"}
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  className="hidden"
-                  disabled={isLendoPlanilha}
-                  onChange={handleExcelUpload}
-                />
-              </label>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleDownloadModeloPadrao}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 hover:border-slate-400 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Baixar planilha padrão (.xlsx) com as 6 colunas oficiais da RedeTV!"
+                >
+                  <Download size={14} className="text-slate-500" />
+                  Baixar Modelo (.xlsx)
+                </button>
+
+                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg text-xs font-semibold text-white transition-colors shadow-2xs">
+                  {isLendoPlanilha ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin text-white" />
+                      Lendo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={15} className="text-white" />
+                      {planilhaCarregada ? "Substituir Planilha" : "Escolher Planilha"}
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    disabled={isLendoPlanilha}
+                    onChange={handleExcelUpload}
+                  />
+                </label>
+              </div>
             </div>
 
             {uploadFeedback && (
@@ -676,7 +719,7 @@ export default function FechamentoComercialOpecModal({
                 Aguardando importação da Planilha Padrão
               </h4>
               <p className="text-[11px] text-slate-500 max-w-md mx-auto mt-1">
-                Suba a planilha comercial com os programas, coberturas, formatos, inserções e valores contratados para liberar a validação e o envio para a OPEC.
+                Suba a planilha comercial com as 6 colunas (Programa, Cobertura, Formato, Inserções, Valor Unitário Líquido e Investimento Total Líquido) para liberar a validação e o envio para a OPEC.
               </p>
             </div>
           )}
