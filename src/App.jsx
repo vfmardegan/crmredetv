@@ -16,7 +16,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Pencil,
-  Menu
+  Menu,
+  Activity,
+  Compass
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -105,6 +107,8 @@ const ProposalsTab = lazyWithRetry(() => import("./components/ProposalsTab"));
 const ExecutivosTab = lazyWithRetry(() => import("./components/ExecutivosTab"));
 const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
 const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketIntelligenceTab"));
+const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
+const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
 
 function TabLoadingFallback() {
   return (
@@ -199,7 +203,7 @@ export default function App() {
   const [contacts, setContacts] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [allProducts, setAllProducts] = useState({ televisao: TV_PRODUCTS, digital: DIGITAL_PRODUCTS, especiais: SPECIAL_PROJECTS });
-  const [proposalTemplates, setProposalTemplates] = useState(PROPOSAL_TEMPLATES);
+  const [proposalTemplates, setProposalTemplates] = useState([]);
   const [contactDaysFilter, setContactDaysFilter] = useState("all");
   const [pipelineSearch, setPipelineSearch] = useState("");
   const [view, setView] = useState(() => {
@@ -219,6 +223,8 @@ export default function App() {
   const [pendingOppContact, setPendingOppContact] = useState(false);
   const [showQuickCreateClient, setShowQuickCreateClient] = useState(false);
   const [pendingContactClient, setPendingContactClient] = useState(false);
+  const [pendingPlanoAcaoClient, setPendingPlanoAcaoClient] = useState(false);
+  const [newlyCreatedPlanoAcaoClient, setNewlyCreatedPlanoAcaoClient] = useState(null);
   const [editingClientId, setEditingClientId] = useState(null);
   const [editingContactId, setEditingContactId] = useState(null);
   const [faturamentoEfetivo, setFaturamentoEfetivo] = useState(seedFaturamentoEfetivo);
@@ -285,6 +291,7 @@ export default function App() {
   const [schedulingMeeting, setSchedulingMeeting] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [responsaveis, setResponsaveis] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
   const [activeToast, setActiveToast] = useState(null);
@@ -343,6 +350,7 @@ export default function App() {
       setExecutivoKeyAccounts(parsed.executivoKeyAccounts && typeof parsed.executivoKeyAccounts === "object" ? parsed.executivoKeyAccounts : {});
       setContacts((parsed.contacts || []).map(normalizeContact));
       setResponsaveis(Array.isArray(parsed.responsaveis) ? parsed.responsaveis : []);
+      setAllUsers(Array.isArray(parsed.allUsers) ? parsed.allUsers : []);
       if (Array.isArray(parsed.produtos)) {
         const activeRows = parsed.produtos.filter((p) => p.ativo !== false);
         setAllProducts({
@@ -389,9 +397,11 @@ export default function App() {
     if (!token) return;
     apiGet("/proposal-templates")
       .then((rows) => {
-        if (rows && rows.length > 0) setProposalTemplates(rows);
+        if (Array.isArray(rows)) setProposalTemplates(rows);
       })
-      .catch(() => { /* usa fallback estático PROPOSAL_TEMPLATES */ });
+      .catch((err) => {
+        console.error("Erro ao carregar propostas padrão:", err);
+      });
   }
   useEffect(() => { loadProposalTemplates(); }, [token]);
 
@@ -401,8 +411,9 @@ export default function App() {
     (async () => {
       try {
         const list = await apiGet("/notifications");
-        setNotifications(list);
-        setUnreadCount(list.filter((n) => !n.read).length);
+        const filtered = (list || []).filter((n) => !n.type?.startsWith("inactive"));
+        setNotifications(filtered);
+        setUnreadCount(filtered.filter((n) => !n.read).length);
       } catch (err) {
         console.error("Erro ao carregar notificações do servidor:", err);
       }
@@ -423,6 +434,8 @@ export default function App() {
         const payload = JSON.parse(event.data);
         if (payload.event === "notification") {
           const newNotif = payload.data;
+          // Ignora notificações de inatividade na tela inicial (mantendo badges na aba de clientes)
+          if (newNotif?.type?.startsWith("inactive")) return;
           
           setNotifications((prev) => [newNotif, ...prev]);
           setUnreadCount((prev) => prev + 1);
@@ -647,10 +660,26 @@ export default function App() {
     setShowNewAdvertiser(true);
   }
 
+  function openCreateClientForPlanoAcao(prefillName, segmento, clientType = "Anunciante") {
+    setNewAdvForm({
+      type: clientType || "Anunciante",
+      codigo: "",
+      razaoSocial: "",
+      cnpj: "",
+      nomeFantasia: prefillName || "",
+      segmento: clientType === "Agência" ? "" : (segmento || ""),
+      atendeAnunciantes: [],
+      vinculoAgencias: [],
+    });
+    setPendingPlanoAcaoClient(clientType || "Anunciante");
+    setShowNewAdvertiser(true);
+  }
+
   function closeNewAdvertiser() {
     setShowNewAdvertiser(false);
     setPendingOppClientField(null);
     setPendingContactClient(false);
+    setPendingPlanoAcaoClient(false);
     setEditingClientId(null);
   }
 
@@ -781,6 +810,14 @@ export default function App() {
     if (pendingContactClient) {
       setNewContactForm((prev) => ({ ...prev, clientId: adv.id }));
       setPendingContactClient(false);
+    }
+    if (pendingPlanoAcaoClient) {
+      setNewlyCreatedPlanoAcaoClient({
+        id: adv.id,
+        name: adv.name || adv.nomeFantasia || cleanNomeFantasia,
+        type: adv.type || (typeof pendingPlanoAcaoClient === "string" ? pendingPlanoAcaoClient : "Anunciante"),
+      });
+      setPendingPlanoAcaoClient(false);
     }
     setNewAdvForm({
       type: "Anunciante",
@@ -1292,12 +1329,13 @@ export default function App() {
     }
   }
 
-  function addInteraction(advertiserId, type = "note") {
-    if (!noteDraft.trim()) return;
+  function addInteraction(advertiserId, type = "note", directNote = null) {
+    const textToSave = (directNote !== null ? directNote : noteDraft).trim();
+    if (!textToSave) return;
     const interaction = {
       id: uid(),
       date: todayStr(),
-      note: noteDraft.trim(),
+      note: textToSave,
       aiSummary: null,
       aiNextAction: null,
       aiRisk: null,
@@ -1306,11 +1344,11 @@ export default function App() {
     setAdvertisers((prev) =>
       prev.map((a) =>
         a.id === advertiserId
-          ? { ...a, interactions: [interaction, ...a.interactions] }
+          ? { ...a, interactions: [interaction, ...(a.interactions || [])] }
           : a
       )
     );
-    setNoteDraft("");
+    if (directNote === null) setNoteDraft("");
     apiPost(`/clients/${advertiserId}/interactions`, interaction).catch((err) => {
       console.error(err);
       setErrorMsg("Não foi possível salvar a interação no servidor.");
@@ -1798,25 +1836,62 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     return map;
   }, [advertisers]);
 
+  const servingAgenciesMap = useMemo(() => {
+    const map = new Map();
+    (advertisers || []).forEach((adv) => {
+      if (adv.type === "Agência" && Array.isArray(adv.atendeAnunciantes)) {
+        adv.atendeAnunciantes.forEach((advId) => {
+          if (!map.has(advId)) map.set(advId, []);
+          map.get(advId).push(adv);
+        });
+      }
+    });
+    return map;
+  }, [advertisers]);
+
+  const sortedContacts = useMemo(() => {
+    return (contacts || []).slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+  }, [contacts]);
+
   const contactSearchQuery = contactSearch.trim().toLowerCase();
   const filteredContacts = useMemo(() => {
     if (!contactSearchQuery) {
-      return contacts.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+      return sortedContacts;
     }
-    return contacts
-      .filter((c) => {
-        const client = advertiserMap.get(c.clientId);
-        const nameMatch = (c.name || "").toLowerCase().includes(contactSearchQuery);
-        const empresaMatch = client ? (client.name || "").toLowerCase().includes(contactSearchQuery) : false;
-        const agencyMatch =
-          client && client.type === "Anunciante"
-            ? getServingAgencies(client.id).some((ag) => (ag.name || "").toLowerCase().includes(contactSearchQuery))
-            : false;
-        return nameMatch || empresaMatch || agencyMatch;
-      })
-      .slice()
-      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
-  }, [contacts, contactSearchQuery, advertiserMap]);
+    const digits = contactSearchQuery.replace(/\D/g, "");
+    return sortedContacts.filter((c) => {
+      // 1. Dados do próprio contato (nome, cargo, depto, email, celular)
+      if ((c.name || "").toLowerCase().includes(contactSearchQuery)) return true;
+      if ((c.cargo || "").toLowerCase().includes(contactSearchQuery)) return true;
+      if ((c.departamento || "").toLowerCase().includes(contactSearchQuery)) return true;
+      if ((c.email || "").toLowerCase().includes(contactSearchQuery)) return true;
+      if (digits && (c.celular || "").replace(/\D/g, "").includes(digits)) return true;
+
+      // 2. Dados do cliente/empresa vinculado (mesmas configurações de busca da aba Clientes)
+      const client = advertiserMap.get(c.clientId);
+      if (client) {
+        if ((client.nomeFantasia || "").toLowerCase().includes(contactSearchQuery)) return true;
+        if ((client.razaoSocial || "").toLowerCase().includes(contactSearchQuery)) return true;
+        if ((client.name || "").toLowerCase().includes(contactSearchQuery)) return true;
+        if ((client.codigo || "").toString().toLowerCase().includes(contactSearchQuery)) return true;
+        if (digits && (client.cnpj || "").replace(/\D/g, "").includes(digits)) return true;
+
+        // 3. Agências que atendem o anunciante (busca O(1) instantânea)
+        if (client.type === "Anunciante") {
+          const agencies = servingAgenciesMap.get(client.id) || [];
+          if (agencies.some((ag) =>
+            (ag.nomeFantasia || "").toLowerCase().includes(contactSearchQuery) ||
+            (ag.razaoSocial || "").toLowerCase().includes(contactSearchQuery) ||
+            (ag.name || "").toLowerCase().includes(contactSearchQuery)
+          )) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    });
+  }, [sortedContacts, contactSearchQuery, advertiserMap, servingAgenciesMap]);
 
   const clientSearchQuery = clientSearch.trim().toLowerCase();
   const filteredAdvertisers = useMemo(() => {
@@ -2393,8 +2468,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
   function computeProductRow(p) {
     const opps = dashboardOpps.filter((o) => (o.products || []).includes(p));
     const stageValues = {};
+    const stageOpps = {};
     STAGES.forEach((s) => {
-      stageValues[s] = opps.filter((o) => o.stage === s).reduce((sum, o) => {
+      const stageList = opps.filter((o) => o.stage === s);
+      const items = stageList.map((o) => {
         const numProds = (o.products || []).length || 1;
         const allocatedVal = o.productValues?.[p];
         let valForProduct = 0;
@@ -2406,8 +2483,18 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           valForProduct = rawPeriodAdjustedValue(o) / numProds;
         }
         
-        return sum + valForProduct;
-      }, 0);
+        const adv = advertisers.find((a) => a.id === o.advertiserId);
+        const advertiserName = adv ? (adv.nomeFantasia || adv.razaoSocial) : (o.advertiserId || "Direto");
+        return {
+          id: o.id,
+          title: o.title || "Sem título",
+          advertiserName,
+          value: valForProduct,
+        };
+      }).filter((item) => item.value > 0).sort((a, b) => b.value - a.value);
+
+      stageOpps[s] = items;
+      stageValues[s] = items.reduce((sum, item) => sum + item.value, 0);
     });
     const PIPELINE_TOTAL_STAGES = ["Frio", "Morno", "Quente", "Fechado", "Negado"];
     const total = PIPELINE_TOTAL_STAGES.reduce((sum, s) => sum + (stageValues[s] || 0), 0);
@@ -2416,20 +2503,28 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     const fechado = stageValues["Fechado"] || 0;
     const negado = stageValues["Negado"] || 0;
     const taxaConversao = fechado + negado > 0 ? fechado / (fechado + negado) : null;
-    return { product: p, stageValues, total, hasAnyStageValue, emAberto, taxaConversao };
+    return { product: p, stageValues, stageOpps, total, hasAnyStageValue, emAberto, taxaConversao };
   }
 
   function sumProductRows(rows) {
     const stageValues = {};
+    const stageOpps = {};
     STAGES.forEach((s) => {
       stageValues[s] = rows.reduce((sum, r) => sum + (r.stageValues[s] || 0), 0);
+      const combined = [];
+      rows.forEach((r) => {
+        if (r.stageOpps?.[s]) {
+          combined.push(...r.stageOpps[s]);
+        }
+      });
+      stageOpps[s] = combined.sort((a, b) => b.value - a.value);
     });
     const total = rows.reduce((sum, r) => sum + (r.total || 0), 0);
     const emAberto = rows.reduce((sum, r) => sum + (r.emAberto || 0), 0);
     const fechado = stageValues["Fechado"] || 0;
     const negado = stageValues["Negado"] || 0;
     const taxaConversao = fechado + negado > 0 ? fechado / (fechado + negado) : null;
-    return { stageValues, total, emAberto, taxaConversao };
+    return { stageValues, stageOpps, total, emAberto, taxaConversao };
   }
 
   const productFilterMatches = (p) => dashboardProductFilter.length === 0 || dashboardProductFilter.includes(p);
@@ -2589,19 +2684,23 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     planning: "Pipeline Planejamento",
     advertisers: "Clientes",
     contacts: "Contatos",
-    proposals: "Propostas",
+    proposals: "Tabela e Propostas",
     executivos: "Executivos",
+    engajamento: "Engajamento",
+    pipelineEstrategico: "Plano de Ação",
     access: "Gestão e Acessos",
   };
 
   const navItems = [
     hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
+    user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
     { id: "intelligence", label: "Radar de Mercado", icon: Sparkles },
     { id: "pipeline", label: "Pipeline", icon: GitBranch },
     { id: "advertisers", label: "Clientes", icon: Building2 },
     { id: "contacts", label: "Contatos", icon: Users },
-    { id: "proposals", label: "Propostas", icon: FileText },
+    { id: "proposals", label: "Tabela e Propostas", icon: FileText },
     hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
+    hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
     hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
     hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
   ].filter(Boolean);
@@ -3069,6 +3168,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             <ProposalsTab
               openSendProposal={openSendProposal}
               proposalTemplates={proposalTemplates}
+              allProducts={allProducts}
             />
           )}
 
@@ -3094,6 +3194,29 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
+          {view === "engajamento" && hasPermission(user.perfil, "can_view_engajamento") && (
+            <EngajamentoTab currentUser={user} />
+          )}
+
+          {view === "pipelineEstrategico" && user?.email === "vitor.mardegan@redetv.com.br" && (
+            <PipelineEstrategicoTab
+              currentUser={user}
+              advertisers={advertisers}
+              contacts={contacts}
+              opportunities={opportunities}
+              faturamentoEfetivo={faturamentoEfetivo}
+              executivos={executivos}
+              allUsers={allUsers}
+              responsaveis={responsaveis}
+              segmentoExecutivo={segmentoExecutivo}
+              setView={setView}
+              setSelectedContactId={setSelectedContactId}
+              openCreateClient={openCreateClientForPlanoAcao}
+              newlyCreatedClient={newlyCreatedPlanoAcaoClient}
+              addInteraction={addInteraction}
+            />
+          )}
+
           {view === "access" && hasPermission(user.perfil, "can_manage_users") && (
             <AccessTab
               executivos={executivos}
@@ -3101,6 +3224,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               proposalTemplates={proposalTemplates}
               onRefreshProposals={loadProposalTemplates}
               onRefreshData={reloadBootstrapData}
+              allProducts={allProducts}
             />
           )}
           </React.Suspense>

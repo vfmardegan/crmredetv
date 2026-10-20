@@ -52,7 +52,7 @@ export default function ContactsTab({
         type="text"
         value={localSearch}
         onChange={(e) => setLocalSearch(e.target.value)}
-        placeholder="Buscar por nome, empresa ou agência..."
+        placeholder="Buscar por nome, cargo, empresa, agência ou e-mail..."
         className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
       />
       <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">

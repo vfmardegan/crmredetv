@@ -75,8 +75,8 @@ function initWebSocket(server) {
     });
   });
 
-  // Agendar rotina diária de inatividade às 08:00 da manhã
-  scheduleDailyCheck();
+  // Rotina de notificação diária de inatividade desativada a pedido (não notificar mais na tela inicial)
+  // scheduleDailyCheck();
 }
 
 // Envia uma notificação em tempo real para conexões de um usuário específico

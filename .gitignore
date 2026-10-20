@@ -10,3 +10,6 @@ temp_restore.sql
 .gemini/
 backups/*.sql.gz
 *.sql.gz
+*.csv
+scan_*.json
+logs_*.json

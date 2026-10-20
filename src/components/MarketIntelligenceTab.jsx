@@ -12,8 +12,12 @@ import {
   Tag,
   Star,
   CheckCircle2,
+  Clock,
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
-import { getMarketNews } from "../services/api";
+import { getMarketNews, deleteMarketNews } from "../services/api";
+
 
 export default function MarketIntelligenceTab({
   currentUser,
@@ -25,6 +29,20 @@ export default function MarketIntelligenceTab({
   const [search, setSearch] = useState("");
   const [selectedSegment, setSelectedSegment] = useState("all"); // 'all' | 'my' | <SegmentoName>
   const [triggerFilter, setTriggerFilter] = useState("all"); // 'all' | 'troca' | 'lideranca' | 'campanha'
+  const [timeFilter, setTimeFilter] = useState("all"); // 'all' | 'today'
+  const [scheduleInfo, setScheduleInfo] = useState(null);
+
+  // Retorna a data no formato YYYY-MM-DD no fuso de São Paulo
+  function getTodayBr() {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  }
+
+  // Verifica se a notícia foi publicada na data de hoje
+  function isNewsToday(item) {
+    if (!item || !item.data_publicacao) return false;
+    const pubStr = String(item.data_publicacao).substring(0, 10);
+    return pubStr === getTodayBr();
+  }
 
   // Carrega notícias da API
   async function loadNews() {
@@ -32,6 +50,9 @@ export default function MarketIntelligenceTab({
     try {
       const data = await getMarketNews();
       setNews(data.news || []);
+      if (data.schedule) {
+        setScheduleInfo(data.schedule);
+      }
     } catch (err) {
       console.error("Erro ao carregar notícias do radar:", err);
     } finally {
@@ -43,8 +64,27 @@ export default function MarketIntelligenceTab({
     loadNews();
   }, []);
 
+
   // Permissão total: Especialistas, Diretores e Administradores veem todo o mercado
   const isFullAccess = !currentUser || ["admin", "diretor", "especialista"].includes(currentUser.perfil);
+
+  // Apenas Administradores têm permissão para excluir notícias do Radar
+  const isAdmin = currentUser?.perfil === "admin";
+
+  async function handleDeleteNews(item) {
+    if (!isAdmin) return;
+    const confirmDelete = window.confirm(
+      `Deseja realmente excluir a notícia do Radar?\n\n"${item.titulo_original}"`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await deleteMarketNews(item.id);
+      setNews((prev) => prev.filter((n) => n.id !== item.id));
+    } catch (err) {
+      alert("Erro ao excluir notícia: " + (err.message || err));
+    }
+  }
 
   // Determina os segmentos pertencentes à carteira do executivo
   const mySegments = useMemo(() => {
@@ -99,9 +139,19 @@ export default function MarketIntelligenceTab({
     );
   }, [isFullAccess, segmentCounts, mySegments]);
 
+  // Quantidade de notícias de hoje dentro do escopo do usuário
+  const todayNewsCount = useMemo(() => {
+    return scopedNews.filter(isNewsToday).length;
+  }, [scopedNews]);
+
   // Filtra as notícias com base nas seleções atuais
   const filteredNews = useMemo(() => {
     return scopedNews.filter((item) => {
+      // 0. Filtro de período (Hoje vs Todas)
+      if (timeFilter === "today" && !isNewsToday(item)) {
+        return false;
+      }
+
       // 1. Filtro de segmento
       if (selectedSegment !== "all") {
         if (selectedSegment === "agencias") {
@@ -141,13 +191,15 @@ export default function MarketIntelligenceTab({
 
       return true;
     });
-  }, [scopedNews, selectedSegment, triggerFilter, search]);
+  }, [scopedNews, selectedSegment, triggerFilter, timeFilter, search]);
+
 
   // Cor temática suave para cada segmento
   function getSegmentBadgeColor(seg) {
     switch (seg) {
       case "Petroquímica":
-        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "Petroquímica, Energia e Lubrificantes":
+        return "bg-amber-50 text-amber-800 border-amber-200";
       case "Tech e E-Commerce":
         return "bg-blue-50 text-blue-700 border-blue-200";
       case "Apostas Esportivas":
@@ -162,12 +214,44 @@ export default function MarketIntelligenceTab({
         return "bg-cyan-50 text-cyan-700 border-cyan-200";
       case "Alimentos":
         return "bg-rose-50 text-rose-700 border-rose-200";
+      case "Bebidas":
+        return "bg-amber-50 text-amber-700 border-amber-300";
       case "Automotivo":
         return "bg-red-50 text-red-700 border-red-200";
+      case "Turismo":
+      case "Turismo e Serviços":
+        return "bg-teal-50 text-teal-700 border-teal-200";
+      case "Saúde e Bem-Estar":
+      case "Farma e Saúde":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "Telecom":
+        return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      case "Educação":
+        return "bg-violet-50 text-violet-700 border-violet-200";
+      case "Entretenimento":
+        return "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200";
+      case "Vestuário e Moda":
+        return "bg-pink-50 text-pink-800 border-pink-300";
+      case "Agro e Meio-Ambiente":
+        return "bg-lime-50 text-lime-800 border-lime-300";
+      case "Atacarejo":
+      case "Atacarejo & Supermercados":
+        return "bg-yellow-50 text-yellow-800 border-yellow-300";
+      case "Agências de Publicidade":
+        return "bg-slate-100 text-slate-800 border-slate-300";
       default:
         return "bg-slate-100 text-slate-700 border-slate-200";
     }
   }
+
+  // Formata os horários para o padrão '08h00', '12h00', etc.
+  const formatSlotHour = (slotStr) => {
+    if (!slotStr) return "";
+    return slotStr.replace(":", "h");
+  };
+
+  const lastSlotFormatted = formatSlotHour(scheduleInfo?.lastRun?.slot) || "08h00";
+  const nextSlotFormatted = formatSlotHour(scheduleInfo?.nextRun?.slot) || "12h00";
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -190,7 +274,19 @@ export default function MarketIntelligenceTab({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Indicador de Atualizações */}
+            <div className="inline-flex items-center gap-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 shadow-xs">
+              <Clock size={13} className="text-indigo-600 shrink-0" />
+              <span>
+                Última Atualização: <strong className="text-slate-800 font-semibold">{lastSlotFormatted}</strong>
+              </span>
+              <span className="text-slate-300">|</span>
+              <span>
+                Próxima Atualização: <strong className="text-indigo-600 font-semibold">{nextSlotFormatted}</strong>
+              </span>
+            </div>
+
             <button
               type="button"
               onClick={loadNews}
@@ -203,98 +299,102 @@ export default function MarketIntelligenceTab({
           </div>
         </div>
 
-        {/* 2. Barra de Busca e Filtros Rápidos */}
-        <div className="mt-5 pt-5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          {/* Campo de Busca */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por marca, agência, executivo ou termo..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50/50"
-            />
-            {search && (
+        {/* 2. Barra de Busca, Período e Menus Suspensos */}
+        <div className="mt-5 pt-5 border-t border-slate-100 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+            {/* Campo de Busca */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por marca, agência, executivo ou termo..."
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-50/50"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+
+            {/* Filtro por Período: Todas vs Hoje (sem ícone do raio) */}
+            <div className="inline-flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200/60 self-start sm:self-auto shrink-0">
               <button
                 type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600"
+                onClick={() => setTimeFilter("all")}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  timeFilter === "all"
+                    ? "bg-white text-slate-800 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                Limpar
+                Todas ({scopedNews.length})
               </button>
-            )}
-          </div>
-
-          {/* Filtro por Gatilho */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 text-xs font-semibold">
-            <span className="text-slate-400 text-[11px] mr-1 uppercase tracking-wider hidden sm:inline">Gatilho:</span>
-            {[
-              { id: "all", label: "Todos" },
-              { id: "troca", label: "Troca de Agência" },
-              { id: "lideranca", label: "Novo CMO / Liderança" },
-              { id: "campanha", label: "Campanha & Mídia" },
-            ].map((t) => (
               <button
-                key={t.id}
                 type="button"
-                onClick={() => setTriggerFilter(t.id)}
-                className={`px-2.5 py-1.5 rounded-md whitespace-nowrap transition-colors ${
-                  triggerFilter === t.id
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
+                onClick={() => setTimeFilter("today")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  timeFilter === "today"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                {t.label}
+                <span>Hoje</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                    timeFilter === "today" ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {todayNewsCount}
+                </span>
               </button>
-            ))}
+            </div>
           </div>
-        </div>
 
-        {/* 3. Pílulas de Segmentos Comerciais */}
-        <div className="mt-4 flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-thin">
-          {/* Botão de visão geral */}
-          <button
-            type="button"
-            onClick={() => setSelectedSegment("all")}
-            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-              selectedSegment === "all"
-                ? "bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-200"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            <span>{isFullAccess ? "Todos os Segmentos" : "Minha Carteira & Agências"}</span>
-            <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                selectedSegment === "all" ? "bg-indigo-700 text-white" : "bg-slate-200 text-slate-700"
-              }`}
-            >
-              {scopedNews.length}
-            </span>
-          </button>
-
-          {/* Segmentos disponíveis conforme o perfil */}
-          {availableSegments.map((segName) => (
-            <button
-              key={segName}
-              type="button"
-              onClick={() => setSelectedSegment(segName)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                selectedSegment === segName
-                  ? "bg-slate-900 text-white shadow-sm ring-2 ring-slate-300"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              <span>{segName}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                  selectedSegment === segName ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-600"
-                }`}
+          {/* Menus Suspensos: Gatilho e Segmentos */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+            {/* Menu Suspenso de Gatilho */}
+            <div className="relative min-w-[175px] flex-1 sm:flex-initial">
+              <select
+                aria-label="Filtro por Gatilho Comercial"
+                value={triggerFilter}
+                onChange={(e) => setTriggerFilter(e.target.value)}
+                className="w-full appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer shadow-xs"
               >
-                {segmentCounts[segName] || 0}
-              </span>
-            </button>
-          ))}
+                <option value="all">Gatilho: Todos</option>
+                <option value="troca">Troca de Agência</option>
+                <option value="lideranca">Novo CMO / Liderança</option>
+                <option value="campanha">Campanha & Mídia</option>
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+
+            {/* Menu Suspenso de Segmentos */}
+            <div className="relative min-w-[215px] flex-1 sm:flex-initial">
+              <select
+                aria-label="Filtro por Segmento"
+                value={selectedSegment}
+                onChange={(e) => setSelectedSegment(e.target.value)}
+                className="w-full appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer shadow-xs"
+              >
+                <option value="all">
+                  Segmento: Todos ({scopedNews.length})
+                </option>
+                {availableSegments.map((segName) => (
+                  <option key={segName} value={segName}>
+                    {segName} ({segmentCounts[segName] || 0})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -306,27 +406,53 @@ export default function MarketIntelligenceTab({
         </div>
       ) : filteredNews.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-          <Globe size={40} className="mx-auto text-slate-300 mb-3" />
-          <h3 className="text-base font-bold text-slate-700">
-            {isFullAccess ? "Nenhuma notícia encontrada" : "Nenhuma oportunidade mapeada para a sua carteira"}
-          </h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
-            {isFullAccess
-              ? "Não há movimentações registradas com os filtros selecionados. Tente limpar a busca ou selecionar outro segmento."
-              : "Não encontramos movimentações recentes para os segmentos comerciais da sua carteira ou notícias de agências no momento."}
-          </p>
-          {(selectedSegment !== "all" || triggerFilter !== "all" || search) && (
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSegment("all");
-                setTriggerFilter("all");
-                setSearch("");
-              }}
-              className="mt-4 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-            >
-              Redefinir Filtros
-            </button>
+          {timeFilter === "today" ? (
+            <>
+              <Clock size={40} className="mx-auto text-indigo-400 mb-3" />
+              <h3 className="text-base font-bold text-slate-700">
+                Nenhuma notícia publicada hoje até o momento
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                Não há notícias capturadas na data de hoje para os filtros selecionados. As varreduras automáticas de mercado ocorrem às 08h00, 12h00, 16h00 e 20h00.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeFilter("all");
+                  setSelectedSegment("all");
+                  setTriggerFilter("all");
+                  setSearch("");
+                }}
+                className="mt-4 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+              >
+                Ver Todas as Notícias ({scopedNews.length})
+              </button>
+            </>
+          ) : (
+            <>
+              <Globe size={40} className="mx-auto text-slate-300 mb-3" />
+              <h3 className="text-base font-bold text-slate-700">
+                {isFullAccess ? "Nenhuma notícia encontrada" : "Nenhuma oportunidade mapeada para a sua carteira"}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                {isFullAccess
+                  ? "Não há movimentações registradas com os filtros selecionados. Tente limpar a busca ou selecionar outro segmento."
+                  : "Não encontramos movimentações recentes para os segmentos comerciais da sua carteira ou notícias de agências no momento."}
+              </p>
+              {(selectedSegment !== "all" || triggerFilter !== "all" || search) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSegment("all");
+                    setTriggerFilter("all");
+                    setSearch("");
+                  }}
+                  className="mt-4 px-4 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                >
+                  Redefinir Filtros
+                </button>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -348,6 +474,12 @@ export default function MarketIntelligenceTab({
                   </span>
 
                   <div className="flex items-center gap-2 text-xs text-slate-400">
+                    {isNewsToday(item) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs animate-pulse">
+                        <Zap size={10} className="fill-amber-600 text-amber-600" />
+                        HOJE
+                      </span>
+                    )}
                     <span className="font-semibold text-slate-500">{item.fonte}</span>
                     <span>•</span>
                     <span>
@@ -355,6 +487,7 @@ export default function MarketIntelligenceTab({
                         ? new Date(item.data_publicacao + "T12:00:00Z").toLocaleDateString("pt-BR")
                         : "Recente"}
                     </span>
+
                     {item.url && (
                       <a
                         href={item.url}
@@ -456,17 +589,31 @@ export default function MarketIntelligenceTab({
                   <span>Criar Oportunidade no Pipeline</span>
                 </button>
 
-                {item.url && (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors py-2 px-1"
-                  >
-                    <span>Ver na Fonte</span>
-                    <ExternalLink size={12} />
-                  </a>
-                )}
+                <div className="flex items-center gap-2">
+                  {item.url && (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors py-2 px-2 rounded-lg hover:bg-indigo-50"
+                    >
+                      <span>Ver na Fonte</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNews(item)}
+                      title="Excluir notícia do Radar de Mercado (Apenas Administrador)"
+                      className="inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg p-2 transition-colors cursor-pointer"
+                      aria-label="Excluir notícia"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

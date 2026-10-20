@@ -18,7 +18,9 @@ const PERMISSIONS = {
     "can_record_audio",
     "can_create_opportunities",
     "can_edit_opportunities",
-    "can_delete_opportunities"
+    "can_delete_opportunities",
+    "can_manage_proposal_templates",
+    "can_view_engajamento"
   ],
   diretor: [
     "can_view_dashboard",
@@ -35,7 +37,9 @@ const PERMISSIONS = {
     "can_edit_contacts",
     "can_record_audio",
     "can_create_opportunities",
-    "can_edit_opportunities"
+    "can_edit_opportunities",
+    "can_manage_proposal_templates",
+    "can_view_engajamento"
   ],
   especialista: [
     "can_view_pipeline",
@@ -46,7 +50,8 @@ const PERMISSIONS = {
     "can_view_contacts",
     "can_edit_contacts",
     "can_record_audio",
-    "can_edit_opportunities"
+    "can_edit_opportunities",
+    "can_manage_proposal_templates"
   ],
   executivo: [
     "can_view_dashboard",
@@ -59,7 +64,8 @@ const PERMISSIONS = {
     "can_edit_contacts",
     "can_record_audio",
     "can_create_opportunities",
-    "can_edit_opportunities"
+    "can_edit_opportunities",
+    "can_manage_proposal_templates"
   ]
 };
 

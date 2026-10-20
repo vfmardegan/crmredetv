@@ -24,10 +24,21 @@ async function requireAuth(req, res, next) {
   }
 
   try {
-    const userRes = await pool.query(
-      "SELECT id, email, nome, perfil, executivo_id, ativo, token_version FROM usuarios WHERE id = $1",
-      [decoded.id]
-    );
+    let userRes;
+    const numericId = parseInt(decoded.id, 10);
+    if (!isNaN(numericId) && String(numericId) === String(decoded.id)) {
+      userRes = await pool.query(
+        "SELECT id, email, nome, perfil, executivo_id, ativo, token_version FROM usuarios WHERE id = $1",
+        [numericId]
+      );
+    } else if (decoded.email) {
+      userRes = await pool.query(
+        "SELECT id, email, nome, perfil, executivo_id, ativo, token_version FROM usuarios WHERE LOWER(email) = LOWER($1)",
+        [decoded.email]
+      );
+    } else {
+      return res.status(401).json({ error: "Não autorizado. Token de sessão malformatado." });
+    }
 
     if (userRes.rows.length === 0) {
       return res.status(401).json({ error: "Não autorizado. Usuário não encontrado." });

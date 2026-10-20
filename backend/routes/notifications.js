@@ -9,7 +9,7 @@ router.get("/notifications", async (req, res) => {
     const dbRes = await pool.query(
       `SELECT id, title, message, type, client_id, read, created_at 
        FROM notificacoes 
-       WHERE user_id = $1 
+       WHERE user_id = $1 AND (type IS NULL OR type NOT LIKE 'inactive%')
        ORDER BY created_at DESC 
        LIMIT 50`,
       [req.user.id]

@@ -292,118 +292,177 @@ const initDb = async () => {
     if (parseInt(countNewsRes.rows[0].count, 10) === 0) {
       const initialNews = [
         {
-          id: "noticia_01_almap_ipiranga",
-          data_publicacao: "2026-10-06",
-          fonte: "PropMark",
-          url: "https://propmark.com.br/agencias/ipiranga-escolhe-almapbbdo-como-nova-agencia-de-publicidade/",
-          titulo_original: "AlmapBBDO assume conta de publicidade da Ipiranga após concorrência",
-          segmento_crm: "Petroquímica",
-          anunciante_mencionado: "Ipiranga",
-          agencia_mencionada: "AlmapBBDO",
-          resumo_executivo: "A Ipiranga concluiu seu processo de concorrência e transferiu sua conta de publicidade para a AlmapBBDO. A agência será responsável por todo o planejamento criativo, campanhas institucionais e ações de varejo de combustíveis e conveniência (AmPm). O novo ciclo prevê forte investimento em alcance nacional e formatos de massa.",
-          gatilho_comercial: "Troca de agência publicitária — janela aberta para apresentação de formatos proprietários e ações de merchandising na grade da RedeTV! antes do fechamento do split anual.",
-          acao_sugerida: "Abordar a equipe de mídia da AlmapBBDO para apresentar as cotas do Operação de Risco e patrocínio esportivo.",
-          tags: ["Ipiranga", "AlmapBBDO", "Petroquímica", "Troca de Agência", "Varejo"]
+          id: "noticia_0810_picpay_drum",
+          data_publicacao: "2026-10-08",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/comunicacao/drum-vence-concorrencia-pelo-picpay",
+          titulo_original: "Drum vence concorrência e assume a conta de comunicação do PicPay",
+          segmento_crm: "Financeiro e Seguros",
+          anunciante_mencionado: "PicPay",
+          agencia_mencionada: "Drum (Omnicom Media Group)",
+          resumo_executivo: "A agência Drum, parte do Omnicom Media, venceu a concorrência pela conta de comunicação do PicPay. A agência contará com uma estrutura dedicada para atender ao novo cliente, que era anteriormente atendido pela BETC Havas.",
+          gatilho_comercial: "Troca de agência de grande player financeiro com verba pesada e montagem de nova operação de atendimento.",
+          acao_sugerida: "Agendar reunião de alinhamento com a diretoria de mídia da nova agência Drum para apresentar formatos institucionais do RedeTV! News e projetos de finanças pessoais.",
+          tags: ["Financeiro e Seguros", "Troca de Agência", "Concorrência", "PicPay", "Drum"]
         },
         {
-          id: "noticia_02_artplan_bling",
+          id: "noticia_0810_gol_druid",
+          data_publicacao: "2026-10-08",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/agencias/druid-cria-unidade-feature-e-conquista-conta-da-gol/",
+          titulo_original: "Druid cria unidade Feature e conquista a conta da GOL Linhas Aéreas",
+          segmento_crm: "Turismo e Serviços",
+          anunciante_mencionado: "GOL Linhas Aéreas / Smiles / GOLLOG",
+          agencia_mencionada: "Druid Feature",
+          resumo_executivo: "A agência Druid anunciou a criação da Druid Feature, unidade voltada para inovação e tecnologia, e estreou com a conquista da conta de redes sociais da GOL Linhas Aéreas, Smiles e GOLLOG após processo de concorrência.",
+          gatilho_comercial: "Troca de agência para a divisão de conteúdo e ativação de fidelidade das marcas do grupo GOL.",
+          acao_sugerida: "Fazer aproximação comercial com a equipe de marketing da Smiles e da Druid para projetos de conteúdo de turismo e passagens em programas de variedades da RedeTV!.",
+          tags: ["Turismo e Serviços", "Troca de Agência", "Concorrência", "GOL", "Smiles"]
+        },
+        {
+          id: "noticia_0810_unidas_rosh",
+          data_publicacao: "2026-10-06",
+          fonte: "Grandes Nomes da Propaganda",
+          url: "https://grandesnomesdapropaganda.com.br/agencias/rosh-conquista-a-conta-da-unidas/",
+          titulo_original: "Rosh conquista a conta da Unidas e assume estratégia de mídia e branding",
+          segmento_crm: "Automotivo",
+          anunciante_mencionado: "Unidas (Locação de Veículos e Frotas)",
+          agencia_mencionada: "Rosh",
+          resumo_executivo: "A Unidas escolheu a Rosh como sua nova agência para comandar a estratégia integrada de comunicação, englobando branding, campanhas de massa, mídia offline, marketing de influência e gestão de comunidade.",
+          gatilho_comercial: "Definição de nova agência para gigante de locação e mobilidade com retomada de campanhas e mídia.",
+          acao_sugerida: "Apresentar pacote comercial nos telejornais e no programa Operação de Risco para a liderança de mídia da Rosh e marketing da Unidas.",
+          tags: ["Automotivo", "Troca de Agência", "Concorrência", "Unidas", "Mobilidade"]
+        },
+        {
+          id: "noticia_0810_denza_samy",
           data_publicacao: "2026-10-05",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/comunicacao/danca-das-contas-byd-bling-e-outras",
+          titulo_original: "Samy assume a conta da Denza, marca premium do ecossistema BYD no Brasil",
+          segmento_crm: "Automotivo",
+          anunciante_mencionado: "Denza (BYD Brasil)",
+          agencia_mencionada: "Samy Alliance",
+          resumo_executivo: "A agência Samy assumiu a operação de comunicação da Denza, divisão premium de luxo do ecossistema BYD, focando no posicionamento da marca e no lançamento do ecossistema de recarga rápida e modelos de ponta.",
+          gatilho_comercial: "Chegada de nova marca de luxo no mercado automotivo com verba de lançamento e awareness qualificado.",
+          acao_sugerida: "Apresentar cotas nos programas de alta renda e atrações noturnas da RedeTV!, destacando a tecnologia dos eletrificados de luxo.",
+          tags: ["Automotivo", "Nova Conta", "Eletrificados", "BYD", "Denza", "Luxo"]
+        },
+        {
+          id: "noticia_0710_nestle_nba",
+          data_publicacao: "2026-10-07",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/marketing/nestle-e-nba-se-juntam-em-acordo-global",
+          titulo_original: "Nestlé e NBA se juntam em acordo global para as marcas Nescau, Milo e Nesquik",
+          segmento_crm: "Alimentos",
+          anunciante_mencionado: "Nestlé Brasil",
+          agencia_mencionada: "Ogilvy / Dentsu",
+          resumo_executivo: "A Nestlé oficializou um acordo plurianual global com a NBA contemplando 21 mercados, incluindo o Brasil. A parceria engloba Nescau, Milo e Nesquik em grandes campanhas de mídia, promoções no varejo e ativações de basquete.",
+          gatilho_comercial: "Nova grande plataforma de comunicação e patrocínio esportivo com previsão de forte apoio de mídia nacional.",
+          acao_sugerida: "Apresentar cotas de integração esportiva nos telejornais e programas de entretenimento jovem da RedeTV!, conectando o apelo de basquete e estilo de vida da marca Nescau.",
+          tags: ["Alimentos", "Patrocínio Esportivo", "Campanha", "Nescau", "Nestlé"]
+        },
+        {
+          id: "noticia_0710_vivo_disney",
+          data_publicacao: "2026-10-07",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/anunciantes/vivo-e-disney-apresentam-campanha-para-chegada-de-toy-story-5-ao-streaming/",
+          titulo_original: "Vivo e Disney+ apresentam campanha para chegada de Toy Story 5 ao streaming",
+          segmento_crm: "Tech e E-Commerce",
+          anunciante_mencionado: "Vivo (Telefônica Brasil)",
+          agencia_mencionada: "Polvo / Galeria",
+          resumo_executivo: "A Vivo e o Disney+ lançaram campanha publicitária celebrando a estreia de Toy Story 5 e promovendo os pacotes convergentes Vivo Total. A divulgação é multiplataforma, abrangendo TV aberta, TV paga e canais digitais.",
+          gatilho_comercial: "Grande esforço conjunto de mídia com foco no consumidor residencial e famílias em todo o país.",
+          acao_sugerida: "Ofertar cotas nos intervalos comerciais nobres do horário nobre e no programa Operação de Risco para amplificação de audiência de massa.",
+          tags: ["Tech e E-Commerce", "Telecom", "Campanha Multicanal", "Vivo", "Disney"]
+        },
+        {
+          id: "noticia_0610_sephora_juliette",
+          data_publicacao: "2026-10-06",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/comunicacao/sephora-anuncia-juliette-como-embaixadora-do-baile-de-2027",
+          titulo_original: "Sephora anuncia Juliette como embaixadora do Baile de Halloween",
+          segmento_crm: "Higiene e Beleza",
+          anunciante_mencionado: "Sephora Brasil",
+          agencia_mencionada: "Hood / Publicis",
+          resumo_executivo: "A Sephora confirmou Juliette como embaixadora da sétima edição de seu Baile de Halloween. A artista protagonizará uma websérie para as redes sociais da marca com foco em beleza e maquiagem, mobilizando os maiores patrocinadores do setor de cosméticos.",
+          gatilho_comercial: "Grande projeto de experiência e branding no setor de beleza com copatrocínio de dezenas de marcas de cosméticos.",
+          acao_sugerida: "Mapear as marcas patrocinadoras do projeto Sephora para oferecer pacotes de cobertura especial e matérias no programa TV Fama.",
+          tags: ["Higiene e Beleza", "Cosméticos", "Influência", "Sephora", "Eventos"]
+        },
+        {
+          id: "noticia_0610_sabin_wmcann",
+          data_publicacao: "2026-10-06",
+          fonte: "PropMark",
+          url: "https://propmark.com.br/anunciantes/sabin-lanca-campanha-prevencao-sem-vergonha-com-a-wmccann/",
+          titulo_original: "Sabin lança campanha Prevenção sem Vergonha com a WMcCann",
+          segmento_crm: "Saúde e Bem-Estar",
+          anunciante_mencionado: "Grupo Sabin Diagnóstico e Saúde",
+          agencia_mencionada: "WMcCann",
+          resumo_executivo: "O Grupo Sabin colocou no ar a campanha \"Prevenção sem Vergonha\", desenvolvida pela WMcCann, com o objetivo de incentivar o cuidado com a saúde e a realização de exames preventivos regulares ao longo do Outubro Rosa e Novembro Azul.",
+          gatilho_comercial: "Campanha institucional de conscientização com plano de mídia voltado ao público adulto e sênior.",
+          acao_sugerida: "Apresentar oportunidades de apoio e patrocínio no quadro de saúde dos telejornais da emissora.",
+          tags: ["Saúde e Bem-Estar", "Campanha Institucional", "Sabin", "WMcCann"]
+        },
+        {
+          id: "noticia_0510_outback_korea",
+          data_publicacao: "2026-10-07",
+          fonte: "Meio & Mensagem",
+          url: "https://www.meioemensagem.com.br/marketing/outback-entra-na-cultura-coreana-com-cardapio-especial",
+          titulo_original: "Outback entra na cultura coreana com novo cardápio especial e campanha nacional",
+          segmento_crm: "Alimentos",
+          anunciante_mencionado: "Outback Steakhouse (Bloomin Brands)",
+          agencia_mencionada: "Ampfy",
+          resumo_executivo: "A rede Outback Steakhouse iniciou a veiculação de sua campanha nacional \"Outbac-K\", celebrando os sabores da Coreia com receitas exclusivas e plano de mídia massivo com influenciadores e formatos de vídeo.",
+          gatilho_comercial: "Lançamento de produto sazonal com investimento concentrado de curto e médio prazo.",
+          acao_sugerida: "Oferecer inserções de merchandising e ações especiais nos programas de entretenimento da RedeTV! direcionadas ao público jovem e jovem-adulto.",
+          tags: ["Alimentos", "Lançamento de Produto", "Campanha", "Outback", "Gastronomia"]
+        },
+        {
+          id: "noticia_0510_bling_artplan",
+          data_publicacao: "2026-10-01",
           fonte: "PropMark",
           url: "https://propmark.com.br/agencias/artplan-assume-conta-do-bling-e-apresenta-nova-campanha-da-marca/",
-          titulo_original: "Artplan conquista a conta de publicidade do Bling",
+          titulo_original: "Artplan assume conta do Bling e apresenta nova campanha da marca",
           segmento_crm: "Tech e E-Commerce",
           anunciante_mencionado: "Bling (Locaweb Company)",
           agencia_mencionada: "Artplan",
-          resumo_executivo: "O sistema de gestão e e-commerce Bling, pertencente à Locaweb Company, escolheu a Artplan como sua nova agência de publicidade. O objetivo é expandir o conhecimento da marca entre pequenas e médias empresas em todo o território nacional. A estratégia contemplará mídia de massa e formatos de conteúdo corporativo.",
+          resumo_executivo: "O sistema de gestão Bling, da Locaweb Company, escolheu a Artplan como nova agência de publicidade e lançou a campanha \"Bling. Tem tudo pra dar certo\", visando expandir a marca entre micro e pequenas empresas em todo o país.",
           gatilho_comercial: "Contratação de agência de grande porte para estratégia de branding em massa de software de gestão para empreendedores.",
           acao_sugerida: "Apresentar à Artplan formatos no Dinheiro na Conta e inserções na grade diária para falar com o público microempreendedor.",
-          tags: ["Bling", "Locaweb", "Artplan", "Tech e E-Commerce", "SaaS", "PMEs"]
+          tags: ["Tech e E-Commerce", "Bling", "Locaweb", "Artplan", "PMEs"]
         },
         {
-          id: "noticia_03_galeria_flutter",
-          data_publicacao: "2026-10-03",
-          fonte: "Meio & Mensagem",
-          url: "https://www.meioemensagem.com.br/comunicacao/galeria-sera-a-agencia-principal-da-flutter-brazil-em-2026",
-          titulo_original: "Galeria vence concorrência e assume a conta da Flutter Brazil (Betnacional e Betfair)",
-          segmento_crm: "Apostas Esportivas",
-          anunciante_mencionado: "Flutter Brazil (Betnacional / Betfair)",
-          agencia_mencionada: "Galeria",
-          resumo_executivo: "A Flutter Brazil unificou o atendimento de suas principais marcas (Betnacional e Betfair) na agência Galeria após longa concorrência. A conta prevê alocação maciça de mídia em transmissões esportivas e programas de entretenimento de alta audiência. O plano busca consolidar as marcas sob o novo ambiente regulatório do setor de apostas.",
-          gatilho_comercial: "Definição de nova agência de longo prazo para as maiores operadoras de apostas do país com verba pesada em TV aberta e esportes.",
-          acao_sugerida: "Levar à Galeria pacotes de patrocínio de transmissões esportivas e branded content no entretenimento popular.",
-          tags: ["Flutter Brazil", "Betnacional", "Betfair", "Galeria", "Apostas Esportivas", "Futebol"]
-        },
-        {
-          id: "noticia_04_leroy_cmo",
-          data_publicacao: "2026-10-02",
-          fonte: "Meio & Mensagem",
-          url: "https://www.meioemensagem.com.br/gente/carolina-braune-assume-como-cmo-da-leroy-merlin-brasil",
-          titulo_original: "Carolina Braune assume como Chief Marketing Officer da Leroy Merlin Brasil",
-          segmento_crm: "Construção, Imobiliário e Decoração",
-          anunciante_mencionado: "Leroy Merlin",
-          agencia_mencionada: "N/A",
-          resumo_executivo: "A Leroy Merlin Brasil anunciou Carolina Braune como sua nova CMO para liderar branding, retail media e experiência omnichannel. A executiva assume com a missão de renovar a presença da varejista em campanhas de reformas, sazonalidades e projetos de casa. A mudança indica revisão das parcerias e cronogramas de mídia do varejo para o fim de ano.",
-          gatilho_comercial: "Nova CMO contratada — oportunidade para agendar reunião de apresentação institucional e propor projetos temáticos de casa e reforma.",
-          acao_sugerida: "Solicitar reunião de apresentação com a assessoria da nova CMO para projetos de merchandising de reforma e casa no A Tarde É Sua.",
-          tags: ["Leroy Merlin", "Carolina Braune", "CMO", "Construção, Imobiliário e Decoração", "Varejo"]
-        },
-        {
-          id: "noticia_05_akm_neutrox",
-          data_publicacao: "2026-10-01",
+          id: "noticia_0510_kopenhagen_smurfs",
+          data_publicacao: "2026-10-05",
           fonte: "PropMark",
-          url: "https://propmark.com.br/agencias/akm-e-a-nova-agencia-de-comunicacao-da-neutrox/",
-          titulo_original: "Neutrox escolhe AKM como nova parceira de comunicação após concorrência",
-          segmento_crm: "Higiene e Beleza",
-          anunciante_mencionado: "Neutrox (Flora)",
-          agencia_mencionada: "AKM",
-          resumo_executivo: "A marca de cuidados capilares Neutrox, do Grupo Flora, selecionou a AKM para liderar suas estratégias de comunicação, ativações e mídia. O movimento visa acelerar a penetração da marca em praças regionais e canais populares com forte apelo visual. A campanha de verão é a primeira grande entrega prevista no escopo.",
-          gatilho_comercial: "Troca de agência e preparação para campanha de verão de bens de consumo populares de higiene.",
-          acao_sugerida: "Enviar proposta de ativações para a temporada de verão em programas de variedades populares da emissora.",
-          tags: ["Neutrox", "Flora", "AKM", "Higiene e Beleza", "Campanha de Verão"]
+          url: "https://propmark.com.br/anunciantes/kopenhagen-lanca-campanha-para-nova-linha-de-produtos-dos-smurfs/",
+          titulo_original: "Kopenhagen lança campanha para nova linha de produtos dos Smurfs",
+          segmento_crm: "Alimentos",
+          anunciante_mencionado: "Kopenhagen (Grupo CRM / Nestlé)",
+          agencia_mencionada: "WMcCann",
+          resumo_executivo: "A Kopenhagen colocou no ar campanha criada pela WMcCann para promover sua linha de produtos licenciados dos Smurfs para o Dia das Crianças, com storytelling corporativo e ativações em lojas físicas e e-commerce.",
+          gatilho_comercial: "Campanha de impulso de vendas e branding com presença de mídia massiva pré-datas comemorativas.",
+          acao_sugerida: "Apresentar formatos de branded content gastronômico e vinhetas nos programas matinais e vespertinos.",
+          tags: ["Alimentos", "Campanha", "Kopenhagen", "Varejo", "Licenciamento"]
         },
         {
-          id: "noticia_06_porto_cmo",
-          data_publicacao: "2026-09-29",
-          fonte: "Meio & Mensagem",
-          url: "https://www.meioemensagem.com.br/gente/oliver-haider-e-promovido-a-cmo-do-grupo-porto",
-          titulo_original: "Oliver Haider é promovido a Diretor de Marketing do Grupo Porto",
-          segmento_crm: "Financeiro e Seguros",
-          anunciante_mencionado: "Grupo Porto",
-          agencia_mencionada: "N/A",
-          resumo_executivo: "O Grupo Porto oficializou a promoção de Oliver Haider à Diretoria de Marketing da holding. O executivo assume a missão de acelerar o ecossistema que integra seguros, serviços financeiros, Porto Saúde e Porto Bank. A nova gestão reforçará investimentos em TV e patrocínios de relevância comunitária e segurança no trânsito.",
-          gatilho_comercial: "Nova liderança de marketing em grande conglomerado financeiro/segurador com apetite para programas de serviços e trânsito.",
-          acao_sugerida: "Agendar café de relacionamento com Oliver Haider destacando a audiência qualificada das atrações jornalísticas e prestação de serviços.",
-          tags: ["Grupo Porto", "Oliver Haider", "Financeiro e Seguros", "Liderança", "Seguros"]
-        },
-        {
-          id: "noticia_07_monks_ype",
-          data_publicacao: "2026-09-27",
+          id: "noticia_0510_fanta_halloween",
+          data_publicacao: "2026-10-05",
           fonte: "PropMark",
-          url: "https://propmark.com.br/agencias/monks-e-a-nova-agencia-digital-da-ype/",
-          titulo_original: "Monks assume gestão de mídia e estratégia digital da Ypê",
-          segmento_crm: "Higiene e Beleza",
-          anunciante_mencionado: "Ypê (Química Amparo)",
-          agencia_mencionada: "Monks",
-          resumo_executivo: "A Química Amparo entregou à Monks o escopo de mídia e estratégia criativa para a marca Ypê. A marca busca integrar mais estreitamente suas ações de TV tradicional com crossmedia e ativações digitais. A revisão da estratégia ocorre às vésperas do planejamento anual de 2027.",
-          gatilho_comercial: "Nova agência gerindo mídia de gigante de consumo massivo — oportunidade de crossmedia TV + Digital.",
-          acao_sugerida: "Apresentar pacotes integrados que combinam TV linear com distribuição digital e menções nas redes sociais dos talentos da casa.",
-          tags: ["Ypê", "Química Amparo", "Monks", "Higiene e Beleza", "Crossmedia"]
-        },
-        {
-          id: "noticia_08_midea_carrier",
-          data_publicacao: "2026-09-25",
-          fonte: "Meio & Mensagem",
-          url: "https://www.meioemensagem.com.br/comunicacao/danca-das-contas-midea-carrier-natura-e-outros",
-          titulo_original: "Jotacom conquista a conta de comunicação da Midea Carrier no Brasil",
-          segmento_crm: "Eletro-Eletrônicos",
-          anunciante_mencionado: "Midea Carrier",
-          agencia_mencionada: "Jotacom",
-          resumo_executivo: "A Midea Carrier selecionou a Jotacom como sua nova agência de comunicação integrada no Brasil. O escopo abrange o lançamento de novas linhas de ar-condicionado residencial e eletrodomésticos inteligentes para a temporada de verão. A marca planeja intensificar presença em mídias de alta visibilidade e programas vespertinos.",
-          gatilho_comercial: "Conquista de conta às vésperas da temporada de alta demanda (verão) para eletrodomésticos e climatização.",
-          acao_sugerida: "Ofertar cotas sazonais de verão com inserções testemunhais na grade vespertina.",
-          tags: ["Midea Carrier", "Jotacom", "Eletro-Eletrônicos", "Climatização", "Verão"]
+          url: "https://propmark.com.br/anunciantes/fanta-transforma-anuncios-de-streaming-em-jump-scares-no-halloween/",
+          titulo_original: "Fanta transforma anúncios de streaming em jump scares no Halloween",
+          segmento_crm: "Bebidas",
+          anunciante_mencionado: "Coca-Cola Brasil (Fanta)",
+          agencia_mencionada: "WPP Open X / VML / Ogilvy",
+          resumo_executivo: "A Fanta lançou o projeto \"Jump Scares\", iniciativa que transforma anúncios em plataformas de streaming e vídeo em experiências de suspense e sustos digitais durante a temporada de Halloween.",
+          gatilho_comercial: "A maior ativação anual da marca com verba expressiva alocada em mídia audiovisual de impacto.",
+          acao_sugerida: "Ofertar inserções comerciais exclusivas em programas de alta afinidade com o público jovem e gamer da RedeTV!.",
+          tags: ["Bebidas", "Campanha Nacional", "Fanta", "Coca-Cola"]
         }
       ];
+
+
+
 
       for (const item of initialNews) {
         await pool.query(
@@ -429,7 +488,176 @@ const initDb = async () => {
       console.log(`[SEED] ${initialNews.length} notícias iniciais de inteligência de mercado inseridas com sucesso.`);
     }
 
-    console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos, alocações de oportunidades e inteligência de mercado verificados.");
+    // 22. Tabela do Pipeline Estratégico (Top 30 por Segmento)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pipeline_estrategico (
+        id SERIAL PRIMARY KEY,
+        segmento VARCHAR(100) NOT NULL,
+        tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('mercado', 'estrategico')),
+        posicao INTEGER NOT NULL CHECK (posicao >= 1 AND posicao <= 15),
+        client_id VARCHAR(255) REFERENCES clients(id) ON DELETE SET NULL,
+        nome_marca VARCHAR(255) NOT NULL,
+        holding VARCHAR(255),
+        holding_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+        sub_marcas TEXT[] DEFAULT '{}',
+        agencia_nome VARCHAR(255),
+        agencia_id TEXT REFERENCES clients(id) ON DELETE SET NULL,
+        racional TEXT,
+        ultima_reuniao TEXT,
+        investimento_estimado NUMERIC DEFAULT 0,
+        iniciativas JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      ALTER TABLE pipeline_estrategico DROP CONSTRAINT IF EXISTS pipeline_estrategico_posicao_check;
+      ALTER TABLE pipeline_estrategico DROP CONSTRAINT IF EXISTS pipeline_estrategico_segmento_tipo_posicao_key;
+      ALTER TABLE pipeline_estrategico DROP CONSTRAINT IF EXISTS pipeline_estrategico_agencia_id_fkey;
+      ALTER TABLE pipeline_estrategico DROP CONSTRAINT IF EXISTS pipeline_estrategico_holding_id_fkey;
+      ALTER TABLE pipeline_estrategico ALTER COLUMN posicao DROP NOT NULL;
+      ALTER TABLE pipeline_estrategico ALTER COLUMN posicao SET DEFAULT 1;
+      ALTER TABLE pipeline_estrategico ADD COLUMN IF NOT EXISTS holding_id TEXT;
+      ALTER TABLE pipeline_estrategico ADD COLUMN IF NOT EXISTS agencia_id TEXT;
+      ALTER TABLE pipeline_estrategico ADD COLUMN IF NOT EXISTS investimento_estimado NUMERIC DEFAULT 0;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pipe_strat_seg_tipo_marca ON pipeline_estrategico (segmento, tipo, nome_marca);
+      CREATE INDEX IF NOT EXISTS idx_pipeline_estrategico_seg ON pipeline_estrategico (segmento);
+    `);
+
+    // Seed inicial para Farmacêutico e Higiene se tabela estiver vazia
+    const countStratRes = await pool.query("SELECT COUNT(*) FROM pipeline_estrategico");
+    if (parseInt(countStratRes.rows[0].count, 10) === 0) {
+      const initialStrat = [
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "mercado",
+          posicao: 1,
+          nome_marca: "Hypera Pharma",
+          holding: "Grupo Hypera",
+          sub_marcas: ["Neo Química", "Benegrip", "Engov", "Epocler"],
+          agencia_nome: "Mynd8 / In-house",
+          racional: "Líder de investimentos de farma em TV aberta. Merchandising rotativo diário.",
+          ultima_reuniao: "Reunião em 14/10 com Ernesto Piva na sede da Hypera. Alinhado retorno positivo das ações de Benegrip no 'A Tarde é Sua'. Solicitado novo plano para o 1º trimestre de 2027.",
+          iniciativas: JSON.stringify([
+            { id: "ini_1", text: "Apresentar projeto de patrocínio de Verão para Engov", done: false, date: "24/10" },
+            { id: "ini_2", text: "Enviar relatório pós-venda consolidado de audiência", done: true, date: "15/10" }
+          ])
+        },
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "mercado",
+          posicao: 2,
+          nome_marca: "EMS Farmacêutica",
+          holding: "Grupo NC",
+          sub_marcas: ["EMS Genéricos", "Gerovital", "Calman"],
+          agencia_nome: "We / Fbiz",
+          racional: "Líder em genéricos com forte presença institucional.",
+          ultima_reuniao: "Apresentação de proposta no valor de R$ 850.000 para cota anual de institucionais no RedeTV! News com a agência We.",
+          iniciativas: JSON.stringify([
+            { id: "ini_3", text: "Follow-up com Diretor de Mídia da agência We", done: false, date: "21/10" },
+            { id: "ini_4", text: "Mapear Gerente de Produto de Gerovital", done: false, date: "28/10" }
+          ])
+        },
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "mercado",
+          posicao: 3,
+          nome_marca: "Eurofarma",
+          holding: "Eurofarma Lab.",
+          sub_marcas: ["Lactulona", "Aspirina Prevent"],
+          agencia_nome: "AlmapBBDO",
+          racional: "Grande presença em consultórios e expansão em OTC.",
+          ultima_reuniao: "Sem reuniões realizadas nos últimos 60 dias.",
+          iniciativas: JSON.stringify([
+            { id: "ini_5", text: "Descobrir contato do Diretor de Mídia na AlmapBBDO", done: false, date: "25/10" }
+          ])
+        },
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "estrategico",
+          posicao: 1,
+          nome_marca: "Cimed Farmacêutica",
+          holding: "Grupo Cimed",
+          sub_marcas: ["Carmed", "Lavitan", "Dermafeme", "Ressaliv"],
+          agencia_nome: "In-house (Direto)",
+          racional: "Marca ágil e pop. Fit total com SuperPop e PodKasts digitais.",
+          ultima_reuniao: "Alinhamento com Fernando Sodré sobre a renovação de Lavitan no 'A Tarde é Sua'. Apresentado estudo de audiência feminina jovem para a linha Carmed no SuperPop e PodKasts digitais.",
+          iniciativas: JSON.stringify([
+            { id: "ini_6", text: "Enviar desenho de cota integrada Carmed (SuperPop + TikTok RedeTV!)", done: false, date: "22/10" },
+            { id: "ini_7", text: "Confirmar presença no evento de relacionamento de fim de ano", done: false, date: "05/11" }
+          ])
+        },
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "estrategico",
+          posicao: 2,
+          nome_marca: "Ultrafarma",
+          holding: "Grupo Sidney Oliveira",
+          sub_marcas: ["Sidney Oliveira Vitaminas", "Linha Rahda"],
+          agencia_nome: "Direto (Sidney Oliveira)",
+          racional: "Fit histórico e resposta direta imediata em variedades.",
+          ultima_reuniao: "Almoço comercial semanal na emissora. Contrato anual de rotativos e merchan diário 100% adimplente.",
+          iniciativas: JSON.stringify([
+            { id: "ini_8", text: "Renovação contratual do pacote anual 2027", done: false, date: "10/11" }
+          ])
+        },
+        {
+          segmento: "Farmacêutico & Higiene",
+          tipo: "estrategico",
+          posicao: 3,
+          nome_marca: "Max Titanium / Supley",
+          holding: "Grupo Supley",
+          sub_marcas: ["Max Titanium", "Probiótica", "Dr. Peanut"],
+          agencia_nome: "In-house / Digital",
+          racional: "Nutrição esportiva. Perfeito para a NFL e programas de auditório.",
+          ultima_reuniao: "Reunião remota via Teams com Mariany. Apresentadas cotas de intervalo e branded content nas transmissões da NFL e jornalismo esportivo.",
+          iniciativas: JSON.stringify([
+            { id: "ini_9", text: "Enviar tabela de audiência masculina da NFL RedeTV!", done: true, date: "16/10" },
+            { id: "ini_10", text: "Cobrar retorno da aprovação da cota de patrocínio", done: false, date: "23/10" }
+          ])
+        }
+      ];
+
+      for (const item of initialStrat) {
+        // Tenta vincular client_id automaticamente se existir cliente com nome parecido
+        const clientMatch = await pool.query(
+          "SELECT id FROM clients WHERE LOWER(TRIM(nome_fantasia)) ILIKE $1 OR LOWER(TRIM(razao_social)) ILIKE $1 LIMIT 1",
+          [`%${item.nome_marca.split(" ")[0]}%`]
+        );
+        const resolvedClientId = clientMatch.rows[0]?.id || null;
+
+        await pool.query(
+          `INSERT INTO pipeline_estrategico 
+           (segmento, tipo, posicao, client_id, nome_marca, holding, sub_marcas, agencia_nome, racional, ultima_reuniao, iniciativas)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (segmento, tipo, posicao) DO NOTHING`,
+          [
+            item.segmento,
+            item.tipo,
+            item.posicao,
+            resolvedClientId,
+            item.nome_marca,
+            item.holding,
+            item.sub_marcas,
+            item.agencia_nome,
+            item.racional,
+            item.ultima_reuniao,
+            item.iniciativas
+          ]
+        );
+      }
+      console.log(`[SEED] ${initialStrat.length} marcas iniciais do Pipeline Estratégico inseridas.`);
+    }
+
+    // Garante valores de investimento estimado para o piloto de Farmacêutico & Higiene
+    await pool.query(`
+      UPDATE pipeline_estrategico SET investimento_estimado = 45000000 WHERE nome_marca ILIKE '%Hypera%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+      UPDATE pipeline_estrategico SET investimento_estimado = 28000000 WHERE nome_marca ILIKE '%EMS%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+      UPDATE pipeline_estrategico SET investimento_estimado = 18000000 WHERE nome_marca ILIKE '%Eurofarma%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+      UPDATE pipeline_estrategico SET investimento_estimado = 32000000 WHERE nome_marca ILIKE '%Cimed%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+      UPDATE pipeline_estrategico SET investimento_estimado = 22000000 WHERE nome_marca ILIKE '%Ultrafarma%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+      UPDATE pipeline_estrategico SET investimento_estimado = 12000000 WHERE nome_marca ILIKE '%Max Titanium%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
+    `);
+
+    console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos, alocações de oportunidades, inteligência de mercado e pipeline estratégico verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);
   }

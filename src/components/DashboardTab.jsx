@@ -22,7 +22,8 @@ import {
   formatBRL,
   formatMillionsBRL,
   toggleArrayValue,
-  STAGES
+  STAGES,
+  STAGE_STYLES
 } from "../utils/helpers";
 import { MultiSelectFilterButton } from "./UI/Filters";
 import { MetaGauge } from "./UI/MetaGauge";
@@ -139,6 +140,52 @@ export default function DashboardTab({
   executivoKeyAccounts = {},
 }) {
   const isMobile = useIsMobile(768);
+
+  const [hoverPopover, setHoverPopover] = React.useState(null);
+  const [mobileDrawer, setMobileDrawer] = React.useState(null);
+  const timeoutRef = React.useRef(null);
+
+  const DETAIL_STAGES = ["Frio", "Morno", "Quente", "Fechado"];
+
+  const handleCellMouseEnter = (e, product, stage, total, opps) => {
+    if (!opps || opps.length === 0 || isMobile) return;
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popoverWidth = 360;
+    const popoverHeight = Math.min(270, 75 + opps.length * 42);
+
+    let x = rect.left + rect.width / 2 - popoverWidth / 2;
+    if (x + popoverWidth > window.innerWidth - 16) {
+      x = window.innerWidth - popoverWidth - 16;
+    }
+    if (x < 16) {
+      x = 16;
+    }
+
+    let y = rect.top - popoverHeight - 6;
+    if (y < 16) {
+      y = rect.bottom + 6;
+    }
+    if (y + popoverHeight > window.innerHeight - 16) {
+      y = Math.max(16, window.innerHeight - popoverHeight - 16);
+    }
+
+    setHoverPopover({ product, stage, total, opps, x, y });
+  };
+
+  const handleCellMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setHoverPopover(null);
+    }, 180);
+  };
+
+  const handleCellClick = (product, stage, total, opps) => {
+    if (!opps || opps.length === 0) return;
+    if (isMobile) {
+      setMobileDrawer({ product, stage, total, opps });
+    }
+  };
 
   const periodSubtitle =
     dashboardMonths.length === 0
@@ -514,9 +561,34 @@ export default function DashboardTab({
                       <td className="py-1.5 pr-3 text-slate-700 font-medium">{r.product}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-semibold text-slate-900">{r.total > 0 ? formatBRL(r.total) : "—"}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-medium text-slate-700">{r.emAberto > 0 ? formatBRL(r.emAberto) : "—"}</td>
-                      {STAGES.map((s) => (
-                        <td key={s} className="py-1.5 px-3 text-right font-mono">{r.stageValues[s] > 0 ? formatBRL(r.stageValues[s]) : "—"}</td>
-                      ))}
+                      {STAGES.map((s) => {
+                        const isDetailStage = DETAIL_STAGES.includes(s);
+                        const val = r.stageValues[s] || 0;
+                        const opps = r.stageOpps?.[s] || [];
+                        const hasOpps = isDetailStage && opps.length > 0 && val > 0;
+                        return (
+                          <td
+                            key={s}
+                            className={
+                              "py-1.5 px-3 text-right font-mono transition-colors " +
+                              (hasOpps
+                                ? "cursor-pointer hover:bg-sky-50/70 hover:text-sky-900 group/cell font-medium"
+                                : "")
+                            }
+                            onMouseEnter={hasOpps ? (e) => handleCellMouseEnter(e, r.product, s, val, opps) : undefined}
+                            onMouseLeave={hasOpps ? handleCellMouseLeave : undefined}
+                            onClick={hasOpps ? () => handleCellClick(r.product, s, val, opps) : undefined}
+                          >
+                            {val > 0 ? (
+                              <span className={hasOpps ? "border-b border-dashed border-slate-300 hover:border-sky-500 pb-0.5" : ""}>
+                                {formatBRL(val)}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="py-1.5 pl-3 text-right font-mono">{r.taxaConversao === null ? "—" : `${Math.round(r.taxaConversao * 100)}%`}</td>
                     </tr>
                   ))}
@@ -525,9 +597,34 @@ export default function DashboardTab({
                       <td className="py-1.5 pr-3 font-bold">Total {group.label}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">{group.totals.total > 0 ? formatBRL(group.totals.total) : "—"}</td>
                       <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-800">{group.totals.emAberto > 0 ? formatBRL(group.totals.emAberto) : "—"}</td>
-                      {STAGES.map((s) => (
-                        <td key={s} className="py-1.5 px-3 text-right font-mono">{group.totals.stageValues[s] > 0 ? formatBRL(group.totals.stageValues[s]) : "—"}</td>
-                      ))}
+                      {STAGES.map((s) => {
+                        const isDetailStage = DETAIL_STAGES.includes(s);
+                        const val = group.totals.stageValues[s] || 0;
+                        const opps = group.totals.stageOpps?.[s] || [];
+                        const hasOpps = isDetailStage && opps.length > 0 && val > 0;
+                        return (
+                          <td
+                            key={s}
+                            className={
+                              "py-1.5 px-3 text-right font-mono transition-colors " +
+                              (hasOpps
+                                ? "cursor-pointer hover:bg-sky-50/70 hover:text-sky-900 font-bold"
+                                : "")
+                            }
+                            onMouseEnter={hasOpps ? (e) => handleCellMouseEnter(e, `Total ${group.label}`, s, val, opps) : undefined}
+                            onMouseLeave={hasOpps ? handleCellMouseLeave : undefined}
+                            onClick={hasOpps ? () => handleCellClick(`Total ${group.label}`, s, val, opps) : undefined}
+                          >
+                            {val > 0 ? (
+                              <span className={hasOpps ? "border-b border-dashed border-slate-400 hover:border-sky-600 pb-0.5" : ""}>
+                                {formatBRL(val)}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="py-1.5 pl-3 text-right font-mono font-bold">{group.totals.taxaConversao === null ? "—" : `${Math.round(group.totals.taxaConversao * 100)}%`}</td>
                     </tr>
                   )}
@@ -537,6 +634,151 @@ export default function DashboardTab({
           </table>
         </div>
       </div>
+
+      {/* Popover Desktop: Detalhamento de oportunidades por produto e estágio */}
+      {hoverPopover && !isMobile && (
+        <div
+          className="fixed z-50 bg-white rounded-xl shadow-2xl border border-slate-200/90 w-[360px] text-xs overflow-hidden transition-all duration-150 animate-in fade-in zoom-in-95"
+          style={{
+            left: `${hoverPopover.x}px`,
+            top: `${hoverPopover.y}px`,
+          }}
+          onMouseEnter={() => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          }}
+          onMouseLeave={handleCellMouseLeave}
+        >
+          {/* Cabeçalho */}
+          <div className="bg-slate-50/90 px-3.5 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-semibold text-slate-800 text-xs truncate">
+                {hoverPopover.product}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+                <span
+                  className={
+                    "px-1.5 py-0.5 rounded text-[10px] font-semibold border " +
+                    (STAGE_STYLES[hoverPopover.stage] || "bg-slate-100 text-slate-700 border-slate-200")
+                  }
+                >
+                  {hoverPopover.stage}
+                </span>
+                <span>·</span>
+                <span>{hoverPopover.opps.length} {hoverPopover.opps.length === 1 ? "oportunidade" : "oportunidades"}</span>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="font-mono font-bold text-slate-900 text-xs">
+                {formatBRL(hoverPopover.total)}
+              </div>
+            </div>
+          </div>
+
+          {/* Lista com altura de ~5 itens e scroll vertical */}
+          <div className="max-h-[210px] overflow-y-auto divide-y divide-slate-100 overscroll-contain">
+            {hoverPopover.opps.map((op, idx) => (
+              <div
+                key={op.id || idx}
+                className="px-3.5 py-2 hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-slate-800 truncate" title={op.advertiserName}>
+                    {op.advertiserName}
+                  </div>
+                  <div className="text-[11px] text-slate-500 truncate" title={op.title}>
+                    {op.title}
+                  </div>
+                </div>
+                <div className="font-mono font-semibold text-slate-900 text-xs shrink-0 text-right">
+                  {formatBRL(op.value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Drawer / Bottom Sheet Mobile */}
+      {mobileDrawer && isMobile && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setMobileDrawer(null)}
+          />
+
+          <div
+            className="relative z-10 bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 w-full sm:max-w-md max-h-[80vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle no mobile */}
+            <div className="pt-2.5 pb-1 flex justify-center sm:hidden">
+              <div className="w-10 h-1 bg-slate-300 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-slate-100 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-slate-900 text-sm truncate">
+                  {mobileDrawer.product}
+                </div>
+                <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                  <span
+                    className={
+                      "px-2 py-0.5 rounded text-[11px] font-semibold border " +
+                      (STAGE_STYLES[mobileDrawer.stage] || "bg-slate-100 text-slate-700 border-slate-200")
+                    }
+                  >
+                    {mobileDrawer.stage}
+                  </span>
+                  <span>·</span>
+                  <span>{mobileDrawer.opps.length} {mobileDrawer.opps.length === 1 ? "oportunidade" : "oportunidades"}</span>
+                  <span>·</span>
+                  <span className="font-mono font-bold text-slate-900">{formatBRL(mobileDrawer.total)}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileDrawer(null)}
+                className="p-1.5 -mr-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-1 overscroll-contain">
+              {mobileDrawer.opps.map((op, idx) => (
+                <div
+                  key={op.id || idx}
+                  className="px-3.5 py-2.5 flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-slate-800 text-xs truncate">
+                      {op.advertiserName}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                      {op.title}
+                    </div>
+                  </div>
+                  <div className="font-mono font-bold text-slate-900 text-xs shrink-0 text-right">
+                    {formatBRL(op.value)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-3 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setMobileDrawer(null)}
+                className="w-full sm:w-auto px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

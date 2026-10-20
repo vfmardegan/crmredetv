@@ -1,13 +1,15 @@
 const express = require("express");
 const { pool } = require("../db");
 const { requirePermission } = require("../utils/acl");
+const intelligenceScheduler = require("../services/intelligenceScheduler");
 
 const router = express.Router();
 
 // GET /api/v1/intelligence/news — Lista notícias do radar com filtros
 router.get("/intelligence/news", async (req, res) => {
-  const { segmento, search, limit = 50 } = req.query;
+  const { segmento, search, today, limit } = req.query;
   const user = req.user;
+
 
   try {
     let query = "SELECT * FROM market_news WHERE 1=1";
@@ -82,14 +84,21 @@ router.get("/intelligence/news", async (req, res) => {
       )`;
     }
 
+    if (today === "true" || today === "1") {
+      query += " AND data_publicacao = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')::date";
+    }
+
     query += " ORDER BY data_publicacao DESC, created_at DESC";
-    params.push(parseInt(limit, 10) || 50);
-    query += ` LIMIT $${params.length}`;
+    if (limit && parseInt(limit, 10) > 0) {
+      params.push(parseInt(limit, 10));
+      query += ` LIMIT $${params.length}`;
+    }
 
     const result = await pool.query(query, params);
 
     // Contadores por segmento para badges (respeitando o mesmo escopo do perfil)
     let countQuery = "SELECT segmento_crm, COUNT(*) as total FROM market_news WHERE 1=1";
+    let todayCountQuery = "SELECT COUNT(*) as total_today FROM market_news WHERE data_publicacao = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')::date";
     const countParams = [];
 
     if (user && user.perfil === "executivo") {
@@ -128,19 +137,27 @@ router.get("/intelligence/news", async (req, res) => {
         scopeConditions.push(`LOWER(COALESCE(anunciante_mencionado, '')) LIKE ANY($${countParams.length})`);
       }
       countQuery += ` AND (${scopeConditions.join(" OR ")})`;
+      todayCountQuery += ` AND (${scopeConditions.join(" OR ")})`;
     }
 
     countQuery += " GROUP BY segmento_crm ORDER BY total DESC";
     const countRes = await pool.query(countQuery, countParams);
+    const todayRes = await pool.query(todayCountQuery, countParams);
+    const todayCount = parseInt(todayRes.rows[0]?.total_today || 0, 10);
+
+    const schedule = intelligenceScheduler.getScheduleStatus();
 
     res.json({
       news: result.rows,
       segmentCounts: countRes.rows,
       total: result.rows.length,
+      todayCount,
+      schedule,
     });
   } catch (err) {
     console.error("Erro ao listar notícias de inteligência:", err);
     res.status(500).json({ error: "Erro interno ao buscar notícias do radar de mercado." });
+
   }
 });
 
@@ -199,16 +216,68 @@ router.post("/intelligence/news", requirePermission("can_manage_users"), async (
   }
 });
 
-// DELETE /api/v1/intelligence/news/:id — Excluir notícia do radar (admin)
+// DELETE /api/v1/intelligence/news/:id — Excluir notícia do radar (Apenas Administrador)
 router.delete("/intelligence/news/:id", requirePermission("can_manage_users"), async (req, res) => {
   const { id } = req.params;
+  const user = req.user;
+  if (!user || user.perfil !== "admin") {
+    return res.status(403).json({ error: "Apenas administradores têm permissão para excluir notícias do Radar de Mercado." });
+  }
   try {
-    await pool.query("DELETE FROM market_news WHERE id = $1", [id]);
-    res.json({ success: true, message: "Notícia removida do radar." });
+    const result = await pool.query("DELETE FROM market_news WHERE id = $1 RETURNING id", [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Notícia não encontrada ou já removida." });
+    }
+    res.json({ success: true, id, message: "Notícia removida do radar com sucesso." });
   } catch (err) {
     console.error("Erro ao remover notícia:", err);
     res.status(500).json({ error: "Não foi possível remover a notícia." });
   }
 });
 
+// GET /api/v1/intelligence/schedule — Retorna o status da grade de 4 varreduras diárias (08h, 12h, 16h, 20h)
+router.get("/intelligence/schedule", (req, res) => {
+  res.json(intelligenceScheduler.getScheduleStatus());
+});
+
+// GET /api/v1/intelligence/sources — Retorna a curadoria completa das fontes monitoradas
+const marketSources = require("../services/marketSources");
+router.get("/intelligence/sources", (req, res) => {
+  const all = marketSources.getAllActiveSources();
+  res.json({
+    total: all.length,
+    publicidade_marketing: marketSources.MARKET_SOURCES.publicidade_marketing,
+    economia_negocios: marketSources.MARKET_SOURCES.economia_negocios,
+    setoriais: marketSources.MARKET_SOURCES.setoriais,
+    sources: all,
+  });
+});
+
+// POST /api/v1/intelligence/scrape — Força varredura sob demanda (admin, diretor ou especialista)
+router.post("/intelligence/scrape", requirePermission("can_manage_proposal_templates"), async (req, res) => {
+  try {
+    const result = await intelligenceScheduler.runMarketScrape(`manual_by_${req.user.id}`);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao executar varredura manual." });
+  }
+});
+
+// GET /api/v1/intelligence/logs — Retorna o log de auditoria da última varredura
+router.get("/intelligence/logs", requirePermission("can_manage_proposal_templates"), (req, res) => {
+  const fs = require("fs");
+  const path = require("path");
+  const logFile = path.join(__dirname, "../logs/latest_scan.json");
+  if (!fs.existsSync(logFile)) {
+    return res.status(404).json({ error: "Nenhum log de varredura encontrado ainda." });
+  }
+  try {
+    const data = JSON.parse(fs.readFileSync(logFile, "utf8"));
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao ler log de auditoria." });
+  }
+});
+
 module.exports = router;
+

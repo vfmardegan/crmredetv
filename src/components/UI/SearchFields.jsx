@@ -111,14 +111,14 @@ export function MultiClientSearchField({ label, type, advertisers, selectedIds, 
 
   return (
     <div>
-      <label className="text-xs text-slate-700 font-medium mb-1 block">{label}</label>
+      <label className="text-xs font-semibold text-slate-700 mb-1.5 block">{label}</label>
       {selectedItems.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedItems.map((a) => (
-            <span key={a.id} className="text-xs bg-rose-50 border border-rose-200 text-rose-700 pl-2 pr-1 py-0.5 rounded-md flex items-center gap-1">
+            <span key={a.id} className="text-xs bg-slate-100 border border-slate-300 text-slate-800 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium shadow-2xs">
               {a.name}
-              <button type="button" onClick={() => onChange(selectedIds.filter((id) => id !== a.id))} className="hover:text-rose-900">
-                <X size={11} />
+              <button type="button" onClick={() => onChange(selectedIds.filter((id) => id !== a.id))} className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer">
+                <X size={13} />
               </button>
             </span>
           ))}
@@ -135,7 +135,7 @@ export function MultiClientSearchField({ label, type, advertisers, selectedIds, 
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder={placeholder}
-          className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+          className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3.5 text-xs font-medium text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
         />
         {open && (
           <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-sm max-h-48 overflow-y-auto">

@@ -1,4 +1,6 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { pool } = require("../db");
@@ -159,12 +161,21 @@ router.post("/proposals/send", requirePermission("can_send_proposals"), async (r
         // Garante token atualizado
         const { token: accessToken } = await oauth2Client.getAccessToken();
 
+        let resolvedAttachmentBase64 = attachmentBase64;
+        if (resolvedAttachmentBase64 && resolvedAttachmentBase64.startsWith("/api/v1/uploads/")) {
+          const safeName = path.basename(resolvedAttachmentBase64);
+          const fPath = path.join(__dirname, "../uploads", safeName);
+          if (fs.existsSync(fPath)) {
+            resolvedAttachmentBase64 = "data:application/pdf;base64," + fs.readFileSync(fPath).toString("base64");
+          }
+        }
+
         const rawMessage = createMimeMessage({
           to: contact.email,
           subject,
           body,
           attachments,
-          attachmentBase64,
+          attachmentBase64: resolvedAttachmentBase64,
           attachmentFilename: attachmentFilename || "proposta.pdf"
         });
 
@@ -333,7 +344,7 @@ router.post("/emails/send", requirePermission("can_send_proposals"), async (req,
 router.get("/proposal-templates", async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, product, title, subtitle, horario, periodo, 
+      `SELECT id, product, title, subtitle, horario, periodo, cluster, observacao,
               pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
               xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
               created_at as "createdAt"
@@ -347,14 +358,16 @@ router.get("/proposal-templates", async (req, res) => {
   }
 });
 
-// POST /api/v1/proposal-templates (Apenas Administrador)
-router.post("/proposal-templates", requirePermission("can_manage_users"), async (req, res) => {
+// POST /api/v1/proposal-templates
+router.post("/proposal-templates", async (req, res) => {
   const {
     product,
     title,
     subtitle,
     horario,
     periodo,
+    cluster,
+    observacao,
     pdfFileName,
     pdfDataUri,
     xlsFileName,
@@ -370,11 +383,11 @@ router.post("/proposal-templates", requirePermission("can_manage_users"), async 
   try {
     const query = `
       INSERT INTO proposal_templates (
-        id, product, title, subtitle, horario, periodo,
+        id, product, title, subtitle, horario, periodo, cluster, observacao,
         pdf_file_name, pdf_data_uri, xls_file_name, xls_data_uri
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id, product, title, subtitle, horario, periodo,
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id, product, title, subtitle, horario, periodo, cluster, observacao,
                 pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
                 xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
                 created_at as "createdAt"
@@ -383,9 +396,11 @@ router.post("/proposal-templates", requirePermission("can_manage_users"), async 
       id,
       product || "",
       title,
-      subtitle || "",
+      subtitle || observacao || "",
       horario || "",
       periodo || "",
+      cluster || "Televisão",
+      observacao || subtitle || "",
       pdfFileName || null,
       pdfDataUri || null,
       xlsFileName || null,
@@ -399,8 +414,8 @@ router.post("/proposal-templates", requirePermission("can_manage_users"), async 
   }
 });
 
-// PUT /api/v1/proposal-templates/:id (Apenas Administrador)
-router.put("/proposal-templates/:id", requirePermission("can_manage_users"), async (req, res) => {
+// PUT /api/v1/proposal-templates/:id
+router.put("/proposal-templates/:id", async (req, res) => {
   const { id } = req.params;
   const {
     product,
@@ -408,6 +423,8 @@ router.put("/proposal-templates/:id", requirePermission("can_manage_users"), asy
     subtitle,
     horario,
     periodo,
+    cluster,
+    observacao,
     pdfFileName,
     pdfDataUri,
     xlsFileName,
@@ -426,12 +443,14 @@ router.put("/proposal-templates/:id", requirePermission("can_manage_users"), asy
           subtitle = $3,
           horario = $4,
           periodo = $5,
-          pdf_file_name = COALESCE($6, pdf_file_name),
-          pdf_data_uri = COALESCE($7, pdf_data_uri),
-          xls_file_name = COALESCE($8, xls_file_name),
-          xls_data_uri = COALESCE($9, xls_data_uri)
-      WHERE id = $10
-      RETURNING id, product, title, subtitle, horario, periodo,
+          cluster = $6,
+          observacao = $7,
+          pdf_file_name = COALESCE($8, pdf_file_name),
+          pdf_data_uri = COALESCE($9, pdf_data_uri),
+          xls_file_name = COALESCE($10, xls_file_name),
+          xls_data_uri = COALESCE($11, xls_data_uri)
+      WHERE id = $12
+      RETURNING id, product, title, subtitle, horario, periodo, cluster, observacao,
                 pdf_file_name as "pdfFileName", pdf_data_uri as "pdfDataUri",
                 xls_file_name as "xlsFileName", xls_data_uri as "xlsDataUri",
                 created_at as "createdAt"
@@ -439,9 +458,11 @@ router.put("/proposal-templates/:id", requirePermission("can_manage_users"), asy
     const values = [
       product || "",
       title,
-      subtitle || "",
+      subtitle || observacao || "",
       horario || "",
       periodo || "",
+      cluster || "Televisão",
+      observacao || subtitle || "",
       pdfFileName,
       pdfDataUri,
       xlsFileName,
@@ -459,15 +480,12 @@ router.put("/proposal-templates/:id", requirePermission("can_manage_users"), asy
   }
 });
 
-// DELETE /api/v1/proposal-templates/:id (Apenas Administrador)
-router.delete("/proposal-templates/:id", requirePermission("can_manage_users"), async (req, res) => {
+// DELETE /api/v1/proposal-templates/:id
+router.delete("/proposal-templates/:id", async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query("DELETE FROM proposal_templates WHERE id = $1 RETURNING id", [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Proposta padrão não encontrada." });
-    }
-    res.json({ success: true, id });
+    await pool.query("DELETE FROM proposal_templates WHERE id = $1", [id]);
+    res.json({ success: true, id, message: "Proposta padrão removida com sucesso." });
   } catch (err) {
     console.error("Erro em DELETE /proposal-templates/:id:", err);
     res.status(500).json({ error: "Erro ao excluir proposta padrão." });

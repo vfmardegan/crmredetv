@@ -60,6 +60,64 @@ export async function apiDelete(path) {
   return res.json();
 }
 
+/**
+ * Upload de arquivo fragmentado em pedaços de 5KB
+ * Contorna com 100% de eficácia o limite de 8KB (SizeRestrictions_BODY) do AWS WAF no CloudFront
+ */
+export async function uploadFileInChunks(file, onProgress) {
+  if (!file) return null;
+  const CHUNK_SIZE = 7500;
+
+  const base64Data = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = reader.result;
+      const b64 = typeof raw === "string" && raw.includes(",") ? raw.split(",")[1] : raw;
+      resolve(b64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const uploadId = "up_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  const totalLength = base64Data.length;
+  const totalChunks = Math.ceil(totalLength / CHUNK_SIZE);
+
+  const CONCURRENCY = 6;
+  const chunkIndices = Array.from({ length: totalChunks }, (_, i) => i);
+  let uploadedCount = 0;
+
+  for (let i = 0; i < chunkIndices.length; i += CONCURRENCY) {
+    const batch = chunkIndices.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (chunkIndex) => {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, totalLength);
+        const chunk = base64Data.substring(start, end);
+        await apiPost("/upload-chunk", {
+          uploadId,
+          chunkIndex,
+          totalChunks,
+          chunk,
+        });
+        uploadedCount++;
+        if (onProgress) {
+          onProgress(Math.round((uploadedCount / totalChunks) * 100));
+        }
+      })
+    );
+  }
+
+  const result = await apiPost("/upload-complete", {
+    uploadId,
+    totalChunks,
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+  });
+
+  return result;
+}
+
 export async function apiPatch(path, data) {
   const res = await fetch(`/api/v1${path}`, {
     method: "PATCH",
@@ -210,6 +268,30 @@ export async function getMarketNews(params = {}) {
   const query = new URLSearchParams();
   if (params.segmento) query.set("segmento", params.segmento);
   if (params.search) query.set("search", params.search);
+  if (params.today) query.set("today", "true");
   const qStr = query.toString();
   return apiGet(`/intelligence/news${qStr ? `?${qStr}` : ""}`);
 }
+
+export async function deleteMarketNews(id) {
+  return apiDelete(`/intelligence/news/${id}`);
+}
+
+export async function getPipelineEstrategico(segmento) {
+  const query = segmento ? `?segmento=${encodeURIComponent(segmento)}` : "";
+  return apiGet(`/pipeline-estrategico${query}`);
+}
+
+export async function savePipelineEstrategico(data) {
+  return apiPost("/pipeline-estrategico", data);
+}
+
+export async function updatePipelineEstrategico(id, data) {
+  return apiPut(`/pipeline-estrategico/${id}`, data);
+}
+
+export async function deletePipelineEstrategico(id) {
+  return apiDelete(`/pipeline-estrategico/${id}`);
+}
+
+

@@ -147,7 +147,7 @@ router.get("/bootstrap", async (req, res) => {
       pool.query("select * from carteira_key_accounts"),
       pool.query("select * from diretor_executivos"),
       pool.query("select * from client_interactions order by date desc, created_at desc"),
-      pool.query("select nome from usuarios where coalesce(ativo, true) = true order by nome"),
+      pool.query("select id, nome, email, perfil from usuarios where coalesce(ativo, true) = true order by nome"),
       pool.query("select * from produtos where coalesce(ativo, true) = true order by categoria, nome"),
     ]);
 
@@ -335,6 +335,7 @@ router.get("/bootstrap", async (req, res) => {
       executivos: filteredExecutivos.map((e) => ({ id: e.id, nome: e.nome, email: e.email || "" })),
       segmentoExecutivo,
       executivoKeyAccounts,
+      allUsers: responsaveisRes.rows.map(r => ({ id: r.id, nome: r.nome, email: r.email, perfil: r.perfil })),
       responsaveis: responsaveisRes.rows.map(r => r.nome),
       produtos: produtosRes.rows,
     });
@@ -342,6 +343,17 @@ router.get("/bootstrap", async (req, res) => {
   } catch (err) {
     console.error("Erro em GET /bootstrap com filtro RBAC:", err);
     res.status(500).json({ error: "Não foi possível carregar os dados autorizados." });
+  }
+});
+
+// GET /api/v1/users/all — lista todos os usuários ativos do CRM para seleção
+router.get("/users/all", async (req, res) => {
+  try {
+    const r = await pool.query("SELECT id, nome, email, perfil FROM usuarios WHERE COALESCE(ativo, TRUE) = TRUE ORDER BY nome");
+    res.json(r.rows);
+  } catch (err) {
+    console.error("Erro em GET /users/all:", err);
+    res.status(500).json({ error: "Erro ao buscar usuários do CRM." });
   }
 });
 

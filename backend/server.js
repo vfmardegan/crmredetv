@@ -16,6 +16,9 @@ const calendarRoutes = require("./routes/calendar");
 const notificationsRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
 const intelligenceRoutes = require("./routes/intelligence");
+const uploadsRoutes = require("./routes/uploads");
+const engajamentoRoutes = require("./routes/engajamento");
+const pipelineEstrategicoRoutes = require("./routes/pipelineEstrategico");
 
 const authRoutes = require("./routes/auth");
 const requireAuth = require("./routes/authMiddleware");
@@ -50,6 +53,7 @@ app.use(
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minuto
   max: 300, // Máximo 300 requisições por minuto por IP
+  skip: (req) => req.path === "/upload-chunk" || (req.originalUrl && req.originalUrl.includes("/upload-chunk")),
   message: { error: "Muitas requisições. Por favor, tente novamente em alguns instantes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -150,12 +154,13 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
-app.use(express.json({ limit: "15mb" }));
-app.use(express.urlencoded({ limit: "15mb", extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Rota pública de autenticação e health check
 app.get("/api/v1/health", (req, res) => res.json({ ok: true }));
 app.use("/api/v1", authRoutes);
+app.use("/api/v1", uploadsRoutes);
 
 // Rotas protegidas do CRM
 const protectedRouter = express.Router();
@@ -171,6 +176,8 @@ protectedRouter.use(intelligenceRoutes);
 protectedRouter.use(adminRoutes);
 protectedRouter.use(calendarRoutes);
 protectedRouter.use(notificationsRoutes);
+protectedRouter.use(engajamentoRoutes);
+protectedRouter.use(pipelineEstrategicoRoutes);
 app.use("/api/v1", protectedRouter);
 
 // Cria o servidor HTTP e inicializa o WebSocketServer acoplado
@@ -178,6 +185,11 @@ const server = http.createServer(app);
 const { initWebSocket } = require("./websocket");
 initWebSocket(server);
 
+// Inicializa agendador de varredura do Radar de Mercado (08h, 12h, 16h, 20h)
+const intelligenceScheduler = require("./services/intelligenceScheduler");
+intelligenceScheduler.initScheduler();
+
 server.listen(PORT, () => {
   console.log(`API do CRM RedeTV! (com WebSockets) rodando na porta ${PORT}`);
 });
+

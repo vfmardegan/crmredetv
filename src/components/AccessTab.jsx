@@ -7,7 +7,7 @@ import AdminProductsTab from "./Executivos/AdminProductsTab";
 import AdminProposalsTab from "./Executivos/AdminProposalsTab";
 import AdminMetasTab from "./Executivos/AdminMetasTab";
 
-export default function AccessTab({ executivos, currentUser, proposalTemplates, onRefreshProposals, onRefreshData }) {
+export default function AccessTab({ executivos, currentUser, proposalTemplates, onRefreshProposals, onRefreshData, allProducts }) {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [editingUserId, setEditingUserId] = useState(null);
@@ -142,7 +142,7 @@ export default function AccessTab({ executivos, currentUser, proposalTemplates, 
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
-          <FileText size={14} /> Propostas Padrão
+          <FileText size={14} /> Tabela e Propostas
         </button>
       </div>
 
@@ -166,7 +166,7 @@ export default function AccessTab({ executivos, currentUser, proposalTemplates, 
       ) : adminSubTab === "produtos" ? (
         <AdminProductsTab onRefreshData={onRefreshData} />
       ) : adminSubTab === "propostas" ? (
-        <AdminProposalsTab proposalTemplates={proposalTemplates} onRefresh={onRefreshProposals} />
+        <AdminProposalsTab proposalTemplates={proposalTemplates} onRefresh={onRefreshProposals} allProducts={allProducts} />
       ) : (
         <AdminAuditTab />
       )}
