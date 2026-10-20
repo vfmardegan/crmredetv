@@ -2734,12 +2734,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           {/* Gaveta lateral */}
           <div className="relative w-64 max-w-[80vw] bg-slate-900 text-slate-100 flex flex-col h-full shadow-2xl z-10 animate-slide-up">
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                  <span className="text-sm font-semibold">CRM RedeTV!</span>
-                </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">Comercial & OPEC</div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                <span className="text-sm font-semibold">CRM RedeTV!</span>
               </div>
               <button
                 type="button"
@@ -2890,11 +2887,6 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
             <span className="text-sm font-semibold tracking-wide">CRM RedeTV!</span>
-          </div>
-          <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-            <span>Comercial</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-indigo-400 font-medium">OPEC</span>
           </div>
         </div>
         <nav className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto">
