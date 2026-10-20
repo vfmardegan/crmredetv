@@ -7,7 +7,13 @@ export default defineConfig({
   server: {
     port: 8000,
     host: true,
-    allowedHosts: true // Permite conexões de qualquer host externo (ex: DNS público da AWS)
+    allowedHosts: true, // Permite conexões de qualquer host externo (ex: DNS público da AWS)
+    proxy: {
+      '/api': {
+        target: 'http://56.125.72.234',
+        changeOrigin: true,
+      }
+    }
   },
   build: {
     emptyOutDir: false,
