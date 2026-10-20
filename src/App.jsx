@@ -2751,23 +2751,25 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </button>
             </div>
 
-            <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
+            <nav className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto">
               {/* Dropdown Comercial (Mobile) */}
               <div>
                 <button
                   type="button"
                   onClick={() => setComercialMenuOpen(!comercialMenuOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-colors group"
                 >
-                  <div className="flex items-center gap-2">
-                    <Briefcase size={14} className="text-rose-500" />
+                  <div className="flex items-center gap-2.5">
+                    <Briefcase size={17} className="text-rose-500" />
                     <span>Comercial</span>
                   </div>
-                  {comercialMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <span className="text-slate-400 group-hover:text-slate-200">
+                    {comercialMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </span>
                 </button>
 
                 {comercialMenuOpen && (
-                  <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-slate-800 ml-3">
+                  <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-slate-800 ml-3.5">
                     {comercialNavItems.map((item) => (
                       <button
                         key={item.id}
@@ -2776,7 +2778,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                           setMobileMenuOpen(false);
                         }}
                         className={
-                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                          "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                           (view === item.id
                             ? "bg-slate-800 text-white font-medium"
                             : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
@@ -2791,24 +2793,26 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </div>
 
               {/* Dropdown OPEC (Mobile) */}
-              <div className="pt-2 border-t border-slate-800/80">
+              <div className="pt-1.5 border-t border-slate-800/70">
                 <button
                   type="button"
                   onClick={() => setOpecMenuOpen(!opecMenuOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-colors group"
                 >
-                  <div className="flex items-center gap-2">
-                    <Tv size={14} className="text-indigo-400" />
-                    <span>Opec</span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 normal-case tracking-normal">
+                  <div className="flex items-center gap-2.5">
+                    <Tv size={17} className="text-indigo-400" />
+                    <span>OPEC</span>
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
                       Novo
                     </span>
                   </div>
-                  {opecMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <span className="text-slate-400 group-hover:text-slate-200">
+                    {opecMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </span>
                 </button>
 
                 {opecMenuOpen && (
-                  <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-indigo-900/40 ml-3">
+                  <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-indigo-900/40 ml-3.5">
                     {opecNavItems.map((item) => (
                       <button
                         key={item.id}
@@ -2817,7 +2821,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                           setMobileMenuOpen(false);
                         }}
                         className={
-                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                          "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                           (view === item.id
                             ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
                             : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
@@ -2833,7 +2837,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
 
               {/* 3º Item Principal: Gestão e Acessos (Mobile) */}
               {hasPermission(user?.perfil, "can_manage_users") && (
-                <div className="pt-2 border-t border-slate-800/80">
+                <div className="pt-1.5 border-t border-slate-800/70">
                   <button
                     key="access"
                     type="button"
@@ -2842,13 +2846,13 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                       setMobileMenuOpen(false);
                     }}
                     className={
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-semibold uppercase tracking-wider text-left transition-colors " +
+                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors " +
                       (view === "access"
-                        ? "bg-slate-800 text-white border border-slate-700/60"
+                        ? "bg-slate-800 text-white border border-slate-700/60 font-medium"
                         : "text-slate-300 hover:text-white hover:bg-slate-800/60")
                     }
                   >
-                    <Shield size={16} className="text-emerald-400" />
+                    <Shield size={17} className="text-emerald-400" />
                     <span>Gestão e Acessos</span>
                   </button>
                 </div>
@@ -2893,37 +2897,37 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             <span className="text-indigo-400 font-medium">OPEC</span>
           </div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
+        <nav className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto">
           {/* Dropdown Comercial (Desktop) */}
           <div>
             <button
               type="button"
               onClick={() => setComercialMenuOpen(!comercialMenuOpen)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors group"
+              className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-colors group"
             >
-              <div className="flex items-center gap-2">
-                <Briefcase size={14} className="text-rose-500" />
+              <div className="flex items-center gap-2.5">
+                <Briefcase size={17} className="text-rose-500" />
                 <span>Comercial</span>
               </div>
               <span className="text-slate-400 group-hover:text-slate-200">
-                {comercialMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {comercialMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </span>
             </button>
 
             {comercialMenuOpen && (
-              <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-slate-800 ml-3">
+              <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-slate-800 ml-3.5">
                 {comercialNavItems.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setView(item.id)}
                     className={
-                      "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                      "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                       (view === item.id
                         ? "bg-slate-800 text-white font-medium"
                         : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
                     }
                   >
-                    <item.icon size={15} />
+                    <item.icon size={16} />
                     <span className="truncate">{item.label}</span>
                   </button>
                 ))}
@@ -2932,38 +2936,38 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           </div>
 
           {/* Dropdown OPEC (Desktop) */}
-          <div className="pt-2 border-t border-slate-800/80">
+          <div className="pt-1.5 border-t border-slate-800/70">
             <button
               type="button"
               onClick={() => setOpecMenuOpen(!opecMenuOpen)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-md transition-colors group"
+              className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-lg transition-colors group"
             >
-              <div className="flex items-center gap-2">
-                <Tv size={14} className="text-indigo-400" />
-                <span>Opec</span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 normal-case tracking-normal">
+              <div className="flex items-center gap-2.5">
+                <Tv size={17} className="text-indigo-400" />
+                <span>OPEC</span>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300">
                   Novo
                 </span>
               </div>
               <span className="text-slate-400 group-hover:text-slate-200">
-                {opecMenuOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                {opecMenuOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               </span>
             </button>
 
             {opecMenuOpen && (
-              <div className="mt-1 flex flex-col gap-0.5 pl-2 border-l border-indigo-900/40 ml-3">
+              <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-indigo-900/40 ml-3.5">
                 {opecNavItems.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setView(item.id)}
                     className={
-                      "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs sm:text-sm text-left transition-colors " +
+                      "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                       (view === item.id
                         ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
                         : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
                     }
                   >
-                    <item.icon size={15} />
+                    <item.icon size={16} />
                     <span className="truncate">{item.label}</span>
                   </button>
                 ))}
@@ -2973,19 +2977,19 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
 
           {/* 3º Item Principal: Gestão e Acessos (Desktop) */}
           {hasPermission(user?.perfil, "can_manage_users") && (
-            <div className="pt-2 border-t border-slate-800/80">
+            <div className="pt-1.5 border-t border-slate-800/70">
               <button
                 key="access"
                 type="button"
                 onClick={() => setView("access")}
                 className={
-                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-semibold uppercase tracking-wider text-left transition-colors group " +
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors group " +
                   (view === "access"
-                    ? "bg-slate-800 text-white border border-slate-700/60 shadow-xs"
+                    ? "bg-slate-800 text-white border border-slate-700/60 font-medium shadow-xs"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/60")
                 }
               >
-                <Shield size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                <Shield size={17} className="text-emerald-400 group-hover:scale-105 transition-transform" />
                 <span className="truncate">Gestão e Acessos</span>
               </button>
             </div>
