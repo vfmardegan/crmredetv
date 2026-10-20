@@ -22,7 +22,9 @@ import {
   ChevronDown,
   ChevronRight,
   Tv,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Layers,
+  Radio
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -114,6 +116,8 @@ const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketInt
 const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
 const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
 const OpecPedidoInsercaoTab = lazyWithRetry(() => import("./components/OpecPedidoInsercaoTab"));
+const OpecProjetosTab = lazyWithRetry(() => import("./components/OpecProjetosTab"));
+const OpecCampanhasTab = lazyWithRetry(() => import("./components/OpecCampanhasTab"));
 
 function TabLoadingFallback() {
   return (
@@ -127,6 +131,8 @@ import AudioRecorder from "./components/AudioRecorder";
 import NewAdvertiserModal from "./components/Modals/NewAdvertiserModal";
 import NewContactModal from "./components/Modals/NewContactModal";
 import NewOpportunityModal from "./components/Modals/NewOpportunityModal";
+import FechamentoComercialOpecModal from "./components/Modals/FechamentoComercialOpecModal";
+import { createProjectFromOpportunity } from "./services/opecService";
 
 const seedExecutivos = [
   { id: "e1", nome: "Bruno Camargo" },
@@ -222,6 +228,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [comercialMenuOpen, setComercialMenuOpen] = useState(true);
   const [opecMenuOpen, setOpecMenuOpen] = useState(true);
+  const [fechamentoOpecOpp, setFechamentoOpecOpp] = useState(null);
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -594,6 +601,11 @@ export default function App() {
   }
 
   function updateStage(oppId, newStage) {
+    const opp = opportunities.find((o) => o.id === oppId);
+    if (newStage === "Fechado" && opp && opp.stage !== "Fechado") {
+      setFechamentoOpecOpp(opp);
+      return;
+    }
     const oldOpps = [...opportunities];
     setOpportunities((prev) =>
       prev.map((o) => (o.id === oppId ? { ...o, stage: newStage } : o))
@@ -603,6 +615,31 @@ export default function App() {
       setOpportunities(oldOpps);
       setErrorMsg(e.message || "Não foi possível salvar a mudança de estágio no servidor.");
     });
+  }
+
+  function handleConfirmFechamentoOpec({ opportunity, anuncianteNome, agenciaNome, entregas }) {
+    const oppId = opportunity.id;
+    const oldOpps = [...opportunities];
+    setOpportunities((prev) =>
+      prev.map((o) => (o.id === oppId ? { ...o, stage: "Fechado" } : o))
+    );
+    apiPut(`/opportunities/${oppId}`, { stage: "Fechado" }).catch((e) => {
+      console.error(e);
+      setOpportunities(oldOpps);
+      setErrorMsg(e.message || "Não foi possível salvar o fechamento no servidor.");
+    });
+
+    try {
+      createProjectFromOpportunity({
+        opportunity,
+        anuncianteNome,
+        agenciaNome,
+        entregas
+      });
+      setSuccessMsg("🎉 Oportunidade fechada com sucesso! O projeto foi enviado para a Mesa de Operações da OPEC.");
+    } catch (err) {
+      console.error("Erro ao registrar projeto na OPEC:", err);
+    }
   }
 
   function updatePlanningField(oppId, field, value) {
@@ -2696,7 +2733,8 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     engajamento: "Engajamento",
     pipelineEstrategico: "Plano de Ação",
     access: "Gestão e Acessos",
-    opecPedidoInsercao: "OPEC • Pedido de Inserção",
+    opecProjetos: "OPEC • Projetos Comercializados",
+    opecCampanhas: "OPEC • Campanhas (Mídia Avulsa)",
   };
 
   const comercialNavItems = [
@@ -2713,7 +2751,8 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
   ].filter(Boolean);
 
   const opecNavItems = [
-    { id: "opecPedidoInsercao", label: "Pedido de Inserção", icon: FileSpreadsheet },
+    { id: "opecProjetos", label: "Projetos", icon: Layers },
+    { id: "opecCampanhas", label: "Campanhas", icon: Tv },
   ].filter(Boolean);
 
   return (
@@ -3403,8 +3442,12 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
-          {view === "opecPedidoInsercao" && (
-            <OpecPedidoInsercaoTab currentUser={user} />
+          {view === "opecProjetos" && (
+            <OpecProjetosTab currentUser={user} onNavigate={setView} />
+          )}
+
+          {view === "opecCampanhas" && (
+            <OpecCampanhasTab currentUser={user} onNavigate={setView} />
           )}
           </React.Suspense>
         </div>
@@ -3740,6 +3783,26 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
         allProducts={allProducts}
         editingOppId={editingOppId}
       />
+
+      {fechamentoOpecOpp && (
+        <FechamentoComercialOpecModal
+          isOpen={Boolean(fechamentoOpecOpp)}
+          onClose={() => setFechamentoOpecOpp(null)}
+          opportunity={fechamentoOpecOpp}
+          advertiserName={
+            advertisers.find((a) => a.id === fechamentoOpecOpp.advertiserId)?.nomeFantasia ||
+            advertisers.find((a) => a.id === fechamentoOpecOpp.advertiserId)?.razaoSocial ||
+            "Anunciante"
+          }
+          agencyName={
+            fechamentoOpecOpp.agencyId && fechamentoOpecOpp.agencyId !== DIRECT_CLIENT_ID
+              ? advertisers.find((a) => a.id === fechamentoOpecOpp.agencyId)?.nomeFantasia ||
+                advertisers.find((a) => a.id === fechamentoOpecOpp.agencyId)?.razaoSocial
+              : null
+          }
+          onConfirmFechamento={handleConfirmFechamentoOpec}
+        />
+      )}
 
       {showSendProposal && (
         <div
