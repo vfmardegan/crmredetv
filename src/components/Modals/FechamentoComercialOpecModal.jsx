@@ -191,14 +191,15 @@ export default function FechamentoComercialOpecModal({
     );
   }
 
-  // Leitura real e precisa de arquivo Excel (.xlsx / .xls) ou .csv via SheetJS (xlsx)
+  // Leitura exclusiva e estrita do Modelo Padrão Oficial de 6 Colunas:
+  // PROGRAMA, COBERTURA, FORMATO, INSERÇÕES, VALOR UNITÁRIO LÍQUIDO, INVESTIMENTO TOTAL LÍQUIDO
   function handleExcelUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsLendoPlanilha(true);
     setNomeArquivoPlanilha(file.name);
-    setUploadFeedback(`Lendo e processando dados reais de "${file.name}"...`);
+    setUploadFeedback(`Lendo e processando planilha "${file.name}"...`);
 
     const reader = new FileReader();
 
@@ -212,7 +213,7 @@ export default function FechamentoComercialOpecModal({
 
         const parsedEntregas = [];
 
-        // Localiza a linha do cabeçalho da proposta
+        // Localiza a linha do cabeçalho estrito de 6 colunas
         let headerRowIdx = -1;
         let colMap = {
           programa: 0,
@@ -231,7 +232,6 @@ export default function FechamentoComercialOpecModal({
           if (rowText.includes("PROGRAMA") && (rowText.includes("COBERTURA") || rowText.includes("FORMATO"))) {
             headerRowIdx = i;
 
-            const liquidoCols = [];
             row.forEach((cell, colIdx) => {
               const h = String(cell || "").toUpperCase().replace(/\r?\n/g, " ").trim();
               if (h === "PROGRAMA") colMap.programa = colIdx;
@@ -242,20 +242,8 @@ export default function FechamentoComercialOpecModal({
                 colMap.unitarioLiquido = colIdx;
               } else if (h.includes("TOTAL") && (h.includes("LÍQUIDO") || h.includes("LIQUIDO"))) {
                 colMap.totalLiquido = colIdx;
-              } else if (h.includes("LÍQUIDO") || h.includes("LIQUIDO")) {
-                liquidoCols.push(colIdx);
               }
             });
-
-            // Fallback caso as colunas de líquido não tenham "UNITÁRIO" explícito no cabeçalho
-            if (colMap.unitarioLiquido === undefined || colMap.totalLiquido === undefined) {
-              if (liquidoCols.length >= 2) {
-                if (colMap.unitarioLiquido === undefined) colMap.unitarioLiquido = liquidoCols[0];
-                if (colMap.totalLiquido === undefined) colMap.totalLiquido = liquidoCols[1];
-              } else if (liquidoCols.length === 1) {
-                if (colMap.totalLiquido === undefined) colMap.totalLiquido = liquidoCols[0];
-              }
-            }
             break;
           }
         }
@@ -268,58 +256,40 @@ export default function FechamentoComercialOpecModal({
             const progRaw = String(row[colMap.programa] || "").trim();
             const firstCellUpper = progRaw.toUpperCase();
 
-            // Interrompe ao chegar na seção de tabela auxiliar de formatos e preços
+            // Pula linhas vazias, cabeçalhos repetidos ou linhas de totais
             if (
-              firstCellUpper.startsWith("FORMATO") ||
-              firstCellUpper.includes("CONVERSÃO") ||
-              firstCellUpper.startsWith("DIA") ||
-              firstCellUpper.startsWith("HORA")
+              !progRaw ||
+              firstCellUpper === "PROGRAMA" ||
+              firstCellUpper === "TOTAL" ||
+              firstCellUpper.startsWith("TOTAIS")
             ) {
-              break;
-            }
-
-            // Se o nome do programa estiver em branco, verifica se é a linha de total de inserções da proposta
-            if (!progRaw) {
-              const insCell = row[colMap.insercoes];
-              const insNum =
-                typeof insCell === "number"
-                  ? insCell
-                  : parseFloat(String(insCell || "").replace(/\./g, "").replace(",", "."));
-              if (insNum > 0 && parsedEntregas.length > 0) {
-                // Linha de total consolidado encontrada! Encerra a leitura das entregas.
-                break;
-              }
               continue;
             }
-
-            // Pula linhas que repitam o cabeçalho
-            if (firstCellUpper === "PROGRAMA") continue;
 
             const coberturaRaw = String(row[colMap.cobertura] || "NACIONAL").trim();
             const formatoRaw = String(row[colMap.formato] || "COMERCIAL 30\"").trim();
 
-            // Inserções
+            // Inserções (coluna 3)
             const insVal = row[colMap.insercoes];
             const insercoes =
               typeof insVal === "number"
                 ? insVal
                 : parseFloat(String(insVal || "").replace(/\./g, "").replace(",", ".")) || 0;
 
-            // Valor Unitário Líquido
+            // Valor Unitário Líquido (coluna 4)
             const unitVal = row[colMap.unitarioLiquido];
             let unitarioLiquido =
               typeof unitVal === "number"
                 ? unitVal
                 : parseFloat(String(unitVal || "").replace(/\./g, "").replace(",", ".")) || 0;
 
-            // Investimento Total Líquido
+            // Investimento Total Líquido (coluna 5)
             const totVal = row[colMap.totalLiquido];
             let totalLiquido =
               typeof totVal === "number"
                 ? totVal
                 : parseFloat(String(totVal || "").replace(/\./g, "").replace(",", ".")) || 0;
 
-            // Se um dos valores estiver ausente, recalcula automaticamente
             if (totalLiquido === 0 && insercoes > 0 && unitarioLiquido > 0) {
               totalLiquido = insercoes * unitarioLiquido;
             } else if (unitarioLiquido === 0 && insercoes > 0 && totalLiquido > 0) {
@@ -344,7 +314,6 @@ export default function FechamentoComercialOpecModal({
           setEntregas(parsedEntregas);
           setPlanilhaCarregada(true);
 
-          // Soma o Investimento Total Líquido exato da planilha
           const totalConsolidado = parsedEntregas.reduce(
             (acc, r) => acc + (Number(r.investimentoTotalLiquido) || 0),
             0
@@ -352,22 +321,21 @@ export default function FechamentoComercialOpecModal({
           setInvestimentoLiquido(totalConsolidado);
           setInvestimentoLiquidoStr(formatBRL(totalConsolidado));
           setUploadFeedback(
-            `✅ Planilha "${file.name}" lida com sucesso! ${parsedEntregas.length} entregas identificadas.`
+            `✅ Planilha "${file.name}" importada com sucesso! ${parsedEntregas.length} entregas identificadas no Modelo Padrão.`
           );
         } else {
           setUploadFeedback(
-            `Nenhuma linha de proposta preenchida encontrada em "${file.name}". Verifique se o arquivo possui as linhas preenchidas abaixo do cabeçalho.`
+            `Nenhuma linha identificada em "${file.name}". O arquivo deve conter o cabeçalho: PROGRAMA, COBERTURA, FORMATO, INSERÇÕES, VALOR UNITÁRIO LÍQUIDO, INVESTIMENTO TOTAL LÍQUIDO.`
           );
         }
       } catch (err) {
         console.error("Erro ao analisar planilha:", err);
-        setUploadFeedback(`Erro ao processar "${file.name}". Verifique a estrutura do arquivo.`);
+        setUploadFeedback(`Erro ao processar "${file.name}". Utilize o Modelo Padrão oficial de 6 colunas.`);
       } finally {
         setIsLendoPlanilha(false);
       }
     };
 
-    reader.readAsArrayBuffer(file);
   }
 
   const totalInsercoes = entregas.reduce(
