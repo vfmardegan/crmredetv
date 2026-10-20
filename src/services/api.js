@@ -13,7 +13,56 @@ function handleUnauthorized() {
   window.location.reload();
 }
 
+// Sandbox Local da branch OPEC para Oportunidades:
+const LOCAL_OPPS_KEY = "crm_opec_sandbox_opps_v1";
+const LOCAL_DELETED_OPPS_KEY = "crm_opec_sandbox_deleted_opps_v1";
+
+function getLocalOpps() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_OPPS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function setLocalOpps(list) {
+  try {
+    localStorage.setItem(LOCAL_OPPS_KEY, JSON.stringify(list));
+  } catch (e) {}
+}
+
+function getDeletedOppIds() {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_DELETED_OPPS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function addDeletedOppId(id) {
+  try {
+    const list = getDeletedOppIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem(LOCAL_DELETED_OPPS_KEY, JSON.stringify(list));
+    }
+  } catch (e) {}
+}
+
 export async function apiPost(path, body) {
+  // Intercepta criação de oportunidade para isolamento na branch OPEC
+  if (path === "/opportunities") {
+    const newOpp = {
+      ...body,
+      id: `opp_opec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: body.createdAt || new Date().toISOString().split("T")[0],
+    };
+    const list = getLocalOpps();
+    list.unshift(newOpp);
+    setLocalOpps(list);
+    return newOpp;
+  }
+
   const res = await fetch(`/api/v1${path}`, {
     method: "POST",
     headers: getHeaders(),
@@ -30,6 +79,23 @@ export async function apiPost(path, body) {
 }
 
 export async function apiPut(path, body) {
+  // Intercepta atualização de oportunidade para isolamento na branch OPEC
+  if (path.startsWith("/opportunities/")) {
+    const oppId = path.replace("/opportunities/", "");
+    const list = getLocalOpps();
+    const idx = list.findIndex((o) => o.id === oppId);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...body };
+      setLocalOpps(list);
+      return list[idx];
+    } else {
+      const modifiedOpp = { id: oppId, ...body, _isLocalOverride: true };
+      list.unshift(modifiedOpp);
+      setLocalOpps(list);
+      return modifiedOpp;
+    }
+  }
+
   const res = await fetch(`/api/v1${path}`, {
     method: "PUT",
     headers: getHeaders(),
@@ -46,6 +112,15 @@ export async function apiPut(path, body) {
 }
 
 export async function apiDelete(path) {
+  // Intercepta exclusão de oportunidade para isolamento na branch OPEC
+  if (path.startsWith("/opportunities/")) {
+    const oppId = path.replace("/opportunities/", "");
+    const list = getLocalOpps().filter((o) => o.id !== oppId);
+    setLocalOpps(list);
+    addDeletedOppId(oppId);
+    return { ok: true, deletedId: oppId };
+  }
+
   const res = await fetch(`/api/v1${path}`, {
     method: "DELETE",
     headers: getHeaders(),
@@ -145,7 +220,37 @@ export async function apiGet(path) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `GET ${path} respondeu ${res.status}`);
   }
-  return res.json();
+  const data = await res.json();
+
+  // Aplica merge do sandbox local no bootstrap de oportunidades da branch OPEC
+  if (path === "/bootstrap" && data && Array.isArray(data.opportunities)) {
+    const deletedIds = new Set(getDeletedOppIds());
+    const localOpps = getLocalOpps();
+    const localMap = new Map(localOpps.map((o) => [o.id, o]));
+
+    // Filtra deletadas e aplica overrides locais
+    let merged = data.opportunities
+      .filter((o) => !deletedIds.has(o.id))
+      .map((o) => {
+        if (localMap.has(o.id)) {
+          const override = localMap.get(o.id);
+          localMap.delete(o.id);
+          return { ...o, ...override };
+        }
+        return o;
+      });
+
+    // Adiciona as novas oportunidades criadas localmente no topo
+    for (const [_, newLocalOpp] of localMap) {
+      if (!deletedIds.has(newLocalOpp.id)) {
+        merged.unshift(newLocalOpp);
+      }
+    }
+
+    data.opportunities = merged;
+  }
+
+  return data;
 }
 
 export async function iaSummarize(advertiserId, interactionNote, history, interactionId) {
