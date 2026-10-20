@@ -2809,7 +2809,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                 </button>
 
                 {opecMenuOpen && (
-                  <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-indigo-900/40 ml-3.5">
+                  <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-slate-800 ml-3.5">
                     {opecNavItems.map((item) => (
                       <button
                         key={item.id}
@@ -2820,7 +2820,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                         className={
                           "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                           (view === item.id
-                            ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
+                            ? "bg-slate-800 text-white font-medium"
                             : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
                         }
                       >
@@ -2947,7 +2947,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             </button>
 
             {opecMenuOpen && (
-              <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-indigo-900/40 ml-3.5">
+              <div className="mt-1 flex flex-col gap-0.5 pl-2.5 border-l border-slate-800 ml-3.5">
                 {opecNavItems.map((item) => (
                   <button
                     key={item.id}
@@ -2955,7 +2955,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                     className={
                       "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-sm text-left transition-colors " +
                       (view === item.id
-                        ? "bg-indigo-900/60 text-white font-medium border border-indigo-700/50"
+                        ? "bg-slate-800 text-white font-medium"
                         : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
                     }
                   >
