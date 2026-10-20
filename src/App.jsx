@@ -2710,7 +2710,6 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
     hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
     hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
-    hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
   ].filter(Boolean);
 
   const opecNavItems = [
@@ -2831,6 +2830,29 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
                   </div>
                 )}
               </div>
+
+              {/* 3º Item Principal: Gestão e Acessos (Mobile) */}
+              {hasPermission(user?.perfil, "can_manage_users") && (
+                <div className="pt-2 border-t border-slate-800/80">
+                  <button
+                    key="access"
+                    type="button"
+                    onClick={() => {
+                      setView("access");
+                      setMobileMenuOpen(false);
+                    }}
+                    className={
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-semibold uppercase tracking-wider text-left transition-colors " +
+                      (view === "access"
+                        ? "bg-slate-800 text-white border border-slate-700/60"
+                        : "text-slate-300 hover:text-white hover:bg-slate-800/60")
+                    }
+                  >
+                    <Shield size={16} className="text-emerald-400" />
+                    <span>Gestão e Acessos</span>
+                  </button>
+                </div>
+              )}
             </nav>
 
             <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
@@ -2948,6 +2970,26 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </div>
             )}
           </div>
+
+          {/* 3º Item Principal: Gestão e Acessos (Desktop) */}
+          {hasPermission(user?.perfil, "can_manage_users") && (
+            <div className="pt-2 border-t border-slate-800/80">
+              <button
+                key="access"
+                type="button"
+                onClick={() => setView("access")}
+                className={
+                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs sm:text-sm font-semibold uppercase tracking-wider text-left transition-colors group " +
+                  (view === "access"
+                    ? "bg-slate-800 text-white border border-slate-700/60 shadow-xs"
+                    : "text-slate-300 hover:text-white hover:bg-slate-800/60")
+                }
+              >
+                <Shield size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
+                <span className="truncate">Gestão e Acessos</span>
+              </button>
+            </div>
+          )}
         </nav>
         <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
           <div className="flex items-center gap-2">
