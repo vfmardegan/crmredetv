@@ -11,7 +11,7 @@ import {
   Building2,
   Sparkles
 } from "lucide-react";
-import { TV_PRODUCTS } from "../../utils";
+import { TV_PRODUCTS } from "../../utils/helpers";
 
 export default function FechamentoComercialOpecModal({
   isOpen,
