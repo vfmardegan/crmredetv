@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico de Propostas | RedeTV! Media Planner</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-crm');
+      window.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('in-crm'));
+    }
+  </script>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- 1. Menu Lateral Esquerdo -->
+    <aside class="sidebar" id="app-sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="sidebar-logo">RedeTV!</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Planejamento de Mídia</span>
+          </a>
+
+          <a href="media-ai.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+            <span>Med.IA Planner</span>
+          </a>
+
+          <div class="nav-group">
+            <button type="button" class="nav-group-toggle" onclick="this.closest('.nav-group').classList.toggle('open')">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                <span>Banco de Dados</span>
+              </div>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-subitems">
+              <a href="formatos.html" class="nav-subitem">
+                <span>Formatos e Programas</span>
+              </a>
+              <a href="impactos.html" class="nav-subitem">
+                <span>Impactos por Programa</span>
+              </a>
+              <a href="tabelas.html" class="nav-subitem">
+                <span>Tabelas de Preço</span>
+              </a>
+            </div>
+          </div>
+
+          <a href="historico.html" class="nav-item active" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Histórico de Propostas</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: #FFFFFF;">Tabela Vigente</div>
+            <div id="sidebar-active-table-name" style="font-size: 10px; color: var(--text-sub);">Outubro/2026</div>
+          </div>
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Conteúdo Principal -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" id="btn-toggle-sidebar" class="btn-toggle-sidebar" title="Ocultar/Exibir Menu Lateral">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
+            Histórico de Propostas Comerciais
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <a href="index.html" class="btn btn-primary btn-sm" style="text-decoration: none; display: flex; align-items: center; gap: 6px;">
+            <span>+</span> Nova Proposta
+          </a>
+        </div>
+      </header>
+
+      <main class="content-container">
+        <section class="table-card">
+          <div class="table-toolbar">
+            <div style="flex: 1; max-width: 380px;">
+              <input type="text" id="input-search-history" class="form-input" placeholder="BUSCAR POR CLIENTE, PROJETO OU AGÊNCIA..." style="height: 36px; font-size: 12.5px; text-transform: uppercase;">
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted);">
+              Total: <strong id="total-history-count">0</strong> propostas registradas
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="corporate-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th class="center" style="width: 44px;">#</th>
+                  <th style="min-width: 220px;">PROJETO / CAMPANHA</th>
+                  <th style="min-width: 160px;">CLIENTE</th>
+                  <th style="min-width: 160px;">AGÊNCIA</th>
+                  <th class="center" style="min-width: 120px;">DATA / CICLO</th>
+                  <th class="center" style="min-width: 90px;">INSERÇÕES</th>
+                  <th class="right" style="min-width: 140px;">INVESTIMENTO LÍQUIDO</th>
+                  <th class="center" style="width: 140px;">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-history">
+                <!-- Preenchido via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-notification" class="toast"></div>
+
+  <script src="data/rateCard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script>
+    class ProposalsHistoryApp {
+      constructor() {
+        this.history = [];
+        this.init();
+      }
+
+      init() {
+        let activeName = localStorage.getItem('redetv_active_rate_card_name');
+        if (!activeName || activeName.includes('2026.1') || activeName.includes('Abril')) {
+          activeName = 'Outubro/2026';
+          localStorage.setItem('redetv_active_rate_card_name', activeName);
+          localStorage.setItem('redetv_active_rate_card_id', '2026-outubro');
+        }
+        const lbl = document.getElementById('sidebar-active-table-name');
+        if (lbl) lbl.textContent = activeName;
+        this.loadHistory();
+        this.bindEvents();
+        this.renderTable();
+      }
+
+      showToast(msg) {
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2600);
+      }
+
+      loadHistory() {
+        const saved = localStorage.getItem('redetv_saved_proposals');
+        if (saved) {
+          try {
+            this.history = JSON.parse(saved);
+            return;
+          } catch(e) {}
+        }
+
+        // Propostas demonstrativas de exemplo se vazio
+        this.history = [
+          {
+            id: 'PROP-2026-001',
+            projectName: 'CAMPANHA NACIONAL VAREJO 2026',
+            client: 'GRUPO VAREJO BRASIL',
+            agency: 'AGÊNCIA NACIONAL DE MÍDIA',
+            date: '21/10/2026',
+            totalInsertions: 48,
+            totalNet: 489200,
+            tableVersion: '2026.1 (Abril)'
+          },
+          {
+            id: 'PROP-2026-002',
+            projectName: 'PATROCÍNIO SUPERPOP & SENSACIONAL',
+            client: 'COSMÉTICOS BELA COR',
+            agency: 'DDB BRASIL',
+            date: '18/10/2026',
+            totalInsertions: 24,
+            totalNet: 312500,
+            tableVersion: '2026.1 (Abril)'
+          },
+          {
+            id: 'PROP-2026-003',
+            projectName: 'JORNALISMO PRIME TIME',
+            client: 'BANCO INVEST DIGITAL',
+            agency: 'AFRICA CREATIVE',
+            date: '15/10/2026',
+            totalInsertions: 30,
+            totalNet: 645000,
+            tableVersion: '2026.1 (Abril)'
+          }
+        ];
+      }
+
+      bindEvents() {
+        const btnToggle = document.getElementById('btn-toggle-sidebar');
+        if (btnToggle) {
+          btnToggle.addEventListener('click', () => {
+            document.querySelector('.layout-wrapper')?.classList.toggle('sidebar-collapsed');
+          });
+        }
+
+        const inputSearch = document.getElementById('input-search-history');
+        if (inputSearch) {
+          inputSearch.addEventListener('input', (e) => this.renderTable(e.target.value));
+        }
+      }
+
+      renderTable(query = '') {
+        const tbody = document.getElementById('tbody-history');
+        const countEl = document.getElementById('total-history-count');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const clean = query.toLowerCase().trim();
+        const list = this.history.filter(item => {
+          if (!clean) return true;
+          return item.projectName.toLowerCase().includes(clean) ||
+                 item.client.toLowerCase().includes(clean) ||
+                 item.agency.toLowerCase().includes(clean) ||
+                 item.id.toLowerCase().includes(clean);
+        });
+
+        if (countEl) countEl.textContent = this.history.length;
+
+        if (list.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="center" style="padding: 30px; color: var(--text-muted);">
+                Nenhuma proposta encontrada.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        list.forEach((item, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'row-item';
+          tr.innerHTML = `
+            <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-dark);">${item.projectName}</div>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${item.id}</div>
+            </td>
+            <td style="font-weight: 600;">${item.client}</td>
+            <td style="color: var(--text-muted);">${item.agency}</td>
+            <td class="center font-mono" style="font-size: 12px;">${item.date}</td>
+            <td class="center font-mono font-bold" style="color: var(--text-dark);">${item.totalInsertions}</td>
+            <td class="right font-mono font-bold" style="color: var(--rose-primary); font-size: 13.5px;">${window.MediaCalculator.formatCurrency(item.totalNet)}</td>
+            <td class="center">
+              <button type="button" class="btn btn-secondary btn-sm btn-open-proposal" data-id="${item.id}" style="font-size: 11px; padding: 4px 8px; cursor: pointer;">
+                Abrir Grade
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('.btn-open-proposal').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const propId = e.currentTarget.dataset.id;
+            const found = this.history.find(h => h.id === propId);
+            if (found && found.campaignData) {
+              localStorage.setItem('redetv_load_proposal', JSON.stringify(found.campaignData));
+            } else if (found) {
+              localStorage.setItem('redetv_load_proposal', JSON.stringify({
+                campaign: {
+                  client: found.client,
+                  agency: found.agency,
+                  projectName: found.projectName,
+                  startDate: '',
+                  endDate: '',
+                  defaultDiscount: 70.0
+                },
+                lines: [
+                  { sigla: 'FGEN', marketId: 'NACIONAL', formatId: 'C30', totalDirect: Math.round((found.totalInsertions || 10) / 2), discountPercent: 70 },
+                  { sigla: 'A_TARDE_E_SUA', marketId: 'NACIONAL', formatId: 'C30', totalDirect: Math.round((found.totalInsertions || 10) / 2), discountPercent: 70 }
+                ]
+              }));
+            }
+            window.location.href = 'index.html';
+          });
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new ProposalsHistoryApp();
+    });
+  </script>
+</body>
+</html>

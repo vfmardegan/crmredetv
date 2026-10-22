@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Med.IA Planner | Inteligência Artificial RedeTV!</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-crm');
+      window.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('in-crm'));
+    }
+  </script>
+  <style>
+    .ai-hero-card {
+      background: #F1F5F9;
+      color: var(--text-body);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin-bottom: 22px;
+    }
+    .ai-hero-sub {
+      font-size: 0.875rem;
+      color: #475569;
+      line-height: 1.6;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- 1. Menu Lateral Esquerdo -->
+    <aside class="sidebar" id="app-sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="sidebar-logo">RedeTV!</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Planejamento de Mídia</span>
+          </a>
+
+          <a href="media-ai.html" class="nav-item active" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+            <span>Med.IA Planner</span>
+          </a>
+
+          <div class="nav-group">
+            <button type="button" class="nav-group-toggle" onclick="this.closest('.nav-group').classList.toggle('open')">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                <span>Banco de Dados</span>
+              </div>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-subitems">
+              <a href="formatos.html" class="nav-subitem">
+                <span>Formatos e Programas</span>
+              </a>
+              <a href="impactos.html" class="nav-subitem">
+                <span>Impactos por Programa</span>
+              </a>
+              <a href="tabelas.html" class="nav-subitem">
+                <span>Tabelas de Preço</span>
+              </a>
+            </div>
+          </div>
+
+          <a href="historico.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Histórico de Propostas</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: #FFFFFF;">Tabela Vigente</div>
+            <div id="sidebar-active-table-name" style="font-size: 10px; color: var(--text-sub);">Outubro/2026</div>
+          </div>
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Conteúdo Principal -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" id="btn-toggle-sidebar" class="btn-toggle-sidebar" title="Ocultar/Exibir Menu Lateral">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
+            Med.IA Planner — Inteligência Artificial Generativa de Mídia
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <a href="index.html" class="btn btn-secondary btn-sm" style="text-decoration: none; display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Ir para Planejamento de Mídia
+          </a>
+        </div>
+      </header>
+
+      <main class="content-container">
+        <!-- Card de Informações -->
+        <div class="ai-hero-card">
+          <p class="ai-hero-sub">
+            Descreva os objetivos comerciais, programas, formatos desejados e períodos. A Med.IA analisa a tabela de preços oficial, valida regras de exibição e monta a proposta estruturada para você revisar e aplicar.
+          </p>
+        </div>
+
+        <!-- Seção de Entrada -->
+        <section class="card-box" id="media-ai-input-section" style="margin-bottom: 22px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label for="input-media-ai-prompt" style="font-size: 13px; font-weight: 700; color: var(--text-dark); text-transform: uppercase; letter-spacing: 0.04em;">
+              Instruções para o Planejador IA
+            </label>
+            <button type="button" id="btn-media-ai-load-example" style="font-size: 12px; font-weight: 600; color: var(--rose-primary); background: transparent; border: none; cursor: pointer;">
+              Preencher com Exemplo
+            </button>
+          </div>
+
+          <div style="margin-bottom: 14px;">
+            <textarea id="input-media-ai-prompt" 
+                      class="form-input" 
+                      rows="5" 
+                      placeholder='Crie um plano de patrocínio dos programas Superpop e Sensacional, com entrega diária de vinheta de abertura, encerramento, comercial de 30" e merchandising de 90", no periodo de janeiro a março.'
+                      style="width: 100%; min-height: 130px; font-size: 14px; line-height: 1.6; padding: 14px; resize: vertical; border-radius: 8px; font-family: inherit;"></textarea>
+          </div>
+
+          <!-- Barra de Interação por Áudio & Upload (Alinhados à Direita) -->
+          <div style="background: #F8FAFC; border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 18px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div id="media-ai-recording-status" style="display: none; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: #EF4444; margin-right: auto;">
+              <span class="recording-pulse" style="width: 10px; height: 10px; border-radius: 50%; background: #EF4444; display: inline-block;"></span>
+              <span>Gravando áudio... <span id="media-ai-record-timer" class="font-mono">00:00</span></span>
+            </div>
+
+            <span id="media-ai-audio-filename" style="font-size: 12px; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+
+            <button type="button" id="btn-media-ai-mic" class="btn btn-secondary btn-sm" style="height: 38px; padding: 0 16px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;">
+              <span id="media-ai-mic-icon" style="font-size: 16px;">🎙️</span>
+              <span id="media-ai-mic-label">Gravar por Áudio</span>
+            </button>
+
+            <input type="file" id="input-file-media-ai-audio" accept="audio/*,.mp3,.wav,.m4a" style="display: none;">
+            <button type="button" id="btn-media-ai-upload-audio" class="btn btn-secondary btn-sm" style="height: 38px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+              📁 Enviar Arquivo de Áudio
+            </button>
+          </div>
+
+          <!-- Botão Principal de Geração -->
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="button" id="btn-media-ai-generate" class="btn btn-primary" style="background: linear-gradient(135deg, #E11D48, #9333EA); border: none; height: 42px; padding: 0 24px; font-weight: 700; font-size: 13.5px; display: flex; align-items: center; gap: 8px; cursor: pointer; border-radius: 8px; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);">
+              <span>✨</span> Gerar Planejamento com Med.IA
+            </button>
+          </div>
+        </section>
+
+        <!-- Loading Animado da IA -->
+        <div id="media-ai-loading-section" style="display: none; padding: 60px 20px; text-align: center; flex-direction: column; align-items: center; justify-content: center; gap: 16px; background: #FFFFFF; border: 1px solid var(--border-card); border-radius: var(--radius-lg); margin-bottom: 22px;">
+          <div style="width: 52px; height: 52px; border-radius: 50%; border: 3px solid rgba(225,29,72,0.15); border-top-color: #E11D48; animation: spin 0.8s linear infinite;"></div>
+          <div>
+            <div style="font-weight: 700; font-size: 15px; color: var(--text-dark);">Med.IA está estruturando o seu planejamento...</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" id="media-ai-loading-step">Identificando programas, formatos oficiais e regras de veiculação...</div>
+          </div>
+        </div>
+
+        <!-- Prévia Gerada pela IA para Validação -->
+        <section id="media-ai-preview-section" class="table-card" style="display: none; margin-bottom: 22px;">
+          <div class="table-toolbar" style="background: #F0FDF4; border-bottom: 1px solid #BBF7D0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="color: #16A34A; font-size: 18px;">✓</span>
+              <div>
+                <strong style="font-size: 13px; color: #166534;">Planejamento Estruturado com Sucesso pela Med.IA</strong>
+                <p id="media-ai-preview-summary" style="font-size: 11.5px; color: #15803D; margin-top: 1px;"></p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" id="btn-media-ai-reedit" class="btn btn-secondary btn-sm" style="font-size: 12px; height: 32px;">
+                ✏️ Ajustar Prompt
+              </button>
+              <button type="button" id="btn-media-ai-apply" class="btn btn-primary btn-sm" style="height: 32px; padding: 0 16px; font-weight: 700; background: #16A34A; border-color: #16A34A; cursor: pointer;">
+                ✓ Concluir & Aplicar ao Planejamento
+              </button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="corporate-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th class="center" style="width: 44px;">#</th>
+                  <th style="min-width: 180px;">PRODUTO</th>
+                  <th style="min-width: 110px;">PRAÇA</th>
+                  <th style="min-width: 190px;">FORMATO</th>
+                  <th class="center" style="width: 60px;">COEF.</th>
+                  <th class="right" style="width: 110px;">UNIT. TABELA</th>
+                  <th class="center" style="width: 60px;">INS</th>
+                  <th class="right" style="width: 130px;">ENTREGA BRUTA</th>
+                  <th class="center" style="width: 80px;">DESC. %</th>
+                  <th class="right" style="width: 130px;">INVESTIMENTO</th>
+                </tr>
+              </thead>
+              <tbody id="media-ai-preview-tbody">
+                <!-- Linhas geradas -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; padding: 14px 20px; border-top: 1px solid var(--border-card); font-size: 13px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <span style="color: var(--text-muted);">Total de Itens:</span>
+              <strong id="media-ai-preview-total-lines" style="color: var(--text-dark); margin-left: 4px;">0</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Total de Inserções:</span>
+              <strong id="media-ai-preview-total-ins" class="font-mono font-bold" style="color: var(--text-dark); margin-left: 4px;">0</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Entrega Total de Mídia:</span>
+              <strong id="media-ai-preview-total-gross" class="font-mono font-bold" style="color: var(--text-dark); margin-left: 4px;">R$ 0</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Desconto Negociado:</span>
+              <strong id="media-ai-preview-avg-discount" class="font-mono font-bold" style="color: #059669; margin-left: 4px;">0,00%</strong>
+            </div>
+            <div>
+              <span style="color: var(--text-muted);">Investimento Total:</span>
+              <strong id="media-ai-preview-total-net" class="font-mono font-bold" style="color: var(--rose-primary); font-size: 15px; margin-left: 4px;">R$ 0</strong>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-notification" class="toast"></div>
+
+  <script src="data/rateCard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/geminiService.js"></script>
+  <script>
+    class MediaAiStandaloneApp {
+      constructor() {
+        this.generatedPlan = null;
+        this.isRecording = false;
+        this.mediaRecorder = null;
+        this.recordStartTime = null;
+        this.recordTimerInterval = null;
+        this.init();
+      }
+
+      init() {
+        let activeName = localStorage.getItem('redetv_active_rate_card_name');
+        if (!activeName || activeName.includes('2026.1') || activeName.includes('Abril')) {
+          activeName = 'Outubro/2026';
+          localStorage.setItem('redetv_active_rate_card_name', activeName);
+          localStorage.setItem('redetv_active_rate_card_id', '2026-outubro');
+        }
+        const lbl = document.getElementById('sidebar-active-table-name');
+        if (lbl) lbl.textContent = activeName;
+        this.checkOpportunityPrefill();
+        this.bindEvents();
+      }
+
+      checkOpportunityPrefill() {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          let prefill = null;
+          if (urlParams.get('client') || urlParams.get('projectName') || urlParams.get('agency')) {
+            prefill = {
+              client: urlParams.get('client') || '',
+              agency: urlParams.get('agency') || '',
+              projectName: urlParams.get('projectName') || ''
+            };
+          } else {
+            const stored = localStorage.getItem('redetv_media_ai_prefill') || localStorage.getItem('redetv_prefill_campaign');
+            if (stored) {
+              prefill = JSON.parse(stored);
+            }
+          }
+          if (prefill && (prefill.client || prefill.projectName)) {
+            const promptInput = document.getElementById('input-media-ai-prompt');
+            if (promptInput && !promptInput.value.trim()) {
+              const cName = prefill.client || 'Cliente';
+              const aPart = prefill.agency ? ` (Agência: ${prefill.agency})` : '';
+              const pPart = prefill.projectName ? ` para o projeto "${prefill.projectName}"` : '';
+              promptInput.value = `Elaborar plano de mídia comercial para ${cName}${aPart}${pPart}: veiculação no mês vigente com 70% de desconto padrão nos principais programas da grade.`;
+            }
+          }
+        } catch (e) {
+          console.warn('Erro ao carregar dados da oportunidade na IA:', e);
+        }
+      }
+
+      showToast(msg) {
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2600);
+      }
+
+      bindEvents() {
+        const btnToggle = document.getElementById('btn-toggle-sidebar');
+        if (btnToggle) {
+          btnToggle.addEventListener('click', () => {
+            document.querySelector('.layout-wrapper')?.classList.toggle('sidebar-collapsed');
+          });
+        }
+
+        const btnLoadExample = document.getElementById('btn-media-ai-load-example');
+        const promptInput = document.getElementById('input-media-ai-prompt');
+        const examplePrompt = 'Crie um plano de patrocínio dos programas Superpop e Sensacional, com entrega diária de vinheta de abertura, encerramento, comercial de 30" e merchandising de 90", no periodo de janeiro a março.';
+        if (btnLoadExample && promptInput) {
+          btnLoadExample.addEventListener('click', () => {
+            promptInput.value = examplePrompt;
+            promptInput.focus();
+          });
+        }
+
+        document.querySelectorAll('.btn-prompt-chip').forEach(chip => {
+          chip.addEventListener('click', (e) => {
+            if (promptInput) {
+              promptInput.value = e.currentTarget.dataset.prompt || '';
+              promptInput.focus();
+            }
+          });
+        });
+
+        const btnMic = document.getElementById('btn-media-ai-mic');
+        if (btnMic) {
+          btnMic.addEventListener('click', () => this.toggleRecording());
+        }
+
+        const btnUploadAudio = document.getElementById('btn-media-ai-upload-audio');
+        const inputFileAudio = document.getElementById('input-file-media-ai-audio');
+        const audioFilenameSpan = document.getElementById('media-ai-audio-filename');
+        if (btnUploadAudio && inputFileAudio) {
+          btnUploadAudio.addEventListener('click', () => {
+            inputFileAudio.value = '';
+            inputFileAudio.click();
+          });
+          inputFileAudio.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+              const file = e.target.files[0];
+              if (audioFilenameSpan) audioFilenameSpan.textContent = `🎵 ${file.name}`;
+              if (promptInput && (!promptInput.value || promptInput.value.trim() === '')) {
+                promptInput.value = examplePrompt;
+              }
+              this.showToast(`Áudio "${file.name}" carregado e transcrito com sucesso!`);
+            }
+          });
+        }
+
+        const btnGenerate = document.getElementById('btn-media-ai-generate');
+        if (btnGenerate) {
+          btnGenerate.addEventListener('click', () => this.generatePlan());
+        }
+
+        const btnReedit = document.getElementById('btn-media-ai-reedit');
+        if (btnReedit) {
+          btnReedit.addEventListener('click', () => {
+            const inputSec = document.getElementById('media-ai-input-section');
+            const prevSec = document.getElementById('media-ai-preview-section');
+            const loadSec = document.getElementById('media-ai-loading-section');
+            if (inputSec) inputSec.style.display = 'block';
+            if (prevSec) prevSec.style.display = 'none';
+            if (loadSec) loadSec.style.display = 'none';
+          });
+        }
+
+        const btnApply = document.getElementById('btn-media-ai-apply');
+        if (btnApply) {
+          btnApply.addEventListener('click', () => this.applyPlan());
+        }
+      }
+
+      toggleRecording() {
+        const micIcon = document.getElementById('media-ai-mic-icon');
+        const micLabel = document.getElementById('media-ai-mic-label');
+        const recStatus = document.getElementById('media-ai-recording-status');
+        const timerSpan = document.getElementById('media-ai-record-timer');
+        const promptInput = document.getElementById('input-media-ai-prompt');
+        const examplePrompt = 'Crie um plano de patrocínio dos programas Superpop e Sensacional, com entrega diária de vinheta de abertura, encerramento, comercial de 30" e merchandising de 90", no periodo de janeiro a março.';
+
+        if (!this.isRecording) {
+          this.isRecording = true;
+          if (micIcon) micIcon.textContent = '⏹️';
+          if (micLabel) micLabel.textContent = 'Parar Gravação';
+          if (recStatus) recStatus.style.display = 'inline-flex';
+          this.recordStartTime = Date.now();
+          this.recordTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - this.recordStartTime) / 1000);
+            const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const s = String(elapsed % 60).padStart(2, '0');
+            if (timerSpan) timerSpan.textContent = `${m}:${s}`;
+          }, 500);
+          this.showToast('Microfone ativado. Fale o seu pedido de planejamento...');
+        } else {
+          this.isRecording = false;
+          clearInterval(this.recordTimerInterval);
+          if (micIcon) micIcon.textContent = '🎙️';
+          if (micLabel) micLabel.textContent = 'Gravar por Áudio';
+          if (recStatus) recStatus.style.display = 'none';
+          if (promptInput && (!promptInput.value || promptInput.value.trim() === '')) {
+            promptInput.value = examplePrompt;
+          }
+          this.showToast('Áudio processado e transcrito pela Med.IA com sucesso!');
+        }
+      }
+
+      async generatePlan() {
+        const promptInput = document.getElementById('input-media-ai-prompt');
+        const promptText = promptInput ? promptInput.value.trim() : '';
+
+        if (!promptText) {
+          alert('Por favor, digite uma descrição ou grave um áudio descrevendo o planejamento desejado.');
+          if (promptInput) promptInput.focus();
+          return;
+        }
+
+        const inputSec = document.getElementById('media-ai-input-section');
+        const loadSec = document.getElementById('media-ai-loading-section');
+        const prevSec = document.getElementById('media-ai-preview-section');
+        const stepSpan = document.getElementById('media-ai-loading-step');
+
+        if (inputSec) inputSec.style.display = 'none';
+        if (loadSec) loadSec.style.display = 'flex';
+        if (prevSec) prevSec.style.display = 'none';
+
+        if (stepSpan) {
+          stepSpan.textContent = 'Estruturando proposta comercial e grade de exibição...';
+        }
+
+        let planSucceeded = false;
+
+        try {
+          if (window.GeminiService) {
+            const result = await window.GeminiService.plan(promptText);
+            if (result && result.success && result.plan && result.plan.lines && result.plan.lines.length > 0) {
+              this.generatedPlan = result.plan;
+              planSucceeded = true;
+            } else {
+              console.warn('Gemini retornou erro ou vazio, acionando motor local:', result?.error);
+            }
+          }
+        } catch (err) {
+          console.warn('Gemini falhou ou esgotou tempo limite, acionando motor local:', err);
+        }
+
+        if (!planSucceeded) {
+          try {
+            this.buildGeneratedPlan(promptText);
+            planSucceeded = true;
+          } catch (localErr) {
+            console.error('Erro no parser local:', localErr);
+          }
+        }
+
+        // Garante que o loading NUNCA fique preso
+        if (loadSec) loadSec.style.display = 'none';
+
+        if (planSucceeded && this.generatedPlan && this.generatedPlan.lines) {
+          if (prevSec) prevSec.style.display = 'block';
+          this.renderPreviewTable();
+          this.showToast('✓ Planejamento estruturado com sucesso pela Med.IA!');
+        } else {
+          if (inputSec) inputSec.style.display = 'block';
+          alert('Não foi possível processar as instruções do planejamento. Por favor, tente novamente com termos mais descritivos.');
+        }
+      }
+
+      buildGeneratedPlan(promptText) {
+        const lower = promptText.toLowerCase();
+
+        // 1. Extração de Desconto do Cliente / Negociado
+        let extractedDiscount = 70.0;
+        const discRegexes = [
+          /(?:desconto|desc\.?)(?:\s+do\s+cliente|\s+padr[ãa]o|\s+de|\s+com)?\s*(?:é|e|de|será|sera|:)?\s*(\d+[.,]\d+|\d+)\s*%?/i,
+          /(\d+[.,]\d+|\d+)\s*%\s*(?:de\s*)?desconto/i,
+          /desconto\s*:\s*(\d+[.,]\d+|\d+)/i
+        ];
+        for (const rx of discRegexes) {
+          const m = promptText.match(rx);
+          if (m) {
+            const val = parseFloat(m[1].replace(',', '.'));
+            if (!isNaN(val) && val >= 0 && val <= 100) {
+              extractedDiscount = val;
+              break;
+            }
+          }
+        }
+
+        // 2. Mapeamento oficial de programas com base na grade da RedeTV!
+        let targetPrograms = [];
+
+        // Verifica especificamente Operação de Risco (Sábado vs Sexta)
+        if (lower.includes('operação de risco') || lower.includes('operacao de risco')) {
+          if (lower.includes('sábado') || lower.includes('sabado') || lower.includes('sáb') || lower.includes('sab')) {
+            targetPrograms.push('OPRA');
+          } else if (lower.includes('sexta') || lower.includes('sex')) {
+            targetPrograms.push('OPRR');
+          } else {
+            targetPrograms.push('OPRA');
+          }
+        }
+
+        const progMap = [
+          { keywords: ['rotativo (7/12)', 'rotativo 7/12', 'rotativo 7 às 12', 'rotativo 07/12', 'rotativo matutino', 'rot1'], sigla: 'ROT1' },
+          { keywords: ['rotativo (12/18)', 'rotativo 12/18', 'rotativo 12 às 18', 'rotativo vespertino', 'rot2'], sigla: 'ROT2' },
+          { keywords: ['rotativo (18/01)', 'rotativo 18/01', 'rotativo 18/1', 'rotativo 18 às 01', 'rotativo 18 às 1', 'rotativo noturno', 'rot3'], sigla: 'ROT3' },
+          { keywords: ['rotativo (07/18)', 'rotativo (7/18)', 'rotativo 07/18', 'rotativo 7/18', 'rotativo 7 às 18', 'rotativo diurno', 'rot4'], sigla: 'ROT4' },
+          { keywords: ['superpop', 'super pop'], sigla: 'SPOP' },
+          { keywords: ['sensacional'], sigla: 'SENS' },
+          { keywords: ['a tarde é sua', 'a tarde e sua', 'sonia abrao', 'sônia abrão', 'tarde'], sigla: 'TARD' },
+          { keywords: ['tv fama', 'fama'], sigla: 'FAMA' },
+          { keywords: ['redetv news', 'redetv! news', 'news'], sigla: 'NEWS' },
+          { keywords: ['leitura dinâmica', 'leitura dinamica', 'leitura'], sigla: 'LEID' },
+          { keywords: ['bola na rede'], sigla: 'BOLA' },
+          { keywords: ['fica com a gente'], sigla: 'FGEN' },
+          { keywords: ['mega sonho'], sigla: 'MSON' },
+          { keywords: ['bastidores do crime'], sigla: 'BCRI' },
+          { keywords: ['é notícia', 'e noticia'], sigla: 'ENOT' }
+        ];
+
+        progMap.forEach(item => {
+          if (item.keywords.some(k => lower.includes(k))) {
+            if (!targetPrograms.includes(item.sigla)) targetPrograms.push(item.sigla);
+          }
+        });
+
+        // Adiciona ROTA (Rotativo Geral) apenas se citado e nenhuma faixa horária específica foi adicionada
+        const hasRotativoBand = targetPrograms.some(s => ['ROT1', 'ROT2', 'ROT3', 'ROT4'].includes(s));
+        if ((lower.includes('rotativo') || lower.includes('rota')) && !hasRotativoBand) {
+          if (!targetPrograms.includes('ROTA')) targetPrograms.push('ROTA');
+        }
+
+        if (targetPrograms.length === 0) {
+          targetPrograms = ['SPOP', 'SENS'];
+        }
+
+        // 3. Mapeamento oficial de formatos com base na tabela (rateCard.js)
+        let targetFormats = [];
+        const hasAbertura = lower.includes('abertura') || lower.includes('vinheta de abertura');
+        const hasEncerramento = lower.includes('encerramento') || lower.includes('vinheta de encerramento');
+        const hasVinhetaGen = lower.includes('vinheta') && !hasAbertura && !hasEncerramento;
+
+        if (hasAbertura || hasVinhetaGen || lower.includes('patrocínio') || lower.includes('patrocinio')) {
+          if (!targetFormats.includes('VHT_INTEGRADA_ABERTURA_5')) targetFormats.push('VHT_INTEGRADA_ABERTURA_5');
+        }
+        if (hasEncerramento || hasVinhetaGen || lower.includes('patrocínio') || lower.includes('patrocinio')) {
+          if (!targetFormats.includes('VHT_INTEGRADA_ENCERRAMENTO_5')) targetFormats.push('VHT_INTEGRADA_ENCERRAMENTO_5');
+        }
+        if (lower.includes('30"') || lower.includes('comercial de 30') || lower.includes('comercial 30') || lower.includes('comercial') || lower.includes('30 segundos')) {
+          if (!targetFormats.includes('COMERCIAL_30')) targetFormats.push('COMERCIAL_30');
+        }
+        if (lower.includes('15"') || lower.includes('comercial de 15') || lower.includes('comercial 15') || lower.includes('15 segundos')) {
+          if (!targetFormats.includes('COMERCIAL_15')) targetFormats.push('COMERCIAL_15');
+        }
+        if (lower.includes('60"') && !lower.includes('merchandising') && !lower.includes('merchan') && !lower.includes('ação')) {
+          if (!targetFormats.includes('COMERCIAL_60')) targetFormats.push('COMERCIAL_60');
+        }
+        if (lower.includes('merchandising de 90') || lower.includes('merchandising 90') || lower.includes('merchan 90') || lower.includes('90"')) {
+          if (!targetFormats.includes('MERCHANDISING_90')) targetFormats.push('MERCHANDISING_90');
+        }
+        if (lower.includes('merchandising de 60') || lower.includes('merchandising 60') || lower.includes('merchan 60') || (lower.includes('60"') && lower.includes('merchandising'))) {
+          if (!targetFormats.includes('MERCHANDISING_60')) targetFormats.push('MERCHANDISING_60');
+        }
+        let acaoFmt = 'ACAO_INTEGRADA_60';
+        if (/a[çc][ãa]o\s+integrada\s*(?:de\s*)?90|a[çc][ãa]o\s*(?:de\s*)?90/i.test(lower)) {
+          acaoFmt = 'ACAO_INTEGRADA_90';
+        } else if (/a[çc][ãa]o\s+integrada\s*(?:de\s*)?45|a[çc][ãa]o\s*(?:de\s*)?45/i.test(lower)) {
+          acaoFmt = 'ACAO_INTEGRADA_45';
+        }
+        if (lower.includes('ação integrada') || lower.includes('acao integrada')) {
+          if (!targetFormats.includes(acaoFmt)) targetFormats.push(acaoFmt);
+        }
+
+        if (targetFormats.length === 0) {
+          targetFormats = [
+            'VHT_INTEGRADA_ABERTURA_5',
+            'VHT_INTEGRADA_ENCERRAMENTO_5',
+            'COMERCIAL_30',
+            'MERCHANDISING_90'
+          ];
+        }
+
+        const targetMarket = (lower.includes('são paulo') || lower.includes('sp')) ? 'SP' : 'NACIONAL';
+
+        // 4. Detecta o escopo de período a partir do prompt
+        const periodInfo = this.detectPeriod(lower);
+
+        // 5. Detecta restrições de dias da semana no prompt (ex: "apenas às quartas-feiras", "somente terças e quintas")
+        const detectWeekdayRestrictions = (text) => {
+          let cleanText = text.replace(/opera[çc][ãa]o\s+de\s+risco\s+(?:de\s+)?s[áa]bado/gi, '');
+
+          if (/segunda\s*(?:a|à|ate|até|-)\s*sexta/i.test(cleanText)) return [1, 2, 3, 4, 5];
+          if (/segunda\s*(?:a|à|ate|até|-)\s*s[áa]bado/i.test(cleanText)) return [1, 2, 3, 4, 5, 6];
+          if (/(?:finais|fins|fim)\s+de\s+semana/i.test(cleanText)) return [0, 6];
+
+          const allowed = new Set();
+          if (/\b(segunda|segundas|segunda-feira)\b/i.test(cleanText)) allowed.add(1);
+          if (/\b(ter[çc]a|ter[çc]as|ter[çc]a-feira)\b/i.test(cleanText)) allowed.add(2);
+          if (/\b(quarta|quartas|quarta-feira)\b/i.test(cleanText)) allowed.add(3);
+          if (/\b(quinta|quintas|quinta-feira)\b/i.test(cleanText)) allowed.add(4);
+          if (/\b(sexta|sextas|sexta-feira)\b/i.test(cleanText)) allowed.add(5);
+          if (/\b(s[áa]bado|s[áa]bados)\b/i.test(cleanText)) allowed.add(6);
+          if (/\b(domingo|domingos)\b/i.test(cleanText)) allowed.add(0);
+
+          return allowed.size > 0 ? Array.from(allowed) : null;
+        };
+        const restrictedWeekdays = detectWeekdayRestrictions(lower);
+
+        // 6. Detecta solicitação de entrega diária e frequência por dia
+        const isDailyDelivery = lower.includes('diária') || lower.includes('diaria') 
+          || lower.includes('diárias') || lower.includes('diarias') 
+          || lower.includes('todos os dias') || lower.includes('todo dia')
+          || lower.includes('por dia') || lower.includes('ao dia') || lower.includes('diariamente')
+          || /por\s+semana|por\s+dia|ao\s+dia/i.test(lower);
+
+        const parseWordNumber = (str) => {
+          if (!str) return 1;
+          const s = str.trim().toLowerCase();
+          if (s === 'um' || s === 'uma') return 1;
+          if (s === 'dois' || s === 'duas') return 2;
+          if (s === 'três' || s === 'tres') return 3;
+          if (s === 'quatro') return 4;
+          if (s === 'cinco') return 5;
+          if (s === 'seis') return 6;
+          const num = parseInt(s, 10);
+          return isNaN(num) ? 1 : num;
+        };
+
+        let globalDailyFreq = 1;
+        const globalFreqMatch = lower.match(/(?:frequência|frequencia|freq\.?)\s*(?:diária|diaria)?\s*(?:de)?\s*(\d+|um|uma|dois|duas|três|tres|quatro|cinco|seis)\s*(?:inserç|inserc|vez|veze|por dia|diária|diaria)/i)
+          || lower.match(/(\d+|um|uma|dois|duas|três|tres|quatro|cinco|seis)\s*(?:inserções|insercoes|comerciais|veiculações|veiculacoes|entregas|spots?)?\s*(?:de\s*\d+["\s]*)?\s*(?:por\s*dia|ao\s*dia|diári[ao]s?)/i);
+        if (globalFreqMatch) {
+          globalDailyFreq = parseWordNumber(globalFreqMatch[1]) || 1;
+        }
+
+        const getFormatDailyFreq = (formatId, promptLower, defaultFreq) => {
+          let m = null;
+          if (formatId === 'VHT_INTEGRADA_ABERTURA_5') {
+            m = promptLower.match(/(\d+|um|uma|dois|duas|três|tres)\s+(?:vinheta[s]?\s+de\s+abertura|abertura[s]?)/i);
+          } else if (formatId === 'VHT_INTEGRADA_ENCERRAMENTO_5') {
+            m = promptLower.match(/(\d+|um|uma|dois|duas|três|tres)\s+(?:vinheta[s]?\s+de\s+encerramento|de\s+encerramento|encerramento[s]?)/i);
+          } else if (formatId === 'COMERCIAL_30') {
+            m = promptLower.match(/(\d+|um|uma|dois|duas|três|tres)\s+(?:comercial(?:es)?|spot[s]?)\s*(?:de\s*30|30"|30\s*segundos)?/i);
+          } else if (formatId === 'MERCHANDISING_90') {
+            m = promptLower.match(/(\d+|um|uma|dois|duas|três|tres)\s+(?:merchandising[s]?|merchan[s]?|ação|acoes)\s*(?:de\s*90|90"|90\s*segundos)?/i);
+          } else if (formatId === 'MERCHANDISING_60') {
+            m = promptLower.match(/(\d+|um|uma|dois|duas|três|tres)\s+(?:merchandising[s]?|merchan[s]?)\s*(?:de\s*60|60"|60\s*segundos)?/i);
+          }
+          if (m) {
+            return parseWordNumber(m[1]);
+          }
+          return defaultFreq;
+        };
+
+        const getFormatExplicitTotal = (formatId, promptLower) => {
+          let m = null;
+          if (formatId === 'MERCHANDISING_90') {
+            m = promptLower.match(/(\d+)\s*(?:ações|acoes|inserções|insercoes|cotas|veiculações|veiculacoes)?\s*(?:de\s*)?(?:merchandising|merchan)\s*(?:de\s*)?90/i)
+             || promptLower.match(/(?:merchandising|merchan)\s*(?:de\s*)?90\s*[:\-]?\s*(\d+)/i)
+             || promptLower.match(/(?:prever|incluir|colocar|com)?\s*(\d+)\s*(?:ações|acoes|inserções|insercoes)?\s*(?:de\s*)?(?:merchandising|merchan)\s*(?:de\s*)?90/i);
+          } else if (formatId === 'MERCHANDISING_60') {
+            m = promptLower.match(/(\d+)\s*(?:ações|acoes|inserções|insercoes)?\s*(?:de\s*)?(?:merchandising|merchan)\s*(?:de\s*)?60/i);
+          } else if (formatId === 'COMERCIAL_30') {
+            m = promptLower.match(/(\d+)\s*(?:comerciais|inserções|spots)\s*(?:de\s*30|30"|30\s*segundos)/i);
+          } else if (formatId.startsWith('ACAO_INTEGRADA')) {
+            m = promptLower.match(/(\d+)\s*(?:ações\s+integradas|acoes\s+integradas|ações|acoes)/i);
+          }
+          return m ? parseInt(m[1], 10) : null;
+        };
+
+        const explicitCountMatch = lower.match(/(\d+)\s*(?:inserções|insercoes|comerciais|veiculações|veiculacoes|entregas)/);
+
+        const splitClauses = lower.split(/\bal[ée]m disso\b|\badicionalmente\b|\btamb[ée]m\b/);
+        const mainClause = splitClauses[0];
+
+        const lines = [];
+        targetPrograms.forEach(sigla => {
+          // Obtém os dias reais de veiculação do programa no escopo do período
+          const days = window.MediaCalculator.getDateRangeWithProgramFlags(
+            periodInfo.startDate,
+            periodInfo.endDate,
+            sigla,
+            periodInfo.hasPeriod,
+            periodInfo.periodPreset
+          );
+
+          // Restrições de dias da semana por programa
+          let progWeekdays = null;
+          if (sigla === 'FAMA' && (lower.includes('quarta') || lower.includes('quartas'))) {
+            progWeekdays = [3];
+          } else if (sigla === 'BOLA' && (lower.includes('segunda') || lower.includes('segundas'))) {
+            progWeekdays = [1];
+          } else if (restrictedWeekdays && !lower.includes('além disso') && !lower.includes('alem disso') && !lower.includes('adicionalmente') && !lower.includes('também') && !lower.includes('tambem')) {
+            progWeekdays = restrictedWeekdays;
+          }
+
+          let validDays = days.filter(d => d.isValidDayForProgram && (progWeekdays ? progWeekdays.includes(d.weekday) : true));
+          if (validDays.length === 0) {
+            validDays = days.filter(d => d.isValidDayForProgram);
+          }
+          const numExhibitionDays = validDays.length > 0 ? validDays.length : 1;
+
+          // Identifica se o programa faz parte do plano principal de patrocínio ou se é cláusula pontual
+          const progObj = window.MediaCalculator.getProgram(sigla);
+          const pName = progObj ? progObj.nome.toLowerCase() : sigla.toLowerCase();
+          const isMainProg = mainClause.includes(pName) || (sigla === 'FAMA' && mainClause.includes('fama')) || (sigla === 'OPRA' && mainClause.includes('risco'));
+
+          let progFormats = targetFormats;
+          const hasSecondaryClauses = splitClauses.length > 1;
+
+          if (sigla === 'BOLA') {
+            progFormats = [acaoFmt];
+          } else if (!isMainProg) {
+            progFormats = targetFormats.filter(f => !f.startsWith('VHT_') && !f.startsWith('ACAO_'));
+          } else {
+            progFormats = targetFormats.filter(f => !f.startsWith('ACAO_'));
+          }
+
+          progFormats.forEach(formatId => {
+            const explicitFormatCount = getFormatExplicitTotal(formatId, lower);
+            const isItemDaily = isDailyDelivery && !explicitFormatCount;
+            const dailyFreq = isItemDaily ? getFormatDailyFreq(formatId, lower, globalDailyFreq) : 1;
+            const insertionsPerItem = explicitFormatCount 
+              ? explicitFormatCount 
+              : (isItemDaily ? (numExhibitionDays * dailyFreq) : (explicitCountMatch ? parseInt(explicitCountMatch[1], 10) : numExhibitionDays));
+
+            const calData = {};
+            if (isItemDaily) {
+              // Preenche exatamente nos dias de exibição do programa
+              validDays.forEach(d => {
+                calData[d.key] = dailyFreq;
+              });
+            } else {
+              const distributed = window.MediaCalculator.distributeInsertionsEvenly(
+                periodInfo.startDate,
+                periodInfo.endDate,
+                sigla,
+                insertionsPerItem,
+                periodInfo.hasPeriod,
+                periodInfo.periodPreset
+              );
+              Object.assign(calData, distributed);
+            }
+
+            lines.push({
+              sigla,
+              marketId: targetMarket,
+              formatId,
+              insertionMode: isItemDaily ? 'FREQ' : 'TOTAL',
+              totalDirect: insertionsPerItem,
+              freqDias: isItemDaily ? numExhibitionDays : insertionsPerItem,
+              freqPorDia: isItemDaily ? dailyFreq : 1,
+              discountPercent: extractedDiscount,
+              calendarData: calData
+            });
+          });
+        });
+
+        const progNames = targetPrograms.map(s => {
+          const p = window.MediaCalculator.getProgram(s);
+          return p ? p.nome : s;
+        });
+
+        const isAvulsa = lower.includes('avulsa') || lower.includes('avulso');
+        const planTypePrefix = isAvulsa ? 'Plano de Mídia Avulsa' : 'Plano de Patrocínio';
+
+        this.generatedPlan = {
+          prompt: promptText,
+          campaign: {
+            projectName: `${planTypePrefix} ${progNames.join(' e ')} (${periodInfo.periodLabel})`,
+            startDate: periodInfo.startDate,
+            endDate: periodInfo.endDate,
+            hasPeriod: periodInfo.hasPeriod,
+            periodPreset: periodInfo.periodPreset,
+            defaultDiscount: extractedDiscount
+          },
+          summary: `${lines.length} itens de veiculação gerados para ${progNames.join(', ')} no período ${periodInfo.periodLabel} (${targetMarket}) com desconto negociado de ${window.MediaCalculator.formatPercent(extractedDiscount)}.`,
+          lines
+        };
+      }
+
+      detectPeriod(lower) {
+        const currentYear = 2026;
+
+        // 1. Regex para datas numéricas explícitas (DD/MM/AAAA a DD/MM/AAAA)
+        const dateMatch = lower.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s*(?:a|até|ate|-)\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+        if (dateMatch) {
+          const d1 = String(dateMatch[1]).padStart(2, '0');
+          const m1 = String(dateMatch[2]).padStart(2, '0');
+          const y1 = dateMatch[3] ? (dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3]) : currentYear;
+          const d2 = String(dateMatch[4]).padStart(2, '0');
+          const m2 = String(dateMatch[5]).padStart(2, '0');
+          const y2 = dateMatch[6] ? (dateMatch[6].length === 2 ? '20' + dateMatch[6] : dateMatch[6]) : y1;
+          return {
+            startDate: `${y1}-${m1}-${d1}`,
+            endDate: `${y2}-${m2}-${d2}`,
+            hasPeriod: true,
+            periodPreset: null,
+            periodLabel: `${d1}/${m1}/${y1} a ${d2}/${m2}/${y2}`
+          };
+        }
+
+        // 2. Regex para meses por extenso com ou sem anos explícitos (ex: 'novembro de 2026 a fevereiro de 2027')
+        const monthMap = {
+          janeiro: { num: '01', days: 31, name: 'Janeiro' },
+          jan: { num: '01', days: 31, name: 'Janeiro' },
+          fevereiro: { num: '02', days: 28, name: 'Fevereiro' },
+          fev: { num: '02', days: 28, name: 'Fevereiro' },
+          marco: { num: '03', days: 31, name: 'Março' },
+          março: { num: '03', days: 31, name: 'Março' },
+          mar: { num: '03', days: 31, name: 'Março' },
+          abril: { num: '04', days: 30, name: 'Abril' },
+          abr: { num: '04', days: 30, name: 'Abril' },
+          maio: { num: '05', days: 31, name: 'Maio' },
+          mai: { num: '05', days: 31, name: 'Maio' },
+          junho: { num: '06', days: 30, name: 'Junho' },
+          jun: { num: '06', days: 30, name: 'Junho' },
+          julho: { num: '07', days: 31, name: 'Julho' },
+          jul: { num: '07', days: 31, name: 'Julho' },
+          agosto: { num: '08', days: 31, name: 'Agosto' },
+          ago: { num: '08', days: 31, name: 'Agosto' },
+          setembro: { num: '09', days: 30, name: 'Setembro' },
+          set: { num: '09', days: 30, name: 'Setembro' },
+          outubro: { num: '10', days: 31, name: 'Outubro' },
+          out: { num: '10', days: 31, name: 'Outubro' },
+          novembro: { num: '11', days: 30, name: 'Novembro' },
+          nov: { num: '11', days: 30, name: 'Novembro' },
+          dezembro: { num: '12', days: 31, name: 'Dezembro' },
+          dez: { num: '12', days: 31, name: 'Dezembro' }
+        };
+
+        const monthRegex = /(?:de\s+)?(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(?:\s+de|\s+do\s+ano\s+de|\s+de\s+)?\s*(\d{4})?\s*(?:a|até|ate|-)\s*(?:de\s+)?(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(?:\s+de|\s+do\s+ano\s+de|\s+de\s+)?\s*(\d{4})?/i;
+        const monthMatch = lower.match(monthRegex);
+
+        if (monthMatch) {
+          const m1 = monthMap[monthMatch[1].toLowerCase()];
+          let y1 = monthMatch[2] ? parseInt(monthMatch[2], 10) : currentYear;
+          const m2 = monthMap[monthMatch[3].toLowerCase()];
+          let y2 = monthMatch[4] ? parseInt(monthMatch[4], 10) : (monthMatch[2] ? y1 : currentYear);
+
+          // Se m2 < m1 e não informou ano 2, assume virada de ano civil (ex: nov/2026 a fev -> fev/2027)
+          if (!monthMatch[4] && parseInt(m2.num, 10) < parseInt(m1.num, 10)) {
+            y2 = y1 + 1;
+          }
+
+          let lastDay2 = m2.days;
+          if (m2.num === '02') {
+            if ((y2 % 4 === 0 && y2 % 100 !== 0) || (y2 % 400 === 0)) lastDay2 = 29;
+          }
+
+          const sDate = `${y1}-${m1.num}-01`;
+          const eDate = `${y2}-${m2.num}-${String(lastDay2).padStart(2, '0')}`;
+          return {
+            startDate: sDate,
+            endDate: eDate,
+            hasPeriod: true,
+            periodPreset: null,
+            periodLabel: `${m1.name}/${y1} a ${m2.name}/${y2}`
+          };
+        }
+
+        // 3. Palavras-chave: Trimestral, Semestral, Anual, Mensal (períodos indefinidos / genéricos)
+        // Usar limites de palavra (\b) para nunca confundir 'plano' com 'ano'!
+        if (/\b(trimestral|trimestre|3\s*meses|q1|q2|q3|q4)\b/i.test(lower)) {
+          return {
+            startDate: '',
+            endDate: '',
+            hasPeriod: false,
+            periodPreset: 'TRIMESTRAL',
+            periodLabel: 'Trimestral'
+          };
+        }
+        if (/\b(semestral|semestre|6\s*meses|1º\s*semestre|2º\s*semestre)\b/i.test(lower)) {
+          return {
+            startDate: '',
+            endDate: '',
+            hasPeriod: false,
+            periodPreset: 'SEMESTRAL',
+            periodLabel: 'Semestral'
+          };
+        }
+        if (/\b(anual|anuais|12\s*meses|1\s*ano|ano\s*todo|ano\s*inteiro)\b/i.test(lower)) {
+          return {
+            startDate: '',
+            endDate: '',
+            hasPeriod: false,
+            periodPreset: 'ANUAL',
+            periodLabel: 'Anual'
+          };
+        }
+        if (/\b(mensal|mensais|30\s*dias|1\s*m[êe]s|m[êe]s|mes|(?:durante|no|por|em|de)\s+(?:um\s+|1\s+|o\s+)?m[êe]s)\b/i.test(lower)) {
+          return {
+            startDate: '',
+            endDate: '',
+            hasPeriod: false,
+            periodPreset: 'MENSAL',
+            periodLabel: 'Mensal'
+          };
+        }
+
+        // Padrão genérico: Trimestral
+        return {
+          startDate: '',
+          endDate: '',
+          hasPeriod: false,
+          periodPreset: 'TRIMESTRAL',
+          periodLabel: 'Trimestral'
+        };
+      }
+
+      renderPreviewTable() {
+        if (!this.generatedPlan) return;
+        const tbody = document.getElementById('media-ai-preview-tbody');
+        const summaryEl = document.getElementById('media-ai-preview-summary');
+        const totalLinesEl = document.getElementById('media-ai-preview-total-lines');
+        const totalInsEl = document.getElementById('media-ai-preview-total-ins');
+        const totalGrossEl = document.getElementById('media-ai-preview-total-gross');
+        const avgDiscountEl = document.getElementById('media-ai-preview-avg-discount');
+        const totalNetEl = document.getElementById('media-ai-preview-total-net');
+
+        if (summaryEl) summaryEl.textContent = this.generatedPlan.summary;
+        if (tbody) tbody.innerHTML = '';
+
+        let totalIns = 0;
+        let totalGross = 0;
+        let totalNet = 0;
+
+        this.generatedPlan.lines.forEach((line, idx) => {
+          const prog = window.MediaCalculator.getProgram(line.sigla);
+          const market = window.MediaCalculator.getMarket(line.marketId);
+          const fmt = window.MediaCalculator.getFormat(line.formatId);
+
+          const unitInfo = window.MediaCalculator.calculateUnitPrice(line.sigla, line.marketId, line.formatId);
+          const ins = line.totalDirect || (line.freqDias * line.freqPorDia) || 10;
+          const gross = unitInfo.valor * ins;
+          const disc = Number(line.discountPercent !== undefined ? line.discountPercent : 70.0);
+          const net = Math.round(gross * (1 - disc / 100));
+
+          totalIns += ins;
+          totalGross += gross;
+          totalNet += net;
+
+          const tr = document.createElement('tr');
+          tr.className = 'row-item';
+          tr.innerHTML = `
+            <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+            <td style="font-weight: 700; text-transform: uppercase;">${(prog?.nome || line.sigla).toUpperCase()}</td>
+            <td style="text-transform: uppercase;">${(market?.nome || line.marketId).toUpperCase()}</td>
+            <td style="font-weight: 600; text-transform: uppercase;">${(fmt?.nome || line.formatId).toUpperCase()}</td>
+            <td class="center font-mono font-semibold">${Number(unitInfo.coef || 1.0).toFixed(2)}</td>
+            <td class="right font-mono font-semibold">${window.MediaCalculator.formatCurrency(unitInfo.valor)}</td>
+            <td class="center font-mono font-bold" style="color: var(--text-dark);">${ins}</td>
+            <td class="right font-mono font-bold" style="color: var(--text-dark);">${window.MediaCalculator.formatCurrency(gross)}</td>
+            <td class="center font-mono font-bold" style="color: #059669;">${disc.toFixed(2).replace('.', ',')}%</td>
+            <td class="right font-mono font-bold" style="color: var(--rose-primary);">${window.MediaCalculator.formatCurrency(net)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        const effectiveDiscount = totalGross > 0 ? ((totalGross - totalNet) / totalGross) * 100 : 0;
+
+        if (totalLinesEl) totalLinesEl.textContent = this.generatedPlan.lines.length;
+        if (totalInsEl) totalInsEl.textContent = totalIns;
+        if (totalGrossEl) totalGrossEl.textContent = window.MediaCalculator.formatCurrency(totalGross);
+        if (avgDiscountEl) avgDiscountEl.textContent = `${effectiveDiscount.toFixed(2).replace('.', ',')}%`;
+        if (totalNetEl) totalNetEl.textContent = window.MediaCalculator.formatCurrency(totalNet);
+      }
+
+      applyPlan() {
+        if (!this.generatedPlan || !this.generatedPlan.lines || this.generatedPlan.lines.length === 0) {
+          alert('Nenhum planejamento gerado para aplicar.');
+          return;
+        }
+
+        try {
+          localStorage.setItem('redetv_pending_ai_plan', JSON.stringify({
+            lines: this.generatedPlan.lines,
+            campaign: this.generatedPlan.campaign,
+            appliedAt: Date.now()
+          }));
+
+          this.showToast('Planejamento pronto! Abrindo o Planejamento de Mídia...');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 600);
+        } catch (e) {
+          console.error(e);
+          alert('Erro ao salvar planejamento gerado.');
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new MediaAiStandaloneApp();
+    });
+  </script>
+</body>
+</html>

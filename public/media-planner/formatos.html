@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formatos e Programas | Matriz de Veiculação RedeTV!</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-crm');
+      window.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('in-crm'));
+    }
+  </script>
+  <style>
+    .matrix-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .matrix-toolbar {
+      padding: 14px 20px;
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .matrix-scroll-container {
+      overflow: auto;
+      max-height: calc(100vh - 220px);
+      position: relative;
+    }
+    table.matrix-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      font-size: 12px;
+    }
+    /* Sticky Top Header */
+    table.matrix-table thead th {
+      position: sticky;
+      top: 0;
+      background: #0F172A;
+      color: #FFFFFF;
+      z-index: 10;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 2px solid #334155;
+      border-right: 1px solid #1E293B;
+      white-space: nowrap;
+    }
+    /* Sticky First Column (Programs) */
+    table.matrix-table th.sticky-col,
+    table.matrix-table td.sticky-col {
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      background: #FFFFFF;
+      border-right: 2px solid var(--border-card);
+      width: 290px;
+      min-width: 290px;
+      max-width: 320px;
+      box-sizing: border-box;
+    }
+    table.matrix-table thead th.sticky-col {
+      z-index: 20;
+      background: #090D16;
+      width: 290px;
+      min-width: 290px;
+      max-width: 320px;
+      box-sizing: border-box;
+    }
+    table.matrix-table tbody tr:hover td.sticky-col {
+      background: #F8FAFC;
+    }
+    table.matrix-table tbody tr:hover td {
+      background: #F8FAFC;
+    }
+    table.matrix-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #F1F5F9;
+      border-right: 1px solid #F1F5F9;
+      text-align: center;
+      vertical-align: middle;
+      background: #FFFFFF;
+    }
+    /* Checkbox customizado */
+    .matrix-check {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 4px;
+      background: #FFFFFF;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s ease;
+      margin: 0 auto;
+    }
+    .matrix-check:checked {
+      background: #10B981;
+      border-color: #10B981;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+      background-size: 14px 14px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .matrix-check:hover {
+      border-color: var(--rose-primary);
+    }
+    .btn-matrix-toggle {
+      background: transparent;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748B;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.12s ease;
+    }
+    .btn-matrix-toggle:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+      border-color: #94A3B8;
+    }
+    .btn-toggle-row-icon {
+      width: 22px;
+      height: 22px;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      background: #F8FAFC;
+      color: #64748B;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      transition: all 0.15s ease;
+    }
+    .btn-toggle-row-icon:hover {
+      background: #10B981;
+      color: #FFFFFF;
+      border-color: #10B981;
+      transform: scale(1.08);
+    }
+    .col-header-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 110px;
+    }
+    .row-header-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      box-sizing: border-box;
+      padding: 2px 0;
+    }
+    .prog-name-single-line {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      letter-spacing: 0.01em;
+    }
+    .matrix-table-selector-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+      padding-left: 14px;
+      border-left: 1.5px solid var(--border-card);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- 1. Menu Lateral Esquerdo -->
+    <aside class="sidebar" id="app-sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="sidebar-logo">RedeTV!</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Planejamento de Mídia</span>
+          </a>
+
+          <a href="media-ai.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+            <span>Med.IA Planner</span>
+          </a>
+
+          <div class="nav-group open active-group">
+            <button type="button" class="nav-group-toggle" onclick="this.closest('.nav-group').classList.toggle('open')">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                <span>Banco de Dados</span>
+              </div>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-subitems">
+              <a href="formatos.html" class="nav-subitem active">
+                <span>Formatos e Programas</span>
+              </a>
+              <a href="impactos.html" class="nav-subitem">
+                <span>Impactos por Programa</span>
+              </a>
+              <a href="tabelas.html" class="nav-subitem">
+                <span>Tabelas de Preço</span>
+              </a>
+            </div>
+          </div>
+
+          <a href="historico.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Histórico de Propostas</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: #FFFFFF;">Tabela Vigente</div>
+            <div id="sidebar-active-table-name" style="font-size: 10px; color: var(--text-sub);">Outubro/2026</div>
+          </div>
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Conteúdo Principal -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button type="button" id="btn-toggle-sidebar" class="btn-toggle-sidebar" title="Ocultar/Exibir Menu Lateral">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
+            Matriz de Formatos e Programas
+          </div>
+
+          <!-- Menu Superior: Lista Suspensa da Tabela de Preços -->
+          <div class="matrix-table-selector-box">
+            <label for="select-matrix-table" style="font-size: 11.5px; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+              Tabela:
+            </label>
+            <select id="select-matrix-table" class="form-input" style="height: 32px; font-size: 12px; font-weight: 700; color: var(--text-dark); background: #FFFFFF; border: 1.5px solid var(--border-card); border-radius: 6px; padding: 0 10px; cursor: pointer; min-width: 220px;">
+              <!-- Opções carregadas dinamicamente via JavaScript -->
+            </select>
+          </div>
+        </div>
+
+        <div class="topbar-actions" style="display: flex; gap: 8px;">
+          <button type="button" id="btn-toggle-edit-matrix" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Editar permissões da matriz">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <span id="btn-edit-matrix-label">Editar Matriz</span>
+          </button>
+          <button type="button" id="btn-matrix-check-all" class="btn btn-secondary btn-sm" style="font-size: 12px;">
+            ✓ Marcar Todos
+          </button>
+          <button type="button" id="btn-matrix-uncheck-all" class="btn btn-secondary btn-sm" style="font-size: 12px;">
+            ✕ Desmarcar Todos
+          </button>
+          <button type="button" id="btn-matrix-reset" class="btn btn-secondary btn-sm" style="font-size: 12px;">
+            ↺ Restaurar Padrão
+          </button>
+          <button type="button" id="btn-matrix-save" class="btn btn-primary btn-sm" style="font-size: 12px; font-weight: 700;">
+            💾 Salvar Matriz
+          </button>
+        </div>
+      </header>
+
+      <main class="content-container">
+        <div class="matrix-card">
+          <!-- Toolbar da Matriz -->
+          <div class="matrix-toolbar">
+            <div style="display: flex; align-items: center; gap: 14px; flex: 1; max-width: 480px;">
+              <input type="text" id="input-search-matrix" class="form-input" placeholder="Buscar programa na matriz..." style="height: 36px; font-size: 12.5px; width: 100%;">
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; font-size: 12px;">
+              <div>
+                <span style="color: var(--text-muted);">Programas:</span>
+                <strong id="stat-total-programs" style="color: var(--text-dark); margin-left: 4px;">0</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Formatos:</span>
+                <strong id="stat-total-formats" style="color: var(--text-dark); margin-left: 4px;">0</strong>
+              </div>
+              <div>
+                <span style="color: var(--text-muted);">Permissões Ativas:</span>
+                <strong id="stat-active-permissions" class="font-mono font-bold" style="color: #10B981; margin-left: 4px;">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela Matriz com rolagem e cabeçalhos fixos -->
+          <div class="matrix-scroll-container">
+            <table class="matrix-table" id="matrix-table">
+              <thead>
+                <tr id="matrix-thead-tr">
+                  <!-- Inserido dinamicamente via JS -->
+                </tr>
+              </thead>
+              <tbody id="matrix-tbody">
+                <!-- Linhas inseridas dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-notification" class="toast"></div>
+
+  <script src="data/rateCard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script>
+    class ProgramFormatsMatrixApp {
+      constructor() {
+        this.isEditing = false;
+        this.allowedMatrix = {}; // { [sigla]: { [formatId]: boolean } }
+        this.currentTableId = localStorage.getItem('redetv_matrix_selected_table_id') || 
+                              localStorage.getItem('redetv_active_rate_card_id') || 
+                              '2026-outubro';
+        if (this.currentTableId === '2026.1') this.currentTableId = '2026-outubro';
+        this.init();
+      }
+
+      init() {
+        let activeName = localStorage.getItem('redetv_active_rate_card_name');
+        if (!activeName || activeName.includes('2026.1') || activeName.includes('Abril')) {
+          activeName = 'Outubro/2026';
+          localStorage.setItem('redetv_active_rate_card_name', activeName);
+          localStorage.setItem('redetv_active_rate_card_id', '2026-outubro');
+        }
+        const lbl = document.getElementById('sidebar-active-table-name');
+        if (lbl) lbl.textContent = activeName;
+
+        this.populateTableSelect();
+        this.loadMatrix();
+        this.bindEvents();
+        this.render();
+      }
+
+      getCustomTables() {
+        try {
+          return JSON.parse(localStorage.getItem('redetv_custom_rate_cards')) || [];
+        } catch(e) {
+          return [];
+        }
+      }
+
+      getPrograms() {
+        let progs = [];
+        if (this.currentTableId === '2026-outubro') {
+          progs = window.PROGRAMS_DATA || [];
+        } else {
+          const customTables = this.getCustomTables();
+          const target = customTables.find(t => t.id === this.currentTableId);
+          if (target && Array.isArray(target.programs) && target.programs.length > 0) {
+            progs = target.programs;
+          } else {
+            progs = window.PROGRAMS_DATA_DEFAULT || window.PROGRAMS_DATA || [];
+          }
+        }
+        return [...progs].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+      }
+
+      populateTableSelect() {
+        const select = document.getElementById('select-matrix-table');
+        if (!select) return;
+        select.innerHTML = '';
+
+        const versions = window.RATE_CARD_VERSIONS || [
+          { id: '2026-outubro', name: 'Outubro/2026', active: true }
+        ];
+
+        const customTables = this.getCustomTables();
+
+        // 1. Grupo: Tabelas Oficiais
+        const optGroupOficiais = document.createElement('optgroup');
+        optGroupOficiais.label = 'Tabelas Oficiais RedeTV!';
+
+        versions.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.id === '2026-outubro' ? `${v.name} (Vigente)` : v.name;
+          if (v.id === this.currentTableId) opt.selected = true;
+          optGroupOficiais.appendChild(opt);
+        });
+        select.appendChild(optGroupOficiais);
+
+        // 2. Grupo: Tabelas Personalizadas (se houver)
+        if (customTables.length > 0) {
+          const optGroupCustom = document.createElement('optgroup');
+          optGroupCustom.label = 'Tabelas Personalizadas';
+          customTables.forEach(ct => {
+            const opt = document.createElement('option');
+            opt.value = ct.id;
+            opt.textContent = `${ct.name} (${ct.programsCount || (ct.programs ? ct.programs.length : 0)} progs)`;
+            if (ct.id === this.currentTableId) opt.selected = true;
+            optGroupCustom.appendChild(opt);
+          });
+          select.appendChild(optGroupCustom);
+        }
+
+        // Se a tabela selecionada não existir mais, seleciona a vigente
+        if (!select.value && select.options.length > 0) {
+          select.selectedIndex = 0;
+          this.currentTableId = select.value;
+        }
+      }
+
+      showToast(msg) {
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2400);
+      }
+
+      getDefaultPermissions() {
+        const defaults = {};
+        const programs = this.getPrograms();
+        const formats = window.MEDIA_FORMATS || [];
+
+        programs.forEach(p => {
+          defaults[p.sigla] = {};
+          const isRotativo = (p.genero === 'ROTATIVO');
+          const isBrandedAvailable = p.branded && p.branded.disponivel !== false;
+
+          formats.forEach(f => {
+            const fid = f.id;
+            let allowed = true;
+
+            // Rotativo permite apenas comerciais padrão (não permite ações integradas, branded ou vinhetas de patrocínio)
+            if (isRotativo) {
+              if (fid.startsWith('ACAO_') || fid.startsWith('MERCHAN') || fid.startsWith('VHT_') || fid.startsWith('TOP_') || fid.startsWith('ASSINATURA')) {
+                allowed = false;
+              }
+            } else {
+              // Se o programa não tem branded studio disponível, desabilita ações e merchandisings por padrão
+              if (!isBrandedAvailable && (fid.startsWith('ACAO_') || fid.startsWith('MERCHANDISING'))) {
+                allowed = false;
+              }
+            }
+
+            defaults[p.sigla][fid] = allowed;
+          });
+        });
+
+        return defaults;
+      }
+
+      loadMatrix() {
+        const tableKey = `redetv_program_allowed_formats_${this.currentTableId}`;
+        let saved = localStorage.getItem(tableKey);
+        if (!saved && (this.currentTableId === '2026-outubro' || this.currentTableId === '2026.1')) {
+          saved = localStorage.getItem('redetv_program_allowed_formats');
+        }
+
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed === 'object') {
+              this.allowedMatrix = parsed;
+              // Garante que novos programas ou formatos sejam mesclados
+              const defaults = this.getDefaultPermissions();
+              Object.keys(defaults).forEach(sigla => {
+                if (!this.allowedMatrix[sigla]) {
+                  this.allowedMatrix[sigla] = defaults[sigla];
+                } else {
+                  Object.keys(defaults[sigla]).forEach(fid => {
+                    if (this.allowedMatrix[sigla][fid] === undefined) {
+                      this.allowedMatrix[sigla][fid] = defaults[sigla][fid];
+                    }
+                  });
+                }
+              });
+              return;
+            }
+          } catch (e) {
+            console.warn('Erro ao carregar matriz salva:', e);
+          }
+        }
+
+        this.allowedMatrix = this.getDefaultPermissions();
+      }
+
+      saveMatrix(showNotification = true) {
+        try {
+          const tableKey = `redetv_program_allowed_formats_${this.currentTableId}`;
+          localStorage.setItem(tableKey, JSON.stringify(this.allowedMatrix));
+          if (this.currentTableId === '2026-outubro' || this.currentTableId === localStorage.getItem('redetv_active_rate_card_id')) {
+            localStorage.setItem('redetv_program_allowed_formats', JSON.stringify(this.allowedMatrix));
+          }
+          if (showNotification) this.showToast('✓ Matriz de permissões salva com sucesso!');
+        } catch (e) {
+          console.error(e);
+          alert('Erro ao salvar matriz no navegador.');
+        }
+      }
+
+      bindEvents() {
+        const btnToggleEdit = document.getElementById('btn-toggle-edit-matrix');
+        const lblEdit = document.getElementById('btn-edit-matrix-label');
+
+        if (btnToggleEdit) {
+          btnToggleEdit.addEventListener('click', () => {
+            this.isEditing = !this.isEditing;
+            if (this.isEditing) {
+              btnToggleEdit.classList.remove('btn-secondary');
+              btnToggleEdit.classList.add('btn-primary');
+              if (lblEdit) lblEdit.textContent = '💾 Concluir Edição';
+              this.showToast('Modo de edição ativado. Você pode alterar as permissões da matriz.');
+            } else {
+              btnToggleEdit.classList.remove('btn-primary');
+              btnToggleEdit.classList.add('btn-secondary');
+              if (lblEdit) lblEdit.textContent = 'Editar Matriz';
+              this.saveMatrix(true);
+            }
+            this.render();
+          });
+        }
+
+        const btnToggle = document.getElementById('btn-toggle-sidebar');
+        if (btnToggle) {
+          btnToggle.addEventListener('click', () => {
+            document.querySelector('.layout-wrapper')?.classList.toggle('sidebar-collapsed');
+          });
+        }
+
+        const selectMatrixTable = document.getElementById('select-matrix-table');
+        if (selectMatrixTable) {
+          selectMatrixTable.addEventListener('change', (e) => {
+            this.currentTableId = e.target.value;
+            localStorage.setItem('redetv_matrix_selected_table_id', this.currentTableId);
+            this.loadMatrix();
+            this.render();
+            const selectedText = selectMatrixTable.options[selectMatrixTable.selectedIndex]?.text || '';
+            this.showToast(`Matriz alterada para a tabela: ${selectedText}`);
+          });
+        }
+
+        const inputSearch = document.getElementById('input-search-matrix');
+        if (inputSearch) {
+          inputSearch.addEventListener('input', (e) => this.renderBody(e.target.value));
+        }
+
+        const btnCheckAll = document.getElementById('btn-matrix-check-all');
+        if (btnCheckAll) {
+          btnCheckAll.addEventListener('click', () => this.toggleAllGlobal(true));
+        }
+
+        const btnUncheckAll = document.getElementById('btn-matrix-uncheck-all');
+        if (btnUncheckAll) {
+          btnUncheckAll.addEventListener('click', () => this.toggleAllGlobal(false));
+        }
+
+        const btnReset = document.getElementById('btn-matrix-reset');
+        if (btnReset) {
+          btnReset.addEventListener('click', () => {
+            if (confirm('Deseja restaurar todas as permissões para o padrão oficial desta tabela?')) {
+              this.allowedMatrix = this.getDefaultPermissions();
+              this.saveMatrix(false);
+              this.render();
+              this.showToast('Matriz restaurada para o padrão oficial.');
+            }
+          });
+        }
+
+        const btnSave = document.getElementById('btn-matrix-save');
+        if (btnSave) {
+          btnSave.addEventListener('click', () => {
+            if (this.isEditing) {
+              this.isEditing = false;
+              if (btnToggleEdit) {
+                btnToggleEdit.classList.remove('btn-primary');
+                btnToggleEdit.classList.add('btn-secondary');
+              }
+              if (lblEdit) lblEdit.textContent = 'Editar Matriz';
+              this.render();
+            }
+            this.saveMatrix(true);
+          });
+        }
+      }
+
+      toggleAllGlobal(state) {
+        if (!this.isEditing) {
+          this.isEditing = true;
+          const btnToggleEdit = document.getElementById('btn-toggle-edit-matrix');
+          const lblEdit = document.getElementById('btn-edit-matrix-label');
+          if (btnToggleEdit) {
+            btnToggleEdit.classList.remove('btn-secondary');
+            btnToggleEdit.classList.add('btn-primary');
+          }
+          if (lblEdit) lblEdit.textContent = '💾 Concluir Edição';
+        }
+        const programs = this.getPrograms();
+        const formats = window.MEDIA_FORMATS || [];
+        programs.forEach(p => {
+          if (!this.allowedMatrix[p.sigla]) this.allowedMatrix[p.sigla] = {};
+          formats.forEach(f => {
+            this.allowedMatrix[p.sigla][f.id] = state;
+          });
+        });
+        this.saveMatrix(false);
+        this.render();
+        this.showToast(state ? 'Todos os formatos permitidos em todos os programas.' : 'Todas as permissões desmarcadas.');
+      }
+
+      toggleRow(sigla, state) {
+        const formats = window.MEDIA_FORMATS || [];
+        if (!this.allowedMatrix[sigla]) this.allowedMatrix[sigla] = {};
+        formats.forEach(f => {
+          this.allowedMatrix[sigla][f.id] = state;
+        });
+        this.saveMatrix(false);
+        this.updateRowDom(sigla);
+        this.updateStats();
+      }
+
+      toggleColumn(formatId, state) {
+        const programs = this.getPrograms();
+        programs.forEach(p => {
+          if (!this.allowedMatrix[p.sigla]) this.allowedMatrix[p.sigla] = {};
+          this.allowedMatrix[p.sigla][formatId] = state;
+        });
+        this.saveMatrix(false);
+        this.updateColumnDom(formatId);
+        this.updateStats();
+      }
+
+      render() {
+        this.renderHeader();
+        this.renderBody();
+        this.updateStats();
+      }
+
+      renderHeader() {
+        const theadTr = document.getElementById('matrix-thead-tr');
+        if (!theadTr) return;
+        theadTr.innerHTML = '';
+
+        // Célula Superior Esquerda Fixa (Largura aumentada para caber o nome em linha única)
+        const thFirst = document.createElement('th');
+        thFirst.className = 'sticky-col';
+        thFirst.style.width = '290px';
+        thFirst.style.minWidth = '290px';
+        thFirst.style.maxWidth = '320px';
+        thFirst.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px;">
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.04em;">PROGRAMAS</span>
+            <span style="font-size: 9px; color: #94A3B8; font-weight: 600; text-transform: uppercase;">CHECK</span>
+          </div>
+        `;
+        theadTr.appendChild(thFirst);
+
+        const formats = window.MEDIA_FORMATS || [];
+        formats.forEach(f => {
+          const th = document.createElement('th');
+          th.innerHTML = `
+            <div class="col-header-box">
+              <span title="${f.nome}">${f.nome}</span>
+              <button type="button" class="btn-matrix-toggle btn-toggle-col" data-format-id="${f.id}" title="Alternar todos os programas para este formato" ${!this.isEditing ? 'disabled style="opacity: 0.45; cursor: not-allowed;"' : ''}>
+                Marcar Coluna
+              </button>
+            </div>
+          `;
+          theadTr.appendChild(th);
+        });
+
+        // Eventos nos botões das colunas
+        theadTr.querySelectorAll('.btn-toggle-col').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const fid = e.currentTarget.dataset.formatId;
+            const programs = this.getPrograms();
+            // Se a maioria está marcada, desmarca todos; caso contrário, marca todos
+            const countChecked = programs.filter(p => this.allowedMatrix[p.sigla]?.[fid]).length;
+            const newState = countChecked < programs.length;
+            this.toggleColumn(fid, newState);
+          });
+        });
+      }
+
+      renderBody(searchQuery = '') {
+        const tbody = document.getElementById('matrix-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const clean = searchQuery.toLowerCase().trim();
+        const programs = this.getPrograms().filter(p => {
+          if (!clean) return true;
+          return p.nome.toLowerCase().includes(clean) ||
+                 p.sigla.toLowerCase().includes(clean) ||
+                 (p.genero && p.genero.toLowerCase().includes(clean));
+        });
+
+        const formats = window.MEDIA_FORMATS || [];
+
+        programs.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.dataset.sigla = p.sigla;
+
+          // Célula Fixa do Programa (Linha) com nome em linha única, fonte reduzida e ícone de checkpoint
+          const tdFirst = document.createElement('td');
+          tdFirst.className = 'sticky-col';
+          tdFirst.innerHTML = `
+            <div class="row-header-box">
+              <span class="prog-name-single-line" title="${p.nome}">${p.nome}</span>
+              <button type="button" class="btn-toggle-row-icon btn-toggle-row" data-sigla="${p.sigla}" title="Marcar / Desmarcar todos os formatos de ${p.nome}" ${!this.isEditing ? 'disabled style="opacity: 0.45; cursor: not-allowed;"' : ''}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </button>
+            </div>
+          `;
+          tr.appendChild(tdFirst);
+
+          formats.forEach(f => {
+            const td = document.createElement('td');
+            const isChecked = Boolean(this.allowedMatrix[p.sigla]?.[f.id]);
+            td.innerHTML = `
+              <input type="checkbox" 
+                     class="matrix-check" 
+                     data-sigla="${p.sigla}" 
+                     data-format-id="${f.id}" 
+                     ${isChecked ? 'checked' : ''} 
+                     ${!this.isEditing ? 'disabled style="cursor: not-allowed; opacity: 0.75;"' : 'style="cursor: pointer;"'} 
+                     title="${p.nome} — ${f.nome}">
+            `;
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+
+        // Eventos de clique no ícone de checkpoint da linha
+        tbody.querySelectorAll('.btn-toggle-row').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const sigla = e.currentTarget.dataset.sigla;
+            const formats = window.MEDIA_FORMATS || [];
+            const countChecked = formats.filter(f => this.allowedMatrix[sigla]?.[f.id]).length;
+            const newState = countChecked < formats.length;
+            this.toggleRow(sigla, newState);
+          });
+        });
+
+        // Eventos nos checkboxes individuais
+        tbody.querySelectorAll('.matrix-check').forEach(chk => {
+          chk.addEventListener('change', (e) => {
+            const sigla = e.target.dataset.sigla;
+            const fid = e.target.dataset.formatId;
+            if (!this.allowedMatrix[sigla]) this.allowedMatrix[sigla] = {};
+            this.allowedMatrix[sigla][fid] = e.target.checked;
+            this.saveMatrix(false);
+            this.updateStats();
+          });
+        });
+      }
+
+      updateRowDom(sigla) {
+        const row = document.querySelector(`tr[data-sigla="${sigla}"]`);
+        if (!row) return;
+        const formats = window.MEDIA_FORMATS || [];
+        formats.forEach(f => {
+          const chk = row.querySelector(`.matrix-check[data-format-id="${f.id}"]`);
+          if (chk) {
+            chk.checked = Boolean(this.allowedMatrix[sigla]?.[f.id]);
+          }
+        });
+      }
+
+      updateColumnDom(formatId) {
+        document.querySelectorAll(`.matrix-check[data-format-id="${formatId}"]`).forEach(chk => {
+          const sigla = chk.dataset.sigla;
+          chk.checked = Boolean(this.allowedMatrix[sigla]?.[formatId]);
+        });
+      }
+
+      updateStats() {
+        const programs = this.getPrograms();
+        const formats = window.MEDIA_FORMATS || [];
+        let activeCount = 0;
+
+        programs.forEach(p => {
+          formats.forEach(f => {
+            if (this.allowedMatrix[p.sigla]?.[f.id]) activeCount++;
+          });
+        });
+
+        const statProg = document.getElementById('stat-total-programs');
+        const statFmt = document.getElementById('stat-total-formats');
+        const statActive = document.getElementById('stat-active-permissions');
+
+        if (statProg) statProg.textContent = programs.length;
+        if (statFmt) statFmt.textContent = formats.length;
+        if (statActive) statActive.textContent = activeCount.toLocaleString('pt-BR');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new ProgramFormatsMatrixApp();
+    });
+  </script>
+</body>
+</html>
