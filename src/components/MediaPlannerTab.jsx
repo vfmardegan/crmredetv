@@ -1,94 +1,123 @@
 // src/components/MediaPlannerTab.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
-  Calculator,
-  Table as TableIcon,
-  Layers,
-  BarChart2,
-  History,
-  Plus,
+  Download,
   Trash2,
   Copy,
-  Download,
+  Plus,
   Save,
   RotateCcw,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
-  Calendar,
-  Building2,
-  FileSpreadsheet,
+  X,
   Search,
   ExternalLink,
-  ChevronDown,
-  Info
+  ChevronDown
 } from "lucide-react";
 
+import "../modules/mediaPlanner/mediaPlanner.css";
 import {
   PROGRAMS_DATA,
   REGIONAL_MARKETS,
   MEDIA_FORMATS,
-  RATE_CARD_VERSIONS,
-  AUDIENCE_MARKETS
+  RATE_CARD_VERSIONS
 } from "../modules/mediaPlanner/rateCard";
 import { MediaCalculator } from "../modules/mediaPlanner/calculator";
 
-function formatBRL(val) {
-  if (val === null || val === undefined || isNaN(val)) return "R$ 0,00";
-  return Number(val).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
+function formatCurrency(val) {
+  if (val === null || val === undefined || isNaN(val) || val === "" || Number(val) === 0) return "R$ 0";
+  return "R$ " + Math.round(Number(val)).toLocaleString("pt-BR");
+}
+
+function formatCurrencyExact(val) {
+  if (val === null || val === undefined || isNaN(val) || val === "" || Number(val) === 0) return "R$ 0,00";
+  return Number(val).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function formatPercent(val) {
-  if (val === null || val === undefined || isNaN(val)) return "0,00%";
+  if (val === null || val === undefined || isNaN(val)) return "70,00%";
   return `${Number(val).toFixed(2).replace(".", ",")}%`;
+}
+
+function getProgramImpact(sigla) {
+  const defaultImpacts = {
+    RTVN: 142000,
+    FGEN: 198000,
+    BOLA: 245000,
+    TARD: 412000,
+    RTNO: 185000,
+    BPOV: 295000,
+    NEWS: 388000,
+    RAPF: 310000,
+    FAMA: 460000,
+    SENS: 350000,
+    ENOT: 125000,
+    OGVE: 180000,
+    SPOP: 395000,
+    DINC: 140000,
+    COMP: 280000,
+    OPER: 315000,
+    TEST: 210000,
+    GOLP: 195000,
+    MEGA: 520000,
+    DOMI: 220000,
+    JOAO: 260000,
+    GERA: 240000,
+    VILA: 190000,
+    DEFAULT: 250000
+  };
+  return defaultImpacts[sigla] || defaultImpacts.DEFAULT;
 }
 
 function MediaPlannerTabContent({
   advertisers = [],
   opportunities = [],
-  currentUser = null,
-  onSaveProposalToCrm = null
+  currentUser = null
 }) {
-  const [subTab, setSubTab] = useState("planner"); // "planner" | "tabelas" | "formatos" | "impactos" | "historico"
+  // Toast
   const [toastMessage, setToastMessage] = useState("");
-
   function showToast(msg) {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 4000);
   }
 
-  // Parâmetros da Campanha
+  // Modais auxiliares
+  const [showTabelasModal, setShowTabelasModal] = useState(false);
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false);
+  const [tabelaSearch, setTabelaSearch] = useState("");
+  const [tabelaMarket, setTabelaMarket] = useState("NACIONAL");
+
+  // Estado da Campanha (Fiel a index.html)
   const [campaign, setCampaign] = useState({
     client: "",
     agency: "",
     projectName: "",
-    startDate: "",
-    endDate: "",
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date().toISOString().split("T")[0],
+    periodPreset: null,
     defaultDiscount: 70.0,
-    globalInsertionMode: "TOTAL" // "TOTAL" | "FREQ"
+    globalInsertionMode: "TOTAL", // "TOTAL" | "FREQ" | "CALENDAR"
+    isCollapsed: false
   });
 
-  // Linhas da grade de mídia
+  // Linhas da grade (Fiel a index.html)
   const [lines, setLines] = useState([
     {
       id: "line-1",
-      sigla: "SPOP",
+      sigla: "",
       marketId: "NACIONAL",
       formatId: "COMERCIAL_30",
-      brandedVariant: "inedito",
+      customCoef: null,
       insertionMode: "TOTAL",
-      totalDirect: 20,
-      freqDias: 5,
-      freqPorDia: 4,
+      totalDirect: "",
+      freqDias: "",
+      freqPorDia: "",
       discountPercent: 70.0
     }
   ]);
 
-  // Histórico de propostas salvas (localStorage)
+  // Histórico de Campanhas Salvas
   const [savedProposals, setSavedProposals] = useState(() => {
     try {
       const stored = localStorage.getItem("redetv_media_proposals_history");
@@ -98,27 +127,32 @@ function MediaPlannerTabContent({
     }
   });
 
-  // Filtros da aba Tabelas de Preço
-  const [tabelaSearch, setTabelaSearch] = useState("");
-  const [tabelaMarket, setTabelaMarket] = useState("NACIONAL");
-  const [tabelaGenero, setTabelaGenero] = useState("ALL");
-
-  // Filtros da aba Formatos
-  const [formatoSearch, setFormatoSearch] = useState("");
-
-  // Calcula valores de uma linha específica usando MediaCalculator
+  // Recálculo de Linha
   function calculateLine(line) {
     try {
-      const unitPriceInfo = MediaCalculator.getUnitPrice(
+      if (!line.sigla) {
+        return {
+          basePrice30: 0,
+          coef: 1.0,
+          valor: 0,
+          totalInsertions: 0,
+          totalBruto: 0,
+          totalLiquido: 0,
+          unitarioLiquido: 0,
+          discountPercent: line.discountPercent
+        };
+      }
+
+      const unitPriceInfo = MediaCalculator.calculateUnitPrice(
         line.sigla,
-        line.marketId,
-        line.formatId,
-        line.brandedVariant || "inedito",
+        line.marketId || "NACIONAL",
+        line.formatId || "COMERCIAL_30",
+        "inedito",
         0,
         false,
-        null,
+        line.customCoef,
         false
-      ) || { valor: 0 };
+      ) || { valor: 0, basePrice30: 0, coef: 1.0 };
 
       let totalInsertions = 0;
       if (line.insertionMode === "TOTAL") {
@@ -132,86 +166,90 @@ function MediaPlannerTabContent({
       const financials = MediaCalculator.calculateLineFinancials(
         unitPriceInfo.valor || 0,
         totalInsertions,
-        line.discountPercent || 0
+        line.discountPercent !== "" && line.discountPercent !== undefined ? line.discountPercent : campaign.defaultDiscount
       ) || {};
 
       return {
         ...unitPriceInfo,
         ...financials,
-        valorBruto: financials.totalBruto || 0,
-        valorLiquido: financials.totalLiquido || 0,
-        valorUnitarioLiquido: financials.unitarioLiquido || 0,
         totalInsertions
       };
     } catch (err) {
-      console.error("Erro ao calcular linha do planejador:", err);
-      return { valor: 0, valorBruto: 0, valorLiquido: 0, valorUnitarioLiquido: 0, totalInsertions: 0 };
+      console.error("Erro calculo linha:", err);
+      return {
+        basePrice30: 0,
+        coef: 1.0,
+        valor: 0,
+        totalInsertions: 0,
+        totalBruto: 0,
+        totalLiquido: 0,
+        unitarioLiquido: 0
+      };
     }
   }
 
-  // Linhas enriquecidas com cálculos em tempo real
+  // Linhas calculadas
   const calculatedLines = useMemo(() => {
     return lines.map((l) => ({
       ...l,
       calculo: calculateLine(l)
     }));
-  }, [lines]);
+  }, [lines, campaign.defaultDiscount]);
 
-  // Totais Consolidados (KPIs)
+  // Totais (6 KPIs de index.html)
   const totals = useMemo(() => {
     let totalInsertions = 0;
     let totalBruto = 0;
     let totalLiquido = 0;
+    let totalImpactos = 0;
 
     calculatedLines.forEach((l) => {
       const c = l.calculo;
-      if (c) {
+      if (c && l.sigla) {
         totalInsertions += c.totalInsertions || 0;
-        totalBruto += c.valorBruto || 0;
-        totalLiquido += c.valorLiquido || 0;
+        totalBruto += c.totalBruto || 0;
+        totalLiquido += c.totalLiquido || 0;
+
+        const impactPerSpot = getProgramImpact(l.sigla);
+        totalImpactos += (c.totalInsertions || 0) * impactPerSpot;
       }
     });
 
     const averageDiscount =
-      totalBruto > 0 ? ((totalBruto - totalLiquido) / totalBruto) * 100 : campaign.defaultDiscount;
+      totalBruto > 0 ? ((totalBruto - totalLiquido) / totalBruto) * 100 : Number(campaign.defaultDiscount) || 70.0;
 
-    // Estimativa de GRPs e CPM Líquido baseada no catálogo de audiência
-    let totalGRP = 0;
-    calculatedLines.forEach((l) => {
-      const prog = MediaCalculator.getProgram(l.sigla);
-      const ratDomiciliar = prog?.audiencia?.nacional?.ratDom || 0.6;
-      totalGRP += (l.calculo?.totalInsertions || 0) * ratDomiciliar;
-    });
+    const cpmMedio = totalImpactos > 0 ? (totalLiquido / totalImpactos) * 1000 : 0;
 
     return {
       totalInsertions,
       totalBruto,
       totalLiquido,
       averageDiscount,
-      totalGRP: Math.round(totalGRP * 10) / 10
+      totalImpactos,
+      cpmMedio
     };
   }, [calculatedLines, campaign.defaultDiscount]);
 
-  // Operações na Grade
-  function addLine() {
+  // Ações da Grade
+  function handleAddLine() {
     setLines((prev) => [
       ...prev,
       {
         id: `line-${Date.now()}`,
-        sigla: "NEWS",
+        sigla: "",
         marketId: "NACIONAL",
         formatId: "COMERCIAL_30",
-        brandedVariant: "inedito",
-        insertionMode: campaign.globalInsertionMode || "TOTAL",
-        totalDirect: 10,
-        freqDias: 5,
-        freqPorDia: 2,
+        customCoef: null,
+        insertionMode: campaign.globalInsertionMode,
+        totalDirect: "",
+        freqDias: "",
+        freqPorDia: "",
         discountPercent: campaign.defaultDiscount
       }
     ]);
   }
 
-  function duplicateLine(id) {
+  function handleDuplicateLine(id) {
     const idx = lines.findIndex((l) => l.id === id);
     if (idx === -1) return;
     const target = lines[idx];
@@ -222,11 +260,48 @@ function MediaPlannerTabContent({
     const next = [...lines];
     next.splice(idx + 1, 0, duplicated);
     setLines(next);
+    showToast("Linha duplicada com sucesso!");
   }
 
-  function removeLine(id) {
-    if (lines.length <= 1) return;
+  function handleDeleteLine(id) {
+    if (lines.length <= 1) {
+      setLines([
+        {
+          id: `line-${Date.now()}`,
+          sigla: "",
+          marketId: "NACIONAL",
+          formatId: "COMERCIAL_30",
+          customCoef: null,
+          insertionMode: campaign.globalInsertionMode,
+          totalDirect: "",
+          freqDias: "",
+          freqPorDia: "",
+          discountPercent: campaign.defaultDiscount
+        }
+      ]);
+      showToast("Linha zerada.");
+      return;
+    }
     setLines((prev) => prev.filter((l) => l.id !== id));
+    showToast("Linha removida.");
+  }
+
+  function handleClearAllLines() {
+    setLines([
+      {
+        id: `line-${Date.now()}`,
+        sigla: "",
+        marketId: "NACIONAL",
+        formatId: "COMERCIAL_30",
+        customCoef: null,
+        insertionMode: campaign.globalInsertionMode,
+        totalDirect: "",
+        freqDias: "",
+        freqPorDia: "",
+        discountPercent: campaign.defaultDiscount
+      }
+    ]);
+    showToast("Todas as linhas foram limpas.");
   }
 
   function updateLine(id, field, value) {
@@ -235,61 +310,74 @@ function MediaPlannerTabContent({
     );
   }
 
-  function applyDefaultDiscountToAll() {
-    const val = Number(campaign.defaultDiscount) || 0;
-    setLines((prev) => prev.map((l) => ({ ...l, discountPercent: val })));
-    showToast(`Desconto de ${val}% aplicado a todas as linhas!`);
+  function handleSwitchGlobalMode(mode) {
+    setCampaign((prev) => ({ ...prev, globalInsertionMode: mode }));
+    setLines((prev) =>
+      prev.map((l) => ({ ...l, insertionMode: mode }))
+    );
   }
 
-  // Exportação Oficial para Excel (.xlsx)
+  // Exportar Excel Fiel (.xls / .xlsx)
   function handleExportExcel() {
     try {
       const header = [
-        "PROGRAMA",
-        "COBERTURA / PRAÇA",
+        "#",
+        "PRODUTO",
+        "PRAÇA",
         "FORMATO",
-        "VALOR UNIT. TABELA",
+        "BASE 30\"",
+        "COEF.",
+        "UNIT. TABELA",
+        "INS",
+        "ENTREGA DE MÍDIA",
         "DESCONTO (%)",
-        "VALOR UNIT. LÍQUIDO",
-        "INSERÇÕES",
-        "TOTAL BRUTO",
-        "INVESTIMENTO LÍQUIDO"
+        "INVESTIMENTO",
+        "UNIT. NEGOCIADO"
       ];
 
-      const dataRows = calculatedLines.map((l) => {
-        const prog = MediaCalculator.getProgram(l.sigla);
-        const mkt = MediaCalculator.getMarket(l.marketId);
-        const fmt = MediaCalculator.getFormat(l.formatId);
-        const c = l.calculo;
-        return [
-          prog?.nome || l.sigla,
-          mkt?.nome || l.marketId,
-          fmt?.nome || l.formatId,
-          c.valor || 0,
-          l.discountPercent || 0,
-          c.valorUnitarioLiquido || 0,
-          c.totalInsertions || 0,
-          c.valorBruto || 0,
-          c.valorLiquido || 0
-        ];
-      });
+      const dataRows = calculatedLines
+        .filter((l) => l.sigla)
+        .map((l, idx) => {
+          const prog = MediaCalculator.getProgram(l.sigla);
+          const mkt = MediaCalculator.getMarket(l.marketId);
+          const fmt = MediaCalculator.getFormat(l.formatId);
+          const c = l.calculo || {};
+          return [
+            idx + 1,
+            prog?.nome || l.sigla,
+            mkt?.nome || l.marketId,
+            fmt?.nome || l.formatId,
+            c.basePrice30 || 0,
+            c.coef || 1.0,
+            c.valor || 0,
+            c.totalInsertions || 0,
+            c.totalBruto || 0,
+            l.discountPercent || 0,
+            c.totalLiquido || 0,
+            c.unitarioLiquido || 0
+          ];
+        });
 
-      // Linha de Totais
       const totalRow = [
-        "TOTAIS DA PROPOSTA",
+        "TOTAIS",
         "",
         "",
         "",
-        totals.averageDiscount,
+        "",
+        "",
         "",
         totals.totalInsertions,
         totals.totalBruto,
-        totals.totalLiquido
+        totals.averageDiscount,
+        totals.totalLiquido,
+        ""
       ];
 
       const ws = XLSX.utils.aoa_to_sheet([
-        [`PROPOSTA COMERCIAL REDETV! • ${campaign.client || "CLIENTE NÃO INFORMADO"}`],
-        [`Projeto: ${campaign.projectName || "Geral"} | Agência: ${campaign.agency || "Direta"} | Período: ${campaign.startDate || "-"} a ${campaign.endDate || "-"}`],
+        [`REDETV! • PLANO DE MÍDIA • ${campaign.client || "CLIENTE NÃO INFORMADO"}`],
+        [
+          `Projeto: ${campaign.projectName || "Geral"} | Agência: ${campaign.agency || "Direta"} | Período: ${campaign.startDate} a ${campaign.endDate} | Tabela: Outubro/2026`
+        ],
         [],
         header,
         ...dataRows,
@@ -302,28 +390,32 @@ function MediaPlannerTabContent({
 
       const fileName = `Plano_Midia_RedeTV_${(campaign.client || "Proposta").replace(/\s+/g, "_")}.xlsx`;
       XLSX.writeFile(wb, fileName);
-      showToast("✅ Planilha Excel gerada e baixada com sucesso!");
+      showToast("Planilha Excel exportada com sucesso!");
     } catch (e) {
       console.error(e);
       showToast("Erro ao exportar planilha.");
     }
   }
 
-  // Salvar Proposta no Histórico
-  function handleSaveProposal() {
-    if (!campaign.client && lines.length === 0) {
-      showToast("Preencha ao menos o cliente para salvar a proposta.");
-      return;
-    }
+  // Salvar Campanha
+  function handleSaveCampaign() {
+    const clientName = (campaign.client || "").trim() || "CLIENTE NÃO INFORMADO";
+    const projectName = (campaign.projectName || "").trim() || `PLANO DE MÍDIA ${new Date().toLocaleDateString("pt-BR")}`;
+    const agencyName = (campaign.agency || "").trim() || "DIRETO";
 
     const newProposal = {
-      id: `prop-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      dateFormatted: new Date().toLocaleDateString("pt-BR"),
+      id: `PROP-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+      projectName,
+      client: clientName,
+      agency: agencyName,
+      date: new Date().toLocaleDateString("pt-BR"),
+      timestamp: Date.now(),
+      totalInsertions: totals.totalInsertions,
+      totalGross: totals.totalBruto,
+      totalNet: totals.totalLiquido,
+      avgDiscount: totals.averageDiscount,
       campaign,
-      lines,
-      totals,
-      userEmail: currentUser?.email || "executivo@redetv.com.br"
+      lines
     };
 
     const nextList = [newProposal, ...savedProposals.filter((p) => p.id !== newProposal.id)];
@@ -332,16 +424,15 @@ function MediaPlannerTabContent({
       localStorage.setItem("redetv_media_proposals_history", JSON.stringify(nextList));
     } catch (e) {}
 
-    showToast("💾 Proposta salva no histórico com sucesso!");
+    showToast("Campanha salva com sucesso no histórico!");
   }
 
-  // Carregar Proposta do Histórico
   function handleLoadProposal(prop) {
     if (!prop) return;
     setCampaign(prop.campaign || {});
     setLines(prop.lines || []);
-    setSubTab("planner");
-    showToast(`Proposta "${prop.campaign?.projectName || prop.campaign?.client}" carregada com sucesso!`);
+    setShowHistoricoModal(false);
+    showToast(`Campanha "${prop.projectName || prop.client}" carregada com sucesso!`);
   }
 
   function handleDeleteSavedProposal(id) {
@@ -350,12 +441,12 @@ function MediaPlannerTabContent({
     try {
       localStorage.setItem("redetv_media_proposals_history", JSON.stringify(filtered));
     } catch (e) {}
-    showToast("Proposta removida do histórico.");
+    showToast("Campanha removida do histórico.");
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Toast Alert */}
+    <div className="media-planner-scope space-y-5 animate-fadeIn pb-16">
+      {/* Toast Notificação */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl border border-slate-700 flex items-center gap-2">
           <CheckCircle2 size={16} className="text-emerald-400" />
@@ -363,715 +454,450 @@ function MediaPlannerTabContent({
         </div>
       )}
 
-      {/* Top Header do Módulo */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
-              <Calculator size={22} />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                Planejador de Mídia • RedeTV!
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Tabela Outubro/2026
-                </span>
-              </h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Valoração oficial de planos de mídia, tabela de preços, formatos comerciais e cálculo de impactos.
-              </p>
-            </div>
+      {/* Topbar Fiel (h-16, branca, border-b) */}
+      <header className="topbar rounded-xl shadow-2xs">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="topbar-title font-bold text-slate-900">
+            Sistema de Planejamento de Mídia
           </div>
         </div>
-
-        {/* Sub-Navegação por Abas */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+        <div className="topbar-actions">
           <button
             type="button"
-            onClick={() => setSubTab("planner")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "planner"
-                ? "bg-white text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-            }`}
+            onClick={() => setShowTabelasModal(true)}
+            id="btn-table-version"
+            className="btn btn-secondary btn-sm"
           >
-            <Calculator size={14} />
-            Planejador
+            ⚙️ Tabela Outubro/2026
           </button>
-
           <button
             type="button"
-            onClick={() => setSubTab("tabelas")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "tabelas"
-                ? "bg-white text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-            }`}
+            onClick={() => setShowHistoricoModal(true)}
+            className="btn btn-secondary btn-sm"
           >
-            <TableIcon size={14} />
-            Tabelas de Preço
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSubTab("formatos")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "formatos"
-                ? "bg-white text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-            }`}
-          >
-            <Layers size={14} />
-            Formatos
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSubTab("impactos")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "impactos"
-                ? "bg-white text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-            }`}
-          >
-            <BarChart2 size={14} />
-            Impactos & GRP
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSubTab("historico")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "historico"
-                ? "bg-white text-rose-600 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
-            }`}
-          >
-            <History size={14} />
             Histórico ({savedProposals.length})
           </button>
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            id="btn-export-excel"
+            className="btn btn-primary btn-sm"
+          >
+            <Download size={15} style={{ marginRight: "4px" }} />
+            Exportar Excel (.xls)
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* ============================================================ */}
-      {/* 1. SUB-ABA: PLANEJADOR DE MÍDIA                              */}
-      {/* ============================================================ */}
-      {subTab === "planner" && (
-        <div className="space-y-6">
-          {/* Card: Parâmetros da Campanha */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs">
-            <h2 className="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Building2 size={16} className="text-slate-400" />
-              Dados Gerais da Campanha & Parâmetros Comerciais
-            </h2>
+      {/* 1. Card: CAMPANHA (Retrátil) */}
+      <section
+        className={`card-box ${campaign.isCollapsed ? "campaign-collapsed" : ""}`}
+        id="campaign-card-section"
+      >
+        <div
+          className="card-title"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            userSelect: "none"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>CAMPANHA</span>
+          </div>
+          <button
+            type="button"
+            id="btn-collapse-campaign"
+            className="campaign-collapse-btn"
+            onClick={() => setCampaign({ ...campaign, isCollapsed: !campaign.isCollapsed })}
+            title="Retrair/Expandir Dados da Campanha"
+          >
+            <ChevronDown size={16} />
+          </button>
+        </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
-              {/* Cliente com datalist de anunciantes do CRM */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                  Cliente / Anunciante
-                </label>
-                <input
-                  type="text"
-                  list="advertisers-datalist"
-                  value={campaign.client}
-                  onChange={(e) => setCampaign({ ...campaign, client: e.target.value })}
-                  placeholder="Nome do Cliente..."
-                  className="w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-white font-medium text-slate-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                />
-                <datalist id="advertisers-datalist">
-                  {advertisers.map((a) => (
-                    <option key={a.id} value={a.nomeFantasia || a.razaoSocial} />
-                  ))}
-                </datalist>
-              </div>
+        {!campaign.isCollapsed && (
+          <div className="campaign-grid" id="campaign-card-body">
+            {/* Linha 1: Cliente, Agência, Nome do Projeto */}
+            <div className="form-group col-4">
+              <label htmlFor="camp-client" className="form-label">
+                CLIENTE
+              </label>
+              <input
+                type="text"
+                id="camp-client"
+                className="form-input"
+                list="anunciantes-list"
+                value={campaign.client}
+                onChange={(e) => setCampaign({ ...campaign, client: e.target.value })}
+                placeholder="Nome do Cliente"
+              />
+              <datalist id="anunciantes-list">
+                {(advertisers || []).map((a) => (
+                  <option key={a.id} value={a.nomeFantasia || a.razaoSocial} />
+                ))}
+              </datalist>
+            </div>
 
-              {/* Agência */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                  Agência de Publicidade
-                </label>
-                <input
-                  type="text"
-                  list="agencies-datalist"
-                  value={campaign.agency}
-                  onChange={(e) => setCampaign({ ...campaign, agency: e.target.value })}
-                  placeholder="Nome da Agência..."
-                  className="w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                />
-                <datalist id="agencies-datalist">
-                  {advertisers
-                    .filter((a) => a.tipo === "AGENCIA")
-                    .map((a) => (
-                      <option key={a.id} value={a.nomeFantasia || a.razaoSocial} />
-                    ))}
-                </datalist>
-              </div>
+            <div className="form-group col-4">
+              <label htmlFor="camp-agency" className="form-label">
+                AGÊNCIA
+              </label>
+              <input
+                type="text"
+                id="camp-agency"
+                className="form-input"
+                value={campaign.agency}
+                onChange={(e) => setCampaign({ ...campaign, agency: e.target.value })}
+                placeholder="Nome da Agência"
+              />
+            </div>
 
-              {/* Nome do Projeto */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                  Título da Proposta / Campanha
-                </label>
-                <input
-                  type="text"
-                  value={campaign.projectName}
-                  onChange={(e) => setCampaign({ ...campaign, projectName: e.target.value })}
-                  placeholder="Ex: Q4 Black Friday 2026..."
-                  className="w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 focus:ring-2 focus:ring-rose-500 focus:outline-none"
-                />
-              </div>
+            <div className="form-group col-4">
+              <label htmlFor="camp-project-name" className="form-label">
+                NOME DO PROJETO
+              </label>
+              <input
+                type="text"
+                id="camp-project-name"
+                className="form-input"
+                value={campaign.projectName}
+                onChange={(e) => setCampaign({ ...campaign, projectName: e.target.value })}
+                placeholder="Nome do Projeto / Campanha"
+              />
+            </div>
 
-              {/* Período */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                  Período de Veiculação
-                </label>
-                <div className="flex items-center gap-1.5">
+            {/* Linha 2: Período de Exibição à esquerda e Desconto Padrão à direita */}
+            <div className="form-group col-8">
+              <label className="form-label">PERÍODO DE EXIBIÇÃO</label>
+              <div className="period-container">
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600" }}>De:</span>
                   <input
                     type="date"
+                    id="camp-start-date"
+                    className="form-input font-mono"
                     value={campaign.startDate}
                     onChange={(e) => setCampaign({ ...campaign, startDate: e.target.value })}
-                    className="w-1/2 py-1.5 px-2 border border-slate-300 rounded-lg bg-white font-mono text-[11px]"
+                    style={{ maxWidth: "140px" }}
                   />
-                  <span className="text-slate-400">a</span>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", marginLeft: "6px" }}>Até:</span>
                   <input
                     type="date"
+                    id="camp-end-date"
+                    className="form-input font-mono"
                     value={campaign.endDate}
                     onChange={(e) => setCampaign({ ...campaign, endDate: e.target.value })}
-                    className="w-1/2 py-1.5 px-2 border border-slate-300 rounded-lg bg-white font-mono text-[11px]"
+                    style={{ maxWidth: "140px" }}
                   />
                 </div>
-              </div>
 
-              {/* Desconto Padrão com Ação Global */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-slate-500 mb-1">
-                  Desconto Base (%)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="100"
-                    value={campaign.defaultDiscount}
-                    onChange={(e) =>
-                      setCampaign({ ...campaign, defaultDiscount: Number(e.target.value) })
-                    }
-                    className="w-24 py-1.5 px-2 text-right border border-slate-300 rounded-lg bg-white font-mono font-bold text-slate-900"
-                  />
-                  <button
-                    type="button"
-                    onClick={applyDefaultDiscountToAll}
-                    title="Aplicar esse desconto a todas as linhas da grade"
-                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Cards de KPIs em Tempo Real */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">
-                Total de Inserções
-              </span>
-              <div className="text-lg sm:text-xl font-bold font-mono text-slate-900">
-                {totals.totalInsertions} spots
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {lines.length} programa{lines.length > 1 ? "s" : ""} na grade
-              </div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">
-                Investimento Bruto
-              </span>
-              <div className="text-lg sm:text-xl font-bold font-mono text-slate-700">
-                {formatBRL(totals.totalBruto)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Tabela cheia</div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">
-                Desconto Médio
-              </span>
-              <div className="text-lg sm:text-xl font-bold font-mono text-amber-600">
-                {formatPercent(totals.averageDiscount)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Média ponderada</div>
-            </div>
-
-            <div className="bg-rose-50/60 border border-rose-200 rounded-xl p-3.5 shadow-2xs">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-rose-700 block mb-0.5">
-                Investimento Líquido
-              </span>
-              <div className="text-lg sm:text-xl font-bold font-mono text-rose-700">
-                {formatBRL(totals.totalLiquido)}
-              </div>
-              <div className="text-[11px] text-rose-600 font-medium mt-0.5">Valor final negociado</div>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs col-span-2 sm:col-span-1">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-0.5">
-                Impactos & GRP Estimado
-              </span>
-              <div className="text-lg sm:text-xl font-bold font-mono text-slate-900">
-                {totals.totalGRP} GRPs
-              </div>
-              <div className="text-[11px] text-emerald-600 font-semibold mt-0.5">
-                Audiência Nacional
-              </div>
-            </div>
-          </div>
-
-          {/* Tabela Corporativa: Grade de Mídia */}
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                  Grade de Inserções e Valoração por Programa
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Selecione o programa, praça e formato comercial. Os cálculos unitários e de grade são automáticos.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
+                <div
+                  className="period-boxes-group"
+                  style={{
+                    marginLeft: "24px",
+                    paddingLeft: "24px",
+                    borderLeft: "1.5px solid var(--border-card)"
+                  }}
                 >
-                  <Plus size={14} />
-                  Adicionar Programa
-                </button>
+                  {[
+                    { id: "MENSAL", label: "Mensal" },
+                    { id: "TRIMESTRAL", label: "Trimestral" },
+                    { id: "SEMESTRAL", label: "Semestral" },
+                    { id: "ANUAL", label: "Anual" },
+                    { id: "LIVRE", label: "Período Livre" }
+                  ].map((p) => (
+                    <label
+                      key={p.id}
+                      className={`period-box-option ${campaign.periodPreset === p.id ? "active" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="period-preset"
+                        checked={campaign.periodPreset === p.id}
+                        onChange={() => {
+                          const nextPreset = campaign.periodPreset === p.id ? null : p.id;
+                          setCampaign({ ...campaign, periodPreset: nextPreset });
+                        }}
+                        className="period-preset-check"
+                      />
+                      <span>{p.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100/80 border-b border-slate-200 text-slate-700 font-semibold uppercase text-[10px] tracking-wider">
-                  <tr>
-                    <th className="py-2.5 px-3">Programa</th>
-                    <th className="py-2.5 px-3">Praça / Cobertura</th>
-                    <th className="py-2.5 px-3">Formato Comercial</th>
-                    <th className="py-2.5 px-3 text-right">Unit. Tabela</th>
-                    <th className="py-2.5 px-3 text-center">Desconto (%)</th>
-                    <th className="py-2.5 px-3 text-right">Unit. Líquido</th>
-                    <th className="py-2.5 px-3 text-center">Inserções</th>
-                    <th className="py-2.5 px-3 text-right">Total Bruto</th>
-                    <th className="py-2.5 px-3 text-right font-bold text-rose-600">Total Líquido</th>
-                    <th className="py-2.5 px-2 text-center"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {calculatedLines.map((line) => {
-                    const c = line.calculo;
-                    return (
-                      <tr key={line.id} className="hover:bg-slate-50/80 transition-colors">
-                        {/* 1. Programa */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={line.sigla}
-                            onChange={(e) => updateLine(line.id, "sigla", e.target.value)}
-                            className="w-48 py-1 px-2 border border-slate-200 rounded-md bg-white font-semibold text-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
-                            {PROGRAMS_DATA.map((p) => (
-                              <option key={p.sigla} value={p.sigla}>
-                                {p.nome}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
+            <div className="form-group col-4">
+              <label htmlFor="camp-default-discount" className="form-label">
+                DESCONTO PADRÃO (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                id="camp-default-discount"
+                className="form-input font-mono"
+                value={campaign.defaultDiscount}
+                onChange={(e) => {
+                  const val = Number(e.target.value) || 0;
+                  setCampaign({ ...campaign, defaultDiscount: val });
+                }}
+                placeholder="70.00"
+                style={{ maxWidth: "180px" }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
 
-                        {/* 2. Praça */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={line.marketId}
-                            onChange={(e) => updateLine(line.id, "marketId", e.target.value)}
-                            className="w-40 py-1 px-2 border border-slate-200 rounded-md bg-white text-slate-800 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
-                            {REGIONAL_MARKETS.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.nome}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
+      {/* 2. Grade de Entregas Comerciais / Tabela */}
+      <section className="table-card">
+        <div className="table-toolbar">
+          <div className="table-toolbar-title">
+            <span>Programação de Mídia</span>
+          </div>
+          <div className="table-toolbar-right" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--text-muted)"
+              }}
+            >
+              MODO DE INSERÇÃO:
+            </span>
+            <div className="mode-pill-group" id="global-mode-selector">
+              <button
+                type="button"
+                onClick={() => handleSwitchGlobalMode("TOTAL")}
+                className={`mode-pill-btn ${campaign.globalInsertionMode === "TOTAL" ? "active" : ""}`}
+              >
+                Total
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchGlobalMode("FREQ")}
+                className={`mode-pill-btn ${campaign.globalInsertionMode === "FREQ" ? "active" : ""}`}
+              >
+                Frequência
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSwitchGlobalMode("CALENDAR")}
+                className={`mode-pill-btn ${campaign.globalInsertionMode === "CALENDAR" ? "active" : ""}`}
+              >
+                Cronograma
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearAllLines}
+              id="btn-clear-all-lines"
+              className="btn btn-secondary btn-sm"
+              title="Limpar todas as linhas da programação"
+            >
+              <RotateCcw size={12} style={{ marginRight: "4px" }} />
+              Limpar Linhas
+            </button>
+          </div>
+        </div>
 
-                        {/* 3. Formato */}
-                        <td className="py-2 px-3">
-                          <select
-                            value={line.formatId}
-                            onChange={(e) => updateLine(line.id, "formatId", e.target.value)}
-                            className="w-48 py-1 px-2 border border-slate-200 rounded-md bg-white text-slate-800 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          >
-                            {MEDIA_FORMATS.map((f) => (
-                              <option key={f.id} value={f.id}>
-                                {f.nome} ({f.defaultCoef}x)
-                              </option>
-                            ))}
-                          </select>
-                        </td>
+        <div className="table-scroll-container" style={{ overflowX: "auto", minHeight: "220px" }}>
+          <table className="corporate-table">
+            <thead id="table-head">
+              <tr>
+                <th className="center" style={{ width: "36px" }}>#</th>
+                <th style={{ minWidth: "220px" }}>PRODUTO</th>
+                <th style={{ minWidth: "140px" }}>PRAÇA</th>
+                <th style={{ minWidth: "180px" }}>FORMATO</th>
+                <th className="right" style={{ minWidth: "105px" }}>BASE 30"</th>
+                <th className="center" style={{ minWidth: "70px" }}>COEF.</th>
+                <th className="right" style={{ minWidth: "110px" }}>UNIT. TABELA</th>
+                <th className="center" style={{ minWidth: "90px" }}>INS</th>
+                <th className="right" style={{ minWidth: "125px" }}>ENTREGA DE MÍDIA</th>
+                <th className="center" style={{ minWidth: "85px" }}>DESCONTO</th>
+                <th className="right" style={{ minWidth: "125px" }}>INVESTIMENTO</th>
+                <th className="right" style={{ minWidth: "120px" }}>UNIT. NEGOCIADO</th>
+                <th className="center" style={{ width: "70px" }}>AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="table-body">
+              {calculatedLines.map((line, idx) => {
+                const c = line.calculo || {};
+                return (
+                  <tr key={line.id} className="row-item">
+                    {/* 1. # */}
+                    <td className="center" style={{ verticalAlign: "middle", color: "var(--text-muted)", fontWeight: "600" }}>
+                      {idx + 1}
+                    </td>
 
-                        {/* 4. Unitário Tabela */}
-                        <td className="py-2 px-3 text-right font-mono text-slate-600">
-                          {formatBRL(c?.valor)}
-                        </td>
+                    {/* 2. PRODUTO */}
+                    <td>
+                      <select
+                        value={line.sigla}
+                        onChange={(e) => updateLine(line.id, "sigla", e.target.value)}
+                        className="form-input"
+                        style={{ height: "34px", fontSize: "0.82rem", textTransform: "uppercase" }}
+                      >
+                        <option value="">DIGITE PARA BUSCAR PRODUTO...</option>
+                        {(PROGRAMS_DATA || []).map((p) => (
+                          <option key={p.sigla} value={p.sigla}>
+                            {p.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                        {/* 5. Desconto (%) */}
-                        <td className="py-2 px-3 text-center">
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="100"
-                            value={line.discountPercent}
-                            onChange={(e) =>
-                              updateLine(line.id, "discountPercent", Number(e.target.value))
-                            }
-                            className="w-16 py-1 px-1.5 text-center border border-slate-200 rounded-md bg-white font-mono font-bold text-amber-700 focus:ring-1 focus:ring-rose-500 focus:outline-none"
-                          />
-                        </td>
+                    {/* 3. PRAÇA */}
+                    <td>
+                      <select
+                        value={line.marketId}
+                        onChange={(e) => updateLine(line.id, "marketId", e.target.value)}
+                        className="form-input"
+                        style={{ height: "34px", fontSize: "0.82rem" }}
+                      >
+                        {(REGIONAL_MARKETS || []).map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                        {/* 6. Unitário Líquido */}
-                        <td className="py-2 px-3 text-right font-mono font-medium text-slate-800">
-                          {formatBRL(c?.valorUnitarioLiquido)}
-                        </td>
+                    {/* 4. FORMATO */}
+                    <td>
+                      <select
+                        value={line.formatId}
+                        onChange={(e) => updateLine(line.id, "formatId", e.target.value)}
+                        className="form-input"
+                        style={{ height: "34px", fontSize: "0.82rem" }}
+                      >
+                        {(MEDIA_FORMATS || []).map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
 
-                        {/* 7. Inserções */}
-                        <td className="py-2 px-3 text-center">
+                    {/* 5. BASE 30" */}
+                    <td className="right font-mono" style={{ verticalAlign: "middle", color: "var(--text-muted)" }}>
+                      {c.basePrice30 > 0 ? formatCurrency(c.basePrice30) : "-"}
+                    </td>
+
+                    {/* 6. COEF. */}
+                    <td className="center" style={{ verticalAlign: "middle" }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={line.customCoef !== null && line.customCoef !== undefined ? line.customCoef : (c.coef || 1.0)}
+                        onChange={(e) => updateLine(line.id, "customCoef", e.target.value)}
+                        className="input-mini-corporate font-mono"
+                        style={{ width: "50px" }}
+                      />
+                    </td>
+
+                    {/* 7. UNIT. TABELA */}
+                    <td className="right font-mono" style={{ verticalAlign: "middle", fontWeight: "600", color: "var(--text-dark)" }}>
+                      {c.valor > 0 ? formatCurrency(c.valor) : "-"}
+                    </td>
+
+                    {/* 8. INS */}
+                    <td className="center" style={{ verticalAlign: "middle" }}>
+                      {line.insertionMode === "FREQ" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px", justifyContent: "center" }}>
                           <input
                             type="number"
                             min="1"
-                            value={line.totalDirect}
-                            onChange={(e) =>
-                              updateLine(line.id, "totalDirect", Math.max(1, Number(e.target.value)))
-                            }
-                            className="w-16 py-1 px-1.5 text-center border border-slate-200 rounded-md bg-white font-mono font-bold text-slate-900 focus:ring-1 focus:ring-rose-500 focus:outline-none"
+                            value={line.freqDias}
+                            onChange={(e) => updateLine(line.id, "freqDias", e.target.value)}
+                            placeholder="Dias"
+                            className="input-mini-corporate font-mono"
+                            style={{ width: "42px" }}
                           />
-                        </td>
-
-                        {/* 8. Total Bruto */}
-                        <td className="py-2 px-3 text-right font-mono text-slate-600">
-                          {formatBRL(c?.valorBruto)}
-                        </td>
-
-                        {/* 9. Total Líquido */}
-                        <td className="py-2 px-3 text-right font-mono font-bold text-rose-600">
-                          {formatBRL(c?.valorLiquido)}
-                        </td>
-
-                        {/* 10. Ações */}
-                        <td className="py-2 px-2 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => duplicateLine(line.id)}
-                              title="Duplicar linha"
-                              className="p-1 text-slate-400 hover:text-slate-700 transition-colors"
-                            >
-                              <Copy size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeLine(line.id)}
-                              disabled={lines.length <= 1}
-                              title="Remover linha"
-                              className="p-1 text-slate-400 hover:text-rose-600 disabled:opacity-30 transition-colors"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-bold text-slate-800">
-                  <tr>
-                    <td colSpan={6} className="py-3 px-3 text-right text-slate-600">
-                      Totais Consolidados da Grade:
+                          <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>x</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.freqPorDia}
+                            onChange={(e) => updateLine(line.id, "freqPorDia", e.target.value)}
+                            placeholder="/dia"
+                            className="input-mini-corporate font-mono"
+                            style={{ width: "42px" }}
+                          />
+                        </div>
+                      ) : (
+                        <input
+                          type="number"
+                          min="0"
+                          value={line.totalDirect}
+                          onChange={(e) => updateLine(line.id, "totalDirect", e.target.value)}
+                          placeholder="0"
+                          className="input-mini-corporate font-mono"
+                          style={{ width: "54px" }}
+                        />
+                      )}
                     </td>
-                    <td className="py-3 px-3 text-center font-mono text-slate-900">
-                      {totals.totalInsertions} spots
+
+                    {/* 9. ENTREGA DE MÍDIA */}
+                    <td className="right font-mono" style={{ verticalAlign: "middle", fontWeight: "600", color: "var(--text-dark)" }}>
+                      {c.totalBruto > 0 ? formatCurrency(c.totalBruto) : "-"}
                     </td>
-                    <td className="py-3 px-3 text-right font-mono text-slate-700">
-                      {formatBRL(totals.totalBruto)}
+
+                    {/* 10. DESCONTO */}
+                    <td className="center" style={{ verticalAlign: "middle" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={line.discountPercent}
+                          onChange={(e) => updateLine(line.id, "discountPercent", Number(e.target.value))}
+                          className="input-mini-corporate font-mono"
+                          style={{ width: "52px" }}
+                        />
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>%</span>
+                      </div>
                     </td>
-                    <td className="py-3 px-3 text-right font-mono text-rose-600 text-sm">
-                      {formatBRL(totals.totalLiquido)}
+
+                    {/* 11. INVESTIMENTO */}
+                    <td className="right font-mono rose" style={{ verticalAlign: "middle", fontWeight: "700", color: "var(--rose-primary)" }}>
+                      {c.totalLiquido > 0 ? formatCurrency(c.totalLiquido) : "-"}
                     </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
 
-            {/* Rodapé de Ações da Grade */}
-            <div className="p-4 border-t border-slate-200 bg-white flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={addLine}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-                >
-                  <Plus size={14} />
-                  Inserir Outro Programa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLines([
-                      {
-                        id: `line-${Date.now()}`,
-                        sigla: "SPOP",
-                        marketId: "NACIONAL",
-                        formatId: "COMERCIAL_30",
-                        brandedVariant: "inedito",
-                        insertionMode: "TOTAL",
-                        totalDirect: 10,
-                        discountPercent: campaign.defaultDiscount
-                      }
-                    ]);
-                    showToast("Grade reiniciada.");
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-slate-500 hover:text-slate-700 text-xs font-medium"
-                >
-                  <RotateCcw size={13} />
-                  Limpar Grade
-                </button>
-              </div>
+                    {/* 12. UNIT. NEGOCIADO */}
+                    <td className="right font-mono" style={{ verticalAlign: "middle", color: "var(--text-muted)" }}>
+                      {c.unitarioLiquido > 0 ? formatCurrency(c.unitarioLiquido) : "-"}
+                    </td>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleExportExcel}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
-                >
-                  <Download size={14} />
-                  Exportar Proposta (.xlsx)
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveProposal}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
-                >
-                  <Save size={14} />
-                  Salvar no Histórico
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* 2. SUB-ABA: TABELAS DE PREÇO                                 */}
-      {/* ============================================================ */}
-      {subTab === "tabelas" && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-              <Search size={15} className="text-slate-400" />
-              <input
-                type="text"
-                value={tabelaSearch}
-                onChange={(e) => setTabelaSearch(e.target.value)}
-                placeholder="Pesquisar programa na tabela..."
-                className="w-full text-xs border-0 focus:ring-0 text-slate-900"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={tabelaMarket}
-                onChange={(e) => setTabelaMarket(e.target.value)}
-                className="text-xs border border-slate-300 rounded-lg py-1.5 px-3 bg-white"
-              >
-                {REGIONAL_MARKETS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    Praça: {m.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-2.5 px-3">Programa</th>
-                  <th className="py-2.5 px-3">Gênero / Faixa</th>
-                  <th className="py-2.5 px-3">Dias de Exibição</th>
-                  <th className="py-2.5 px-3">Horário</th>
-                  <th className="py-2.5 px-3 text-right">Preço Base 30"</th>
-                  <th className="py-2.5 px-3 text-center">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {PROGRAMS_DATA.filter((p) =>
-                  tabelaSearch
-                    ? p.nome.toLowerCase().includes(tabelaSearch.toLowerCase()) ||
-                      p.sigla.toLowerCase().includes(tabelaSearch.toLowerCase())
-                    : true
-                ).map((prog) => {
-                  const priceInfo = MediaCalculator.getUnitPrice(
-                    prog.sigla,
-                    tabelaMarket,
-                    "COMERCIAL_30"
-                  );
-                  return (
-                    <tr key={prog.sigla} className="hover:bg-slate-50/80">
-                      <td className="py-2 px-3 font-bold text-slate-900">{prog.nome}</td>
-                      <td className="py-2 px-3">
-                        <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                          {prog.genero}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-slate-600">{prog.diasDesc || prog.dias || "Seg a Sex"}</td>
-                      <td className="py-2 px-3 font-mono text-slate-600">{prog.horario || `${prog.inicio || ""} às ${prog.fim || ""}`}</td>
-                      <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatBRL(priceInfo?.valor)}
-                      </td>
-                      <td className="py-2 px-3 text-center">
+                    {/* 13. AÇÕES */}
+                    <td className="center" style={{ verticalAlign: "middle" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
                         <button
                           type="button"
-                          onClick={() => {
-                            setLines((prev) => [
-                              ...prev,
-                              {
-                                id: `line-${Date.now()}`,
-                                sigla: prog.sigla,
-                                marketId: tabelaMarket,
-                                formatId: "COMERCIAL_30",
-                                brandedVariant: "inedito",
-                                insertionMode: "TOTAL",
-                                totalDirect: 10,
-                                discountPercent: campaign.defaultDiscount
-                              }
-                            ]);
-                            setSubTab("planner");
-                            showToast(`"${prog.nome}" adicionado à grade de planejamento!`);
-                          }}
-                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-xs font-semibold transition-colors"
+                          onClick={() => handleDuplicateLine(line.id)}
+                          className="btn-icon"
+                          title="Duplicar linha"
                         >
-                          + Incluir no Plano
+                          <Copy size={13} />
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* 3. SUB-ABA: FORMATOS COMERCIAIS                              */}
-      {/* ============================================================ */}
-      {subTab === "formatos" && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 flex-1">
-              <Search size={15} className="text-slate-400" />
-              <input
-                type="text"
-                value={formatoSearch}
-                onChange={(e) => setFormatoSearch(e.target.value)}
-                placeholder="Pesquisar formato ou tipo comercial..."
-                className="w-full text-xs border-0 focus:ring-0 text-slate-900"
-              />
-            </div>
-            <div className="text-xs text-slate-500 font-medium">
-              Total de formatos oficiais: <strong>{MEDIA_FORMATS.length}</strong>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {MEDIA_FORMATS.filter((f) =>
-              formatoSearch
-                ? f.nome.toLowerCase().includes(formatoSearch.toLowerCase()) ||
-                  f.id.toLowerCase().includes(formatoSearch.toLowerCase())
-                : true
-            ).map((fmt) => (
-              <div
-                key={fmt.id}
-                className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                      {fmt.tipo || "Mídia"}
-                    </span>
-                    <span className="font-mono font-bold text-rose-600 text-xs">
-                      Fator: {fmt.defaultCoef}x base 30"
-                    </span>
-                  </div>
-                  <h4 className="text-sm font-bold text-slate-900 mb-1">{fmt.nome}</h4>
-                  <p className="text-xs text-slate-500">
-                    {fmt.descricao || "Formato comercial padrão para inserções na grade da RedeTV!."}
-                  </p>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>Duração: <strong>{fmt.duracao || "Variável"}</strong></span>
-                  <span className="text-emerald-600 font-semibold">Tabela Out/2026</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================ */}
-      {/* 4. SUB-ABA: IMPACTOS & GRP                                   */}
-      {/* ============================================================ */}
-      {subTab === "impactos" && (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-          <div className="p-4 border-b border-slate-200 bg-slate-50">
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-              Índices de Audiência e Potencial de Impactos por Programa
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              Dados médios de audiência domiciliar (Rat% e Share%) para projeção de GRP e alcance.
-            </p>
-          </div>
-
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-100 border-b border-slate-200 text-slate-700 font-semibold uppercase text-[10px] tracking-wider">
-              <tr>
-                <th className="py-2.5 px-3">Programa</th>
-                <th className="py-2.5 px-3">Faixa / Horário</th>
-                <th className="py-2.5 px-3 text-right">Rat Domiciliar (%)</th>
-                <th className="py-2.5 px-3 text-right">Share (%)</th>
-                <th className="py-2.5 px-3 text-right">Impactos Est. / Spot</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {PROGRAMS_DATA.map((prog) => {
-                const aud = prog.audiencia?.nacional || { ratDom: 0.6, share: 1.5 };
-                const impactos = Math.round((aud.ratDom || 0.6) * 190000);
-                return (
-                  <tr key={prog.sigla} className="hover:bg-slate-50/80">
-                    <td className="py-2 px-3 font-bold text-slate-900">{prog.nome}</td>
-                    <td className="py-2 px-3 text-slate-600 font-mono">{prog.horario || `${prog.inicio || ""} às ${prog.fim || ""}`}</td>
-                    <td className="py-2 px-3 text-right font-mono font-bold text-slate-800">
-                      {aud.ratDom}%
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono text-slate-600">
-                      {aud.share}%
-                    </td>
-                    <td className="py-2 px-3 text-right font-mono text-emerald-700 font-semibold">
-                      {impactos.toLocaleString("pt-BR")} pessoas
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLine(line.id)}
+                          className="btn-icon danger"
+                          title="Remover linha"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -1079,85 +905,254 @@ function MediaPlannerTabContent({
             </tbody>
           </table>
         </div>
+
+        {/* Barra Inferior da Tabela (Botões Nova Inserção e Salvar Campanha) */}
+        <div className="table-bottom-bar" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button
+            type="button"
+            id="btn-add-line"
+            onClick={handleAddLine}
+            className="btn btn-primary"
+          >
+            Nova Inserção
+          </button>
+          <button
+            type="button"
+            id="btn-save-campaign"
+            onClick={handleSaveCampaign}
+            className="btn btn-secondary"
+            style={{ fontWeight: "600", display: "inline-flex", alignItems: "center", gap: "6px" }}
+            title="Salvar programação de mídia no histórico do sistema"
+          >
+            <Save size={15} />
+            Salvar Campanha
+          </button>
+        </div>
+      </section>
+
+      {/* 3. Resumo dos Totais (KPIs no Final da Página) */}
+      <section className="kpi-grid">
+        <div className="kpi-card">
+          <span className="kpi-label">TOTAL DE INSERÇÕES</span>
+          <div className="kpi-value font-mono" id="kpi-total-insertions">
+            {totals.totalInsertions}
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <span className="kpi-label">ENTREGA TOTAL DE MÍDIA</span>
+          <div className="kpi-value font-mono" id="kpi-gross-value">
+            {formatCurrency(totals.totalBruto)}
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <span className="kpi-label">INVESTIMENTO</span>
+          <div className="kpi-value font-mono rose" id="kpi-net-value">
+            {formatCurrency(totals.totalLiquido)}
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <span className="kpi-label">DESCONTO MÉDIO</span>
+          <div className="kpi-value font-mono" id="kpi-avg-discount">
+            {formatPercent(totals.averageDiscount)}
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <span className="kpi-label">IMPACTOS ESTIMADOS</span>
+          <div className="kpi-value font-mono" id="kpi-total-impacts">
+            {totals.totalImpactos > 0 ? totals.totalImpactos.toLocaleString("pt-BR") : "0"}
+          </div>
+          <span className="kpi-sub">PNT com Projeção Brasil</span>
+        </div>
+
+        <div className="kpi-card">
+          <span className="kpi-label">CPM MÉDIO</span>
+          <div className="kpi-value font-mono" id="kpi-cpm-medio">
+            {formatCurrencyExact(totals.cpmMedio)}
+          </div>
+        </div>
+      </section>
+
+      {/* Modal: Consulta da Tabela de Preços */}
+      {showTabelasModal && (
+        <div className="modal-overlay" style={{ display: "flex" }}>
+          <div className="modal-content" style={{ maxWidth: "860px", width: "95%", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: "700" }}>Tabela de Preços Oficial • Outubro/2026</h3>
+              <button
+                type="button"
+                onClick={() => setShowTabelasModal(false)}
+                className="btn-icon"
+                style={{ color: "white" }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ overflowY: "auto", padding: "16px" }}>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                <input
+                  type="text"
+                  placeholder="Pesquisar programa..."
+                  value={tabelaSearch}
+                  onChange={(e) => setTabelaSearch(e.target.value)}
+                  className="form-input"
+                  style={{ flex: 1 }}
+                />
+                <select
+                  value={tabelaMarket}
+                  onChange={(e) => setTabelaMarket(e.target.value)}
+                  className="form-input"
+                  style={{ width: "200px" }}
+                >
+                  {(REGIONAL_MARKETS || []).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <table className="corporate-table">
+                <thead>
+                  <tr>
+                    <th>PROGRAMA</th>
+                    <th>GÊNERO</th>
+                    <th>DIAS</th>
+                    <th>HORÁRIO</th>
+                    <th className="right">BASE 30"</th>
+                    <th className="center">AÇÃO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(PROGRAMS_DATA || [])
+                    .filter((p) =>
+                      tabelaSearch
+                        ? p.nome.toLowerCase().includes(tabelaSearch.toLowerCase()) ||
+                          p.sigla.toLowerCase().includes(tabelaSearch.toLowerCase())
+                        : true
+                    )
+                    .map((prog) => {
+                      const price = MediaCalculator.calculateUnitPrice(prog.sigla, tabelaMarket, "COMERCIAL_30");
+                      return (
+                        <tr key={prog.sigla} className="row-item">
+                          <td style={{ fontWeight: "700" }}>{prog.nome}</td>
+                          <td>
+                            <span className="badge-tag">{prog.genero}</span>
+                          </td>
+                          <td>{prog.diasDesc || "Seg/Sex"}</td>
+                          <td className="font-mono">{prog.inicio} às {prog.fim}</td>
+                          <td className="right font-mono font-bold">{formatCurrencyExact(price?.valor)}</td>
+                          <td className="center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLines((prev) => [
+                                  ...prev,
+                                  {
+                                    id: `line-${Date.now()}`,
+                                    sigla: prog.sigla,
+                                    marketId: tabelaMarket,
+                                    formatId: "COMERCIAL_30",
+                                    customCoef: null,
+                                    insertionMode: campaign.globalInsertionMode,
+                                    totalDirect: 10,
+                                    freqDias: "",
+                                    freqPorDia: "",
+                                    discountPercent: campaign.defaultDiscount
+                                  }
+                                ]);
+                                setShowTabelasModal(false);
+                                showToast(`"${prog.nome}" adicionado à programação!`);
+                              }}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              + Incluir
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* ============================================================ */}
-      {/* 5. SUB-ABA: HISTÓRICO DE PROPOSTAS                           */}
-      {/* ============================================================ */}
-      {subTab === "historico" && (
-        <div className="space-y-4">
-          {savedProposals.length === 0 ? (
-            <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center">
-              <History size={36} className="text-slate-300 mx-auto mb-2" />
-              <h4 className="text-sm font-bold text-slate-700">Nenhuma proposta salva ainda</h4>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Monte sua grade na aba Planejador e clique em "Salvar no Histórico" para guardar simulações e reutilizá-las quando desejar.
-              </p>
+      {/* Modal: Histórico de Campanhas */}
+      {showHistoricoModal && (
+        <div className="modal-overlay" style={{ display: "flex" }}>
+          <div className="modal-content" style={{ maxWidth: "700px", width: "95%", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: "700" }}>Histórico de Campanhas Salvas</h3>
+              <button
+                type="button"
+                onClick={() => setShowHistoricoModal(false)}
+                className="btn-icon"
+                style={{ color: "white" }}
+              >
+                ✕
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {savedProposals.map((prop) => (
-                <div
-                  key={prop.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                      <span>Salvo em {prop.dateFormatted}</span>
-                      <span className="font-mono">{prop.lines?.length || 0} programas</span>
-                    </div>
-
-                    <h4 className="text-sm font-bold text-slate-900 mb-0.5">
-                      {prop.campaign?.client || "Cliente Não Informado"}
-                    </h4>
-                    <p className="text-xs text-slate-600 mb-3">
-                      {prop.campaign?.projectName || "Sem título de projeto"}
-                      {prop.campaign?.agency ? ` • Agência: ${prop.campaign.agency}` : ""}
-                    </p>
-
-                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Total de Spots:</span>
-                        <strong className="font-mono text-slate-800">
-                          {prop.totals?.totalInsertions}
-                        </strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Desconto Médio:</span>
-                        <strong className="font-mono text-amber-600">
-                          {formatPercent(prop.totals?.averageDiscount)}
-                        </strong>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">Investimento Líquido:</span>
-                        <strong className="font-mono text-rose-600 font-bold">
-                          {formatBRL(prop.totals?.totalLiquido)}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => handleLoadProposal(prop)}
-                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
+            <div className="modal-body" style={{ overflowY: "auto", padding: "16px" }}>
+              {savedProposals.length === 0 ? (
+                <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "30px 0" }}>
+                  Nenhuma campanha salva no histórico ainda.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {savedProposals.map((prop) => (
+                    <div
+                      key={prop.id}
+                      style={{
+                        padding: "12px 16px",
+                        border: "1px solid var(--border-card)",
+                        borderRadius: "8px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center"
+                      }}
                     >
-                      Carregar no Planejador
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteSavedProposal(prop.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
-                      title="Excluir proposta"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                      <div>
+                        <strong style={{ fontSize: "0.9rem", color: "var(--text-dark)" }}>
+                          {prop.projectName || prop.client}
+                        </strong>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                          Cliente: {prop.client} | Agência: {prop.agency} | Salvo em {prop.date}
+                        </div>
+                        <div style={{ fontSize: "0.8rem", marginTop: "4px" }}>
+                          Total: <strong>{prop.totalInsertions} spots</strong> | Investimento:{" "}
+                          <strong style={{ color: "var(--rose-primary)" }}>
+                            {formatCurrency(prop.totalNet)}
+                          </strong>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleLoadProposal(prop)}
+                          className="btn btn-primary btn-sm"
+                        >
+                          Carregar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSavedProposal(prop.id)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ color: "var(--rose-primary)" }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
