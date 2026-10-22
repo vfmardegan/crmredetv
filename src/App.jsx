@@ -1312,7 +1312,13 @@ export default function App() {
       expectedCloseDate: targetExpectedCloseDate,
       stage: targetStage,
       status: targetStatus,
-      attachments: newOppForm.attachments || [],
+      attachments: (newOppForm.attachments || []).map((att) => {
+        if (att.url) {
+          const { dataUri, ...cleanAtt } = att;
+          return cleanAtt;
+        }
+        return att;
+      }),
     };
 
     try {
