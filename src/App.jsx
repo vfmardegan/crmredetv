@@ -26,7 +26,8 @@ import {
   ChevronDown,
   TrendingUp,
   Globe,
-  Tv
+  Tv,
+  FolderKanban
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -2697,7 +2698,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     intelligence: "Radar de Mercado",
     advertisers: "Clientes",
     contacts: "Contatos",
-    proposals: "Tabelas e Projetos",
+    proposals: "Tabelas e Propostas",
     mediaPlanner: "Valoração Online",
     mediaAi: "Med.IA Planner (IA)",
     mediaHistory: "Histórico de Propostas",
@@ -2737,11 +2738,11 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       ].filter(Boolean)
     },
     {
-      id: "midia",
-      title: "Mídia",
-      icon: Tv,
+      id: "projetos",
+      title: "Projetos",
+      icon: FolderKanban,
       items: [
-        { id: "proposals", label: "Tabelas e Projetos", icon: FileText },
+        { id: "proposals", label: "Tabelas e Propostas", icon: FileText },
         { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
         { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
         { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
