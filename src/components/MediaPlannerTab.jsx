@@ -47,7 +47,7 @@ function formatPercent(val) {
   return `${Number(val).toFixed(2).replace(".", ",")}%`;
 }
 
-export default function MediaPlannerTab({
+function MediaPlannerTabContent({
   advertisers = [],
   opportunities = [],
   currentUser = null,
@@ -76,9 +76,9 @@ export default function MediaPlannerTab({
   const [lines, setLines] = useState([
     {
       id: "line-1",
-      sigla: "SUPERPOP",
+      sigla: "SPOP",
       marketId: "NACIONAL",
-      formatId: "SPOT_30",
+      formatId: "COMERCIAL_30",
       brandedVariant: "inedito",
       insertionMode: "TOTAL",
       totalDirect: 20,
@@ -108,37 +108,45 @@ export default function MediaPlannerTab({
 
   // Calcula valores de uma linha específica usando MediaCalculator
   function calculateLine(line) {
-    const unitPriceInfo = MediaCalculator.getUnitPrice(
-      line.sigla,
-      line.marketId,
-      line.formatId,
-      line.brandedVariant || "inedito",
-      0,
-      false,
-      null,
-      false
-    );
+    try {
+      const unitPriceInfo = MediaCalculator.getUnitPrice(
+        line.sigla,
+        line.marketId,
+        line.formatId,
+        line.brandedVariant || "inedito",
+        0,
+        false,
+        null,
+        false
+      ) || { valor: 0 };
 
-    let totalInsertions = 0;
-    if (line.insertionMode === "TOTAL") {
-      totalInsertions = Number(line.totalDirect) || 0;
-    } else if (line.insertionMode === "FREQ") {
-      totalInsertions = (Number(line.freqDias) || 0) * (Number(line.freqPorDia) || 0);
-    } else {
-      totalInsertions = Number(line.totalDirect) || 0;
+      let totalInsertions = 0;
+      if (line.insertionMode === "TOTAL") {
+        totalInsertions = Number(line.totalDirect) || 0;
+      } else if (line.insertionMode === "FREQ") {
+        totalInsertions = (Number(line.freqDias) || 0) * (Number(line.freqPorDia) || 0);
+      } else {
+        totalInsertions = Number(line.totalDirect) || 0;
+      }
+
+      const financials = MediaCalculator.calculateLineFinancials(
+        unitPriceInfo.valor || 0,
+        totalInsertions,
+        line.discountPercent || 0
+      ) || {};
+
+      return {
+        ...unitPriceInfo,
+        ...financials,
+        valorBruto: financials.totalBruto || 0,
+        valorLiquido: financials.totalLiquido || 0,
+        valorUnitarioLiquido: financials.unitarioLiquido || 0,
+        totalInsertions
+      };
+    } catch (err) {
+      console.error("Erro ao calcular linha do planejador:", err);
+      return { valor: 0, valorBruto: 0, valorLiquido: 0, valorUnitarioLiquido: 0, totalInsertions: 0 };
     }
-
-    const financials = MediaCalculator.calculateLineFinancials(
-      unitPriceInfo.valor,
-      totalInsertions,
-      line.discountPercent
-    );
-
-    return {
-      ...unitPriceInfo,
-      ...financials,
-      totalInsertions
-    };
   }
 
   // Linhas enriquecidas com cálculos em tempo real
@@ -190,9 +198,9 @@ export default function MediaPlannerTab({
       ...prev,
       {
         id: `line-${Date.now()}`,
-        sigla: "REDETV_NEWS",
+        sigla: "NEWS",
         marketId: "NACIONAL",
-        formatId: "SPOT_30",
+        formatId: "COMERCIAL_30",
         brandedVariant: "inedito",
         insertionMode: campaign.globalInsertionMode || "TOTAL",
         totalDirect: 10,
@@ -824,9 +832,9 @@ export default function MediaPlannerTab({
                     setLines([
                       {
                         id: `line-${Date.now()}`,
-                        sigla: "SUPERPOP",
+                        sigla: "SPOP",
                         marketId: "NACIONAL",
-                        formatId: "SPOT_30",
+                        formatId: "COMERCIAL_30",
                         brandedVariant: "inedito",
                         insertionMode: "TOTAL",
                         totalDirect: 10,
@@ -918,7 +926,7 @@ export default function MediaPlannerTab({
                   const priceInfo = MediaCalculator.getUnitPrice(
                     prog.sigla,
                     tabelaMarket,
-                    "SPOT_30"
+                    "COMERCIAL_30"
                   );
                   return (
                     <tr key={prog.sigla} className="hover:bg-slate-50/80">
@@ -928,10 +936,10 @@ export default function MediaPlannerTab({
                           {prog.genero}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-slate-600">{prog.dias}</td>
-                      <td className="py-2 px-3 font-mono text-slate-600">{prog.horario}</td>
+                      <td className="py-2 px-3 text-slate-600">{prog.diasDesc || prog.dias || "Seg a Sex"}</td>
+                      <td className="py-2 px-3 font-mono text-slate-600">{prog.horario || `${prog.inicio || ""} às ${prog.fim || ""}`}</td>
                       <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
-                        {formatBRL(priceInfo.valor)}
+                        {formatBRL(priceInfo?.valor)}
                       </td>
                       <td className="py-2 px-3 text-center">
                         <button
@@ -943,7 +951,7 @@ export default function MediaPlannerTab({
                                 id: `line-${Date.now()}`,
                                 sigla: prog.sigla,
                                 marketId: tabelaMarket,
-                                formatId: "SPOT_30",
+                                formatId: "COMERCIAL_30",
                                 brandedVariant: "inedito",
                                 insertionMode: "TOTAL",
                                 totalDirect: 10,
@@ -1055,7 +1063,7 @@ export default function MediaPlannerTab({
                 return (
                   <tr key={prog.sigla} className="hover:bg-slate-50/80">
                     <td className="py-2 px-3 font-bold text-slate-900">{prog.nome}</td>
-                    <td className="py-2 px-3 text-slate-600 font-mono">{prog.horario}</td>
+                    <td className="py-2 px-3 text-slate-600 font-mono">{prog.horario || `${prog.inicio || ""} às ${prog.fim || ""}`}</td>
                     <td className="py-2 px-3 text-right font-mono font-bold text-slate-800">
                       {aud.ratDom}%
                     </td>
@@ -1153,5 +1161,52 @@ export default function MediaPlannerTab({
         </div>
       )}
     </div>
+  );
+}
+
+class MediaPlannerErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Erro capturado no MediaPlannerTab:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-white border border-rose-200 rounded-2xl p-8 max-w-xl mx-auto my-12 text-center shadow-lg">
+          <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle size={28} />
+          </div>
+          <h3 className="text-base font-bold text-slate-900 mb-2">Erro ao carregar o Planejador de Mídia</h3>
+          <p className="text-xs text-slate-500 mb-4 font-mono bg-slate-50 p-3 rounded-lg border border-slate-200 text-left overflow-x-auto">
+            {this.state.error?.toString()}
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function MediaPlannerTab(props) {
+  return (
+    <MediaPlannerErrorBoundary>
+      <MediaPlannerTabContent {...props} />
+    </MediaPlannerErrorBoundary>
   );
 }

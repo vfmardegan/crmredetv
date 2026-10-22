@@ -17,14 +17,21 @@ window.MediaCalculator = {
    * Obtém os dados completos de um programa pela sigla
    */
   getProgram(sigla) {
-    return window.PROGRAMS_DATA.find(p => p.sigla === sigla) || null;
+    if (!sigla) return null;
+    let s = sigla;
+    if (s === 'SUPERPOP') s = 'SPOP';
+    if (s === 'REDETV_NEWS') s = 'NEWS';
+    const list = (typeof window !== 'undefined' && window.PROGRAMS_DATA) || PROGRAMS_DATA || [];
+    return list.find(p => p.sigla === s) || null;
   },
 
   /**
    * Obtém os dados de uma praça pelo id
    */
   getMarket(marketId) {
-    return window.REGIONAL_MARKETS.find(m => m.id === marketId) || null;
+    if (!marketId) return null;
+    const list = (typeof window !== 'undefined' && window.REGIONAL_MARKETS) || REGIONAL_MARKETS || [];
+    return list.find(m => m.id === marketId) || null;
   },
 
   /**
@@ -32,11 +39,21 @@ window.MediaCalculator = {
    */
   getFormat(formatIdOrName) {
     if (!formatIdOrName) return null;
-    const clean = String(formatIdOrName).trim().toLowerCase();
-    return (window.MEDIA_FORMATS || []).find(f => 
-      f.id.toLowerCase() === clean || 
-      f.nome.toLowerCase() === clean
+    let fid = formatIdOrName;
+    if (fid === 'SPOT_30') fid = 'COMERCIAL_30';
+    const clean = String(fid).trim().toLowerCase();
+    const list = (typeof window !== 'undefined' && window.MEDIA_FORMATS) || MEDIA_FORMATS || [];
+    return list.find(f => 
+      (f.id && f.id.toLowerCase() === clean) || 
+      (f.nome && f.nome.toLowerCase() === clean)
     ) || null;
+  },
+
+  /**
+   * Alias de conveniência para calculateUnitPrice
+   */
+  getUnitPrice(sigla, marketId, formatId, brandedVariant, customUnitPrice, isCustom, customCoef, isCustomFormat) {
+    return this.calculateUnitPrice(sigla, marketId, formatId, brandedVariant, customUnitPrice, isCustom, customCoef, isCustomFormat);
   },
 
   /**
@@ -103,6 +120,10 @@ window.MediaCalculator = {
    * Retorna { valor, unitPrice, disponivel, motivo, coef, defaultCoef, isCustomCoef, basePrice30 }
    */
   calculateUnitPrice(sigla, marketId, formatId = '', brandedVariant = 'inedito', customUnitPrice = 0, isCustom = false, customCoef = null, isCustomFormat = false) {
+    if (formatId === 'SPOT_30') formatId = 'COMERCIAL_30';
+    if (sigla === 'SUPERPOP') sigla = 'SPOP';
+    if (sigla === 'REDETV_NEWS') sigla = 'NEWS';
+
     if (!sigla && !isCustom) {
       return { valor: 0, unitPrice: 0, disponivel: true, motivo: '', coef: null, defaultCoef: null, isCustomCoef: false, basePrice30: 0 };
     }
