@@ -40,6 +40,7 @@ class MediaApp {
 
     this.lines = [];
     this.nextId = 1;
+    this.previousInsertionMode = 'TOTAL';
 
     this.programImpacts = {};
     this.initProgramImpacts();
@@ -722,9 +723,11 @@ class MediaApp {
         const btn = e.target.closest('.mode-pill-btn');
         if (btn && btn.dataset.globalMode) {
           const mode = btn.dataset.globalMode;
-          if (mode === 'CALENDAR' && this.campaign.globalInsertionMode === 'CALENDAR') {
+          if (mode === 'CALENDAR') {
+            this.previousInsertionMode = (this.campaign.globalInsertionMode === 'FREQ') ? 'FREQ' : 'TOTAL';
             this.openCalendarModal();
           } else {
+            this.previousInsertionMode = mode;
             this.setGlobalInsertionMode(mode);
           }
         }
@@ -884,31 +887,17 @@ class MediaApp {
   }
 
   setGlobalInsertionMode(mode) {
+    if (mode === 'CALENDAR') {
+      this.previousInsertionMode = (this.campaign.globalInsertionMode === 'FREQ') ? 'FREQ' : 'TOTAL';
+      this.openCalendarModal();
+      return;
+    }
+
+    this.previousInsertionMode = mode;
     this.campaign.globalInsertionMode = mode;
     this.lines.forEach(line => {
       line.insertionMode = mode;
-      if (mode === 'CALENDAR') {
-        const calSum = Object.values(line.calendarData || {}).reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
-        if (calSum === 0) {
-          const count = (parseInt(line.totalDirect, 10) || 0) 
-            || ((parseInt(line.freqDias, 10) || 0) * (parseInt(line.freqPorDia, 10) || 0)) 
-            || line.calculo?.totalInsertions 
-            || 0;
-          if (count > 0 && line.sigla) {
-            line.calendarData = window.MediaCalculator.distributeInsertionsEvenly(
-              this.campaign.startDate,
-              this.campaign.endDate,
-              line.sigla,
-              count,
-              this.campaign.hasPeriod,
-              this.campaign.periodPreset
-            );
-            line.totalDirect = count;
-          }
-        } else {
-          line.totalDirect = calSum;
-        }
-      } else if (mode === 'TOTAL') {
+      if (mode === 'TOTAL') {
         const calSum = Object.values(line.calendarData || {}).reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
         if (calSum > 0) {
           line.totalDirect = calSum;
@@ -929,12 +918,8 @@ class MediaApp {
 
     this.render();
 
-    if (mode === 'CALENDAR') {
-      this.openCalendarModal();
-    } else {
-      const modeNames = { TOTAL: 'Total Direto', FREQ: 'Frequência (dias × freq)', CALENDAR: 'Cronograma Diário' };
-      this.showToast(`Modo alterado para ${modeNames[mode] || mode} em todas as linhas.`);
-    }
+    const modeNames = { TOTAL: 'Total Direto', FREQ: 'Frequência (dias × freq)' };
+    this.showToast(`Modo alterado para ${modeNames[mode] || mode} em todas as linhas.`);
   }
 
   render() {
@@ -1810,12 +1795,25 @@ class MediaApp {
     if (modal) {
       modal.style.display = 'none';
     }
+
+    // Retorna para o modo onde estava (Total ou Frequência)
+    const returnMode = (this.previousInsertionMode === 'FREQ') ? 'FREQ' : 'TOTAL';
+    this.campaign.globalInsertionMode = returnMode;
+
     // Sincroniza todas as linhas com os dados definidos no cronograma
     this.lines.forEach(line => {
       const calSum = Object.values(line.calendarData || {}).reduce((a, b) => a + (parseInt(b, 10) || 0), 0);
       line.totalDirect = calSum;
-      line.insertionMode = 'CALENDAR';
+      line.insertionMode = returnMode;
+      if (returnMode === 'FREQ' && calSum > 0 && (!line.freqDias || !line.freqPorDia)) {
+        line.freqDias = Math.max(1, Math.round(calSum / 2));
+        line.freqPorDia = 2;
+      }
       this.recalculateLine(line);
+    });
+
+    document.querySelectorAll('#global-mode-selector .mode-pill-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.globalMode === returnMode);
     });
 
     this.recalculateAll();
