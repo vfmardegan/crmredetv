@@ -657,6 +657,25 @@ const initDb = async () => {
       UPDATE pipeline_estrategico SET investimento_estimado = 12000000 WHERE nome_marca ILIKE '%Max Titanium%' AND (investimento_estimado IS NULL OR investimento_estimado = 0);
     `);
 
+    // 21. Tabela corporativa de propostas de valoração de mídia (Valoração Online & Med.IA Planner)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS tabelas_propostas_midia (
+        id VARCHAR(255) PRIMARY KEY,
+        cliente VARCHAR(255) NOT NULL,
+        agencia VARCHAR(255),
+        projeto VARCHAR(255),
+        usuario_criador VARCHAR(255),
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        valor_total NUMERIC(15, 2) DEFAULT 0,
+        desconto NUMERIC(5, 2) DEFAULT 0,
+        grade_json JSONB NOT NULL,
+        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_propostas_midia_data ON tabelas_propostas_midia(data_criacao DESC);
+      CREATE INDEX IF NOT EXISTS idx_propostas_midia_cliente ON tabelas_propostas_midia(LOWER(cliente));
+    `);
+
     console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos, alocações de oportunidades, inteligência de mercado e pipeline estratégico verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);

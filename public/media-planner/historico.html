@@ -107,12 +107,13 @@
                 <tr>
                   <th class="center" style="width: 44px;">#</th>
                   <th style="min-width: 220px;">PROJETO / CAMPANHA</th>
-                  <th style="min-width: 160px;">CLIENTE</th>
-                  <th style="min-width: 160px;">AGÊNCIA</th>
-                  <th class="center" style="min-width: 120px;">DATA / CICLO</th>
-                  <th class="center" style="min-width: 90px;">INSERÇÕES</th>
+                  <th style="min-width: 150px;">CLIENTE</th>
+                  <th style="min-width: 140px;">AGÊNCIA</th>
+                  <th style="min-width: 130px;">CRIADO POR</th>
+                  <th class="center" style="min-width: 110px;">DATA</th>
+                  <th class="center" style="min-width: 80px;">INSERÇÕES</th>
                   <th class="right" style="min-width: 140px;">INVESTIMENTO LÍQUIDO</th>
-                  <th class="center" style="width: 140px;">AÇÕES</th>
+                  <th class="center" style="width: 130px;">AÇÕES</th>
                 </tr>
               </thead>
               <tbody id="tbody-history">
@@ -127,8 +128,10 @@
 
   <div id="toast-notification" class="toast"></div>
 
+  <script src="js/exceljs.min.js"></script>
   <script src="data/rateCard.js"></script>
   <script src="js/calculator.js"></script>
+  <script src="js/excelExport.js"></script>
   <script>
     class ProposalsHistoryApp {
       constructor() {
@@ -158,11 +161,64 @@
         setTimeout(() => toast.classList.remove('show'), 2600);
       }
 
-      loadHistory() {
+      async loadHistory() {
+        const token = (typeof window !== 'undefined' && (
+          localStorage.getItem('crm_session_token') || 
+          (window.parent && window.parent.localStorage && window.parent.localStorage.getItem('crm_session_token'))
+        )) || '';
+
+        if (token) {
+          try {
+            const res = await fetch('/api/v1/media-proposals', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+              const rows = await res.json();
+              if (Array.isArray(rows) && rows.length > 0) {
+                this.history = rows.map(r => {
+                  const d = r.data_criacao ? new Date(r.data_criacao) : new Date();
+                  const day = String(d.getDate()).padStart(2, '0');
+                  const month = String(d.getMonth() + 1).padStart(2, '0');
+                  const year = d.getFullYear();
+                  const dateStr = `${day}/${month}/${year}`;
+                  
+                  const lines = r.grade_json?.lines || [];
+                  const totalIns = lines.reduce((acc, l) => {
+                    const count = (parseInt(l.totalDirect, 10) || 0) 
+                      || ((parseInt(l.freqDias, 10) || 0) * (parseInt(l.freqPorDia, 10) || 0))
+                      || l.calculo?.totalInsertions
+                      || 0;
+                    return acc + count;
+                  }, 0);
+
+                  return {
+                    id: r.id,
+                    projectName: r.projeto || 'Plano de Mídia',
+                    client: r.cliente,
+                    agency: r.agencia || '-',
+                    creator: r.usuario_criador || 'Administrador',
+                    date: dateStr,
+                    timestamp: d.getTime(),
+                    totalInsertions: totalIns,
+                    totalNet: Number(r.valor_total) || 0,
+                    avgDiscount: Number(r.desconto) || 70,
+                    campaignData: r.grade_json
+                  };
+                });
+                this.renderTable();
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Erro ao carregar propostas do servidor PostgreSQL:', e);
+          }
+        }
+
         const saved = localStorage.getItem('redetv_saved_proposals');
         if (saved) {
           try {
             this.history = JSON.parse(saved);
+            this.renderTable();
             return;
           } catch(e) {}
         }
@@ -174,6 +230,7 @@
             projectName: 'CAMPANHA NACIONAL VAREJO 2026',
             client: 'GRUPO VAREJO BRASIL',
             agency: 'AGÊNCIA NACIONAL DE MÍDIA',
+            creator: 'Diretoria Comercial',
             date: '21/10/2026',
             totalInsertions: 48,
             totalNet: 489200,
@@ -184,22 +241,14 @@
             projectName: 'PATROCÍNIO SUPERPOP & SENSACIONAL',
             client: 'COSMÉTICOS BELA COR',
             agency: 'DDB BRASIL',
+            creator: 'Administrador',
             date: '18/10/2026',
             totalInsertions: 24,
             totalNet: 312500,
             tableVersion: '2026.1 (Abril)'
-          },
-          {
-            id: 'PROP-2026-003',
-            projectName: 'JORNALISMO PRIME TIME',
-            client: 'BANCO INVEST DIGITAL',
-            agency: 'AFRICA CREATIVE',
-            date: '15/10/2026',
-            totalInsertions: 30,
-            totalNet: 645000,
-            tableVersion: '2026.1 (Abril)'
           }
         ];
+        this.renderTable();
       }
 
       bindEvents() {
@@ -228,6 +277,7 @@
           return item.projectName.toLowerCase().includes(clean) ||
                  item.client.toLowerCase().includes(clean) ||
                  item.agency.toLowerCase().includes(clean) ||
+                 (item.creator && item.creator.toLowerCase().includes(clean)) ||
                  item.id.toLowerCase().includes(clean);
         });
 
@@ -236,7 +286,7 @@
         if (list.length === 0) {
           tbody.innerHTML = `
             <tr>
-              <td colspan="8" class="center" style="padding: 30px; color: var(--text-muted);">
+              <td colspan="9" class="center" style="padding: 30px; color: var(--text-muted);">
                 Nenhuma proposta encontrada.
               </td>
             </tr>
@@ -255,13 +305,19 @@
             </td>
             <td style="font-weight: 600;">${item.client}</td>
             <td style="color: var(--text-muted);">${item.agency}</td>
+            <td><span class="badge" style="background: #F1F5F9; color: #334155; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${item.creator || 'Admin'}</span></td>
             <td class="center font-mono" style="font-size: 12px;">${item.date}</td>
             <td class="center font-mono font-bold" style="color: var(--text-dark);">${item.totalInsertions}</td>
             <td class="right font-mono font-bold" style="color: var(--rose-primary); font-size: 13.5px;">${window.MediaCalculator.formatCurrency(item.totalNet)}</td>
-            <td class="center">
-              <button type="button" class="btn btn-secondary btn-sm btn-open-proposal" data-id="${item.id}" style="font-size: 11px; padding: 4px 8px; cursor: pointer;">
-                Abrir Grade
-              </button>
+            <td class="center" style="white-space: nowrap;">
+              <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: center;">
+                <button type="button" class="btn btn-secondary btn-sm btn-open-proposal" data-id="${item.id}" title="Reabrir grade completa no Valoração Online" style="font-size: 11px; padding: 4px 8px; cursor: pointer;">
+                  Abrir Grade
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm btn-download-excel" data-id="${item.id}" title="Exportar planilha oficial Excel da RedeTV!" style="font-size: 11px; padding: 4px 8px; cursor: pointer; color: #15803D; font-weight: 600;">
+                  Excel
+                </button>
+              </div>
             </td>
           `;
           tbody.appendChild(tr);
@@ -290,6 +346,28 @@
               }));
             }
             window.location.href = 'index.html';
+          });
+        });
+
+        tbody.querySelectorAll('.btn-download-excel').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const propId = e.currentTarget.dataset.id;
+            const found = this.history.find(h => h.id === propId);
+            if (!found || !found.campaignData || !found.campaignData.lines) {
+              alert('Dados de grade não disponíveis para gerar a planilha desta proposta.');
+              return;
+            }
+            if (window.MediaExcelExport && window.MediaExcelExport.exportToExcel) {
+              this.showToast('✓ Gerando planilha Excel oficial da RedeTV!...');
+              try {
+                window.MediaExcelExport.exportToExcel(found.campaignData.campaign, found.campaignData.lines);
+              } catch (err) {
+                console.error('Erro na exportação Excel:', err);
+                alert('Erro ao processar arquivo Excel.');
+              }
+            } else {
+              alert('Módulo de exportação Excel carregando, tente novamente em instantes.');
+            }
           });
         });
       }

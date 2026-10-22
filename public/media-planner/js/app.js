@@ -498,10 +498,49 @@ class MediaApp {
     savedList.unshift(proposalRecord);
     try {
       localStorage.setItem('redetv_saved_proposals', JSON.stringify(savedList));
-      this.showToast(`Campanha "${projectName}" salva no sistema com sucesso (${proposalId})!`);
+      this.showToast(`Campanha "${projectName}" salva com sucesso (${proposalId})!`);
     } catch (e) {
       console.error(e);
-      this.showToast('Erro ao salvar campanha no sistema.');
+      this.showToast('Erro ao salvar campanha localmente.');
+    }
+
+    // Persistência corporativa centralizada no banco PostgreSQL (compartilhado entre Admins e Diretoria)
+    try {
+      const token = (typeof window !== 'undefined' && (
+        localStorage.getItem('crm_session_token') || 
+        (window.parent && window.parent.localStorage && window.parent.localStorage.getItem('crm_session_token'))
+      )) || '';
+
+      if (token) {
+        fetch('/api/v1/media-proposals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            id: proposalRecord.id,
+            cliente: proposalRecord.client,
+            agencia: proposalRecord.agency,
+            projeto: proposalRecord.projectName,
+            valor_total: proposalRecord.totalNet,
+            desconto: proposalRecord.avgDiscount,
+            grade_json: proposalRecord.campaignData
+          })
+        })
+        .then(async (res) => {
+          if (!res.ok) {
+            console.warn('Aviso: Não foi possível sincronizar proposta no PostgreSQL central:', res.status);
+          } else {
+            console.log('✓ Proposta salva com sucesso no banco central PostgreSQL da RedeTV!');
+          }
+        })
+        .catch((err) => {
+          console.warn('Conexão offline ou instável ao enviar proposta para o PostgreSQL:', err);
+        });
+      }
+    } catch (apiErr) {
+      console.warn('Erro ao disparar persistência central de proposta:', apiErr);
     }
   }
 
