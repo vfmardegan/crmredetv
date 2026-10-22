@@ -224,6 +224,7 @@ export default function App() {
     return "dashboard";
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -2703,8 +2704,6 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     midiasFormatos: "Mídias e Formatos",
     access: "Gestão e Acessos",
   };
-
-  const [collapsedSections, setCollapsedSections] = useState({});
 
   function toggleSection(sectionTitle) {
     setCollapsedSections((prev) => ({
