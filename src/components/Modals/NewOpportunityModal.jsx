@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Paperclip, Trash2, Upload, FileText } from "lucide-react";
+import { X, Paperclip, Trash2, Upload, FileText, Loader2 } from "lucide-react";
 import {
   DIRECT_CLIENT_OPTION,
   DIRECT_CLIENT_ID,
@@ -14,6 +14,7 @@ import {
 } from "../../utils/helpers";
 import { ClientSearchField, ContactSearchField } from "../UI/SearchFields";
 import AudioRecorder from "../AudioRecorder";
+import { uploadFileInChunks } from "../../services/api";
 
 export default function NewOpportunityModal({
   show,
@@ -39,33 +40,57 @@ export default function NewOpportunityModal({
   const [digitalExpanded, setDigitalExpanded] = useState(false);
   const [specialExpanded, setSpecialExpanded] = useState(false);
   const [periodViewYear, setPeriodViewYear] = useState(2026);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState("");
 
   if (!show) return null;
 
-  function handleFileAttach(e) {
+  async function handleFileAttach(e) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const fileObj = {
-          id: "att-" + Math.random().toString(36).slice(2, 9),
-          name: file.name,
-          dataUri: event.target.result,
-          type: file.type,
-          size: file.size,
-        };
-        setNewOppForm((prev) => ({
-          ...prev,
-          attachments: [...(prev.attachments || []), fileObj],
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
+    e.target.value = "";
+    setIsUploading(true);
+    if (setErrorMsg) setErrorMsg("");
+
+    try {
+      for (const file of files) {
+        setUploadProgressText(`Enviando ${file.name} (0%)...`);
+        const uploaded = await uploadFileInChunks(file, (pct) => {
+          setUploadProgressText(`Enviando ${file.name} (${pct}%)...`);
+        });
+
+        if (uploaded?.fileUrl) {
+          const fileObj = {
+            id: "att-" + Math.random().toString(36).slice(2, 9),
+            name: file.name,
+            url: uploaded.fileUrl,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+          };
+          setNewOppForm((prev) => ({
+            ...prev,
+            attachments: [...(prev.attachments || []), fileObj],
+          }));
+        } else {
+          throw new Error("Não foi possível processar o upload do arquivo.");
+        }
+      }
+    } catch (err) {
+      console.error("Erro no upload de anexo:", err);
+      if (setErrorMsg) {
+        setErrorMsg("Falha ao anexar arquivo: " + (err.message || ""));
+      } else {
+        alert("Falha ao anexar arquivo: " + (err.message || ""));
+      }
+    } finally {
+      setIsUploading(false);
+      setUploadProgressText("");
+    }
   }
 
   function removeAttachment(attId) {
+    if (isUploading) return;
     setNewOppForm((prev) => ({
       ...prev,
       attachments: (prev.attachments || []).filter((a) => (a.id || a.name) !== attId),
@@ -414,18 +439,35 @@ export default function NewOpportunityModal({
                 <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                   <Paperclip size={14} className="text-rose-600" /> Anexar Arquivos
                 </div>
-                <label className="text-xs bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-medium px-2.5 py-1 rounded-md cursor-pointer flex items-center gap-1">
-                  <Upload size={12} /> Escolher
-                  <input type="file" multiple onChange={handleFileAttach} className="hidden" />
+                <label className={"text-xs bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-medium px-2.5 py-1 rounded-md cursor-pointer flex items-center gap-1 transition-all " + (isUploading ? "opacity-50 pointer-events-none" : "")}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin text-rose-600" />
+                      <span>{uploadProgressText || "Enviando..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={12} /> Escolher
+                    </>
+                  )}
+                  <input type="file" multiple onChange={handleFileAttach} disabled={isUploading} className="hidden" />
                 </label>
               </div>
+
+              {isUploading && (
+                <div className="flex items-center gap-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5 animate-pulse">
+                  <Loader2 size={13} className="animate-spin shrink-0 text-rose-600" />
+                  <span>{uploadProgressText || "Enviando anexo de forma segura (imune ao WAF)..."}</span>
+                </div>
+              )}
+
               {(newOppForm.attachments || []).map((att) => (
                 <div key={att.id || att.name} className="flex items-center justify-between bg-white border border-slate-200 rounded-md px-2.5 py-1.5 text-xs text-slate-700">
                   <div className="flex items-center gap-2 truncate">
                     <FileText size={14} className="text-rose-500 shrink-0" />
                     <span className="truncate">{att.name}</span>
                   </div>
-                  <button type="button" onClick={() => removeAttachment(att.id || att.name)} className="text-slate-400 hover:text-rose-600"><Trash2 size={13} /></button>
+                  <button type="button" onClick={() => removeAttachment(att.id || att.name)} disabled={isUploading} className="text-slate-400 hover:text-rose-600 cursor-pointer"><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
@@ -555,8 +597,13 @@ export default function NewOpportunityModal({
           )}
         </div>
 
-        <button type="submit" className="w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800">
-          {editingOppId ? "Salvar Alterações" : "Salvar oportunidade"}
+        <button
+          type="submit"
+          disabled={isUploading}
+          className={"w-full bg-slate-900 text-white rounded-md py-2 text-sm mt-1 hover:bg-slate-800 transition-all flex items-center justify-center gap-2 " + (isUploading ? "opacity-60 cursor-not-allowed" : "cursor-pointer")}
+        >
+          {isUploading && <Loader2 size={15} className="animate-spin text-rose-500" />}
+          {isUploading ? (uploadProgressText || "Enviando anexo...") : (editingOppId ? "Salvar Alterações" : "Salvar oportunidade")}
         </button>
       </form>
     </div>

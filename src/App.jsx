@@ -18,7 +18,16 @@ import {
   Pencil,
   Menu,
   Activity,
-  Compass
+  Compass,
+  Calculator,
+  Bot,
+  History,
+  Layers,
+  ChevronDown,
+  TrendingUp,
+  Globe,
+  Tv,
+  FolderKanban
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -109,6 +118,10 @@ const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
 const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketIntelligenceTab"));
 const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
 const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
+const MediaPlannerTab = lazyWithRetry(() => import("./components/MediaPlannerTab"));
+const MediaAiTab = lazyWithRetry(() => import("./components/MediaAiTab"));
+const MediaHistoryTab = lazyWithRetry(() => import("./components/MediaHistoryTab"));
+const MidiasFormatosTab = lazyWithRetry(() => import("./components/MidiasFormatosTab"));
 
 function TabLoadingFallback() {
   return (
@@ -215,6 +228,8 @@ export default function App() {
     return "dashboard";
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [pendingCampaignPrefill, setPendingCampaignPrefill] = useState(null);
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -305,6 +320,10 @@ export default function App() {
 
   useEffect(() => {
     if (user && !hasPermission(user.perfil, "can_view_dashboard") && view === "dashboard") {
+      setView("pipeline");
+    }
+    const adminMediaViews = ["mediaPlanner", "mediaAi", "mediaHistory", "midiasFormatos"];
+    if (user && !hasPermission(user.perfil, "can_access_media_planner") && adminMediaViews.includes(view)) {
       setView("pipeline");
     }
   }, [user, view]);
@@ -1293,7 +1312,13 @@ export default function App() {
       expectedCloseDate: targetExpectedCloseDate,
       stage: targetStage,
       status: targetStatus,
-      attachments: newOppForm.attachments || [],
+      attachments: (newOppForm.attachments || []).map((att) => {
+        if (att.url) {
+          const { dataUri, ...cleanAtt } = att;
+          return cleanAtt;
+        }
+        return att;
+      }),
     };
 
     try {
@@ -1313,6 +1338,59 @@ export default function App() {
       console.error(err);
       setErrorMsg("Não foi possível salvar a oportunidade no servidor: " + (err.message || ""));
     }
+  }
+
+  function handleOpenValoracaoFromOpp(opp) {
+    if (!opp || !hasPermission(user?.perfil, "can_access_media_planner")) return;
+    const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
+    const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
+    const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
+    const projectName = opp.title || "";
+
+    const prefill = {
+      client: clientName,
+      agency: agencyName,
+      projectName: projectName,
+      opportunityId: opp.id,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem("redetv_prefill_campaign", JSON.stringify(prefill));
+    } catch (e) {
+      console.warn("Falha ao salvar redetv_prefill_campaign:", e);
+    }
+
+    setPendingCampaignPrefill(prefill);
+    setSelectedOppId(null);
+    setView("mediaPlanner");
+  }
+
+  function handleOpenMediaAiFromOpp(opp) {
+    if (!opp || !hasPermission(user?.perfil, "can_access_media_planner")) return;
+    const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
+    const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
+    const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
+    const projectName = opp.title || "";
+
+    const prefill = {
+      client: clientName,
+      agency: agencyName,
+      projectName: projectName,
+      opportunityId: opp.id,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem("redetv_media_ai_prefill", JSON.stringify(prefill));
+      localStorage.setItem("redetv_prefill_campaign", JSON.stringify(prefill));
+    } catch (e) {
+      console.warn("Falha ao salvar redetv_media_ai_prefill:", e);
+    }
+
+    setPendingCampaignPrefill(prefill);
+    setSelectedOppId(null);
+    setView("mediaAi");
   }
 
   async function deleteOpportunity(oppId) {
@@ -2679,31 +2757,82 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
 
   const viewTitles = {
     dashboard: "Visão Geral",
-    intelligence: "Radar de Mercado",
+    pipelineEstrategico: "Plano de Ação",
     pipeline: "Pipeline comercial",
-    planning: "Pipeline Planejamento",
+    intelligence: "Radar de Mercado",
     advertisers: "Clientes",
     contacts: "Contatos",
-    proposals: "Tabela e Propostas",
-    executivos: "Executivos",
+    proposals: "Tabelas e Propostas",
+    mediaPlanner: "Valoração Online",
+    mediaAi: "Med.IA Planner (IA)",
+    mediaHistory: "Histórico de Propostas",
+    planning: "Pipeline Planejamento",
     engajamento: "Engajamento",
-    pipelineEstrategico: "Plano de Ação",
+    executivos: "Executivos",
+    midiasFormatos: "Mídias e Formatos",
     access: "Gestão e Acessos",
   };
 
-  const navItems = [
-    hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
-    user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
-    { id: "intelligence", label: "Radar de Mercado", icon: Sparkles },
-    { id: "pipeline", label: "Pipeline", icon: GitBranch },
-    { id: "advertisers", label: "Clientes", icon: Building2 },
-    { id: "contacts", label: "Contatos", icon: Users },
-    { id: "proposals", label: "Tabela e Propostas", icon: FileText },
-    hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
-    hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
-    hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
-    hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
-  ].filter(Boolean);
+  function toggleSection(sectionId) {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }));
+  }
+
+  const navSections = [
+    {
+      id: "vendas",
+      title: "Vendas",
+      icon: TrendingUp,
+      items: [
+        hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
+        user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
+        { id: "pipeline", label: "Pipeline", icon: GitBranch },
+      ].filter(Boolean)
+    },
+    {
+      id: "mercado",
+      title: "Mercado",
+      icon: Globe,
+      items: [
+        { id: "intelligence", label: "Radar", icon: Sparkles },
+        { id: "advertisers", label: "Clientes", icon: Building2 },
+        { id: "contacts", label: "Contatos", icon: Users },
+      ].filter(Boolean)
+    },
+    {
+      id: "projetos",
+      title: "Projetos",
+      icon: FolderKanban,
+      items: [
+        { id: "proposals", label: "Tabelas e Propostas", icon: FileText },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
+      ].filter(Boolean)
+    },
+    {
+      id: "planning",
+      title: "Pipeline Planejamento",
+      icon: ClipboardList,
+      isStandalone: true,
+      items: [
+        hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
+      ].filter(Boolean)
+    },
+    {
+      id: "administracao",
+      title: "Administração",
+      icon: Shield,
+      items: [
+        hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
+        hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "midiasFormatos", label: "Mídias e Formatos", icon: Layers },
+        hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
+      ].filter(Boolean)
+    }
+  ].filter(section => section.items.length > 0);
 
   return (
     <div className="w-full min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row">
@@ -2741,24 +2870,85 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             </div>
 
             <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setView(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm text-left transition-colors " +
-                    (view === item.id
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                  }
-                >
-                  <item.icon size={18} />
-                  {item.label}
-                </button>
-              ))}
+              {navSections.map((section, sIdx) => {
+                const isExpanded = !!expandedSections[section.id];
+                const hasActiveChild = section.items?.some((it) => it.id === view);
+
+                if (section.isStandalone) {
+                  const item = section.items[0];
+                  if (!item) return null;
+                  const isActive = view === item.id;
+                  return (
+                    <div key={section.id || sIdx} className="flex flex-col">
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setView(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={
+                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors w-full " +
+                          (isActive
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                        }
+                      >
+                        <item.icon size={18} />
+                        <span>{item.label}</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={section.id || sIdx} className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.id)}
+                      className={
+                        "flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                        (hasActiveChild && !isExpanded
+                          ? "text-white font-medium bg-slate-800/40"
+                          : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                      }
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {section.icon && <section.icon size={18} />}
+                        <span>{section.title}</span>
+                        {hasActiveChild && !isExpanded && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-0.5" />
+                        )}
+                      </div>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 text-slate-400 ${isExpanded ? "rotate-0" : "-rotate-90"}`}
+                      />
+                    </button>
+                    {isExpanded && (
+                      <div className="flex flex-col gap-0.5 mt-1 ml-3 pl-3 border-l border-slate-800">
+                        {section.items.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setView(item.id);
+                              setMobileMenuOpen(false);
+                            }}
+                            className={
+                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors " +
+                              (view === item.id
+                                ? "bg-slate-800 text-white font-medium"
+                                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                            }
+                          >
+                            <item.icon size={15} />
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </nav>
 
             <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
@@ -2795,22 +2985,80 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           </div>
           <div className="text-xs text-slate-400 mt-1">Mercado anunciante</div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-1">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setView(item.id)}
-              className={
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                (view === item.id
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-              }
-            >
-              <item.icon size={16} />
-              {item.label}
-            </button>
-          ))}
+        <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
+          {navSections.map((section, sIdx) => {
+            const isExpanded = !!expandedSections[section.id];
+            const hasActiveChild = section.items?.some((it) => it.id === view);
+
+            if (section.isStandalone) {
+              const item = section.items[0];
+              if (!item) return null;
+              const isActive = view === item.id;
+              return (
+                <div key={section.id || sIdx} className="flex flex-col">
+                  <button
+                    key={item.id}
+                    onClick={() => setView(item.id)}
+                    className={
+                      "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors w-full " +
+                      (isActive
+                        ? "bg-slate-800 text-white font-medium"
+                        : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                    }
+                  >
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div key={section.id || sIdx} className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  className={
+                    "flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                    (hasActiveChild && !isExpanded
+                      ? "text-white font-medium bg-slate-800/40"
+                      : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                  }
+                >
+                  <div className="flex items-center gap-2.5">
+                    {section.icon && <section.icon size={16} />}
+                    <span>{section.title}</span>
+                    {hasActiveChild && !isExpanded && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-0.5" />
+                    )}
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 text-slate-400 ${isExpanded ? "rotate-0" : "-rotate-90"}`}
+                  />
+                </button>
+                {isExpanded && (
+                  <div className="flex flex-col gap-0.5 mt-1 ml-3 pl-3 border-l border-slate-800">
+                    {section.items.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setView(item.id)}
+                        className={
+                          "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors " +
+                          (view === item.id
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                        }
+                      >
+                        <item.icon size={14} />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -3172,6 +3420,27 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
+          {view === "mediaPlanner" && hasPermission(user.perfil, "can_access_media_planner") && (
+            <MediaPlannerTab
+              advertisers={advertisers}
+              opportunities={opportunities}
+              currentUser={user}
+              setView={setView}
+              prefillCampaign={pendingCampaignPrefill}
+            />
+          )}
+
+          {view === "mediaAi" && hasPermission(user.perfil, "can_access_media_planner") && (
+            <MediaAiTab
+              setView={setView}
+              prefillCampaign={pendingCampaignPrefill}
+            />
+          )}
+
+          {view === "mediaHistory" && hasPermission(user.perfil, "can_access_media_planner") && (
+            <MediaHistoryTab setView={setView} />
+          )}
+
           {view === "executivos" && hasPermission(user.perfil, "can_view_executivos") && (
             <ExecutivosTab
               executivoYear={executivoYear}
@@ -3215,6 +3484,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               newlyCreatedClient={newlyCreatedPlanoAcaoClient}
               addInteraction={addInteraction}
             />
+          )}
+
+          {view === "midiasFormatos" && hasPermission(user.perfil, "can_access_media_planner") && (
+            <MidiasFormatosTab />
           )}
 
           {view === "access" && hasPermission(user.perfil, "can_manage_users") && (
@@ -3404,12 +3677,37 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               )}
             </div>
 
+            {/* Ações Rápidas de Valoração e Planejamento (Apenas Admins) */}
+            {hasPermission(user.perfil, "can_access_media_planner") && (
+              <div className="mt-6 pt-5 border-t border-slate-200 flex flex-col gap-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                  Projetos & Valoração
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenValoracaoFromOpp(selectedOpp)}
+                  className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  <Calculator size={15} />
+                  + Valoração Online
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenMediaAiFromOpp(selectedOpp)}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  <Bot size={15} />
+                  + Med.IA Planner
+                </button>
+              </div>
+            )}
+
             {hasPermission(user.perfil, "can_delete_opportunities") && (
-              <div className="mt-8 pt-4 border-t border-slate-100 shrink-0">
+              <div className="mt-4 pt-4 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => deleteOpportunity(selectedOpp.id)}
-                  className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all"
+                  className="w-full bg-slate-100 hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-md py-2.5 text-xs font-bold uppercase tracking-wider transition-all"
                 >
                   Excluir Oportunidade
                 </button>

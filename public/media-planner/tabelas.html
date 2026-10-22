@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabelas RedeTV! | RedeTV! Media Planner</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-crm');
+      window.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('in-crm'));
+    }
+  </script>
+  <style>
+    .version-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .version-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      position: relative;
+    }
+    .version-card.active {
+      border: 2px solid var(--rose-primary);
+      background: #FFF1F2;
+    }
+    .btn-set-active {
+      background: #FFFFFF;
+      border: 1px solid var(--border-card);
+      color: var(--text-dark);
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-set-active:hover {
+      border-color: var(--rose-primary);
+      color: var(--rose-primary);
+    }
+    .btn-delete-card {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .btn-delete-card:hover {
+      color: #EF4444;
+      background: #FEE2E2;
+    }
+    #dropzone-csv.dragover {
+      border-color: var(--rose-primary) !important;
+      background: #FFF1F2 !important;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1.5px solid var(--border-card);
+      margin-bottom: 18px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      background: transparent;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover {
+      color: var(--rose-primary);
+    }
+    .tab-btn.active {
+      color: var(--rose-primary);
+      border-bottom-color: var(--rose-primary);
+      font-weight: 700;
+    }
+    .table-scroll-container {
+      overflow-x: auto;
+      overflow-y: visible;
+      width: 100%;
+      border-radius: var(--radius-md);
+      scrollbar-width: thin;
+      scrollbar-color: #94A3B8 #F1F5F9;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+    .table-scroll-container::-webkit-scrollbar {
+      height: 12px;
+    }
+    .table-scroll-container::-webkit-scrollbar-track {
+      background: #F1F5F9;
+      border-radius: 6px;
+    }
+    .table-scroll-container::-webkit-scrollbar-thumb {
+      background: #94A3B8;
+      border-radius: 6px;
+      border: 2px solid #F1F5F9;
+    }
+    .table-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: var(--rose-primary);
+    }
+    /* Fixação Sticky das primeiras colunas (# e Programa) ao rolar horizontalmente */
+    #table-programs-grid th.sticky-col-1,
+    #table-programs-grid td.sticky-col-1 {
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      background-color: #FFFFFF;
+    }
+    #table-programs-grid thead th.sticky-col-1 {
+      z-index: 7;
+      background-color: #F8FAFC;
+    }
+    #table-programs-grid th.sticky-col-2,
+    #table-programs-grid td.sticky-col-2 {
+      position: sticky;
+      left: 44px;
+      z-index: 5;
+      background-color: #FFFFFF;
+      box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.08);
+    }
+    #table-programs-grid thead th.sticky-col-2 {
+      z-index: 7;
+      background-color: #F8FAFC;
+    }
+    #table-programs-grid tr.row-item:hover td.sticky-col-1,
+    #table-programs-grid tr.row-item:hover td.sticky-col-2 {
+      background-color: #FAFAFC;
+    }
+    .btn-row-action {
+      background: transparent;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .btn-row-action:hover {
+      color: #EF4444;
+      background: #FEE2E2;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- 1. Menu Lateral Esquerdo -->
+    <aside class="sidebar" id="app-sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="sidebar-logo">RedeTV!</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Planejamento de Mídia</span>
+          </a>
+
+          <a href="media-ai.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+            <span>Med.IA Planner</span>
+          </a>
+
+          <div class="nav-group open active-group">
+            <button type="button" class="nav-group-toggle" onclick="this.closest('.nav-group').classList.toggle('open')">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                <span>Banco de Dados</span>
+              </div>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-subitems">
+              <a href="formatos.html" class="nav-subitem">
+                <span>Formatos e Programas</span>
+              </a>
+              <a href="impactos.html" class="nav-subitem">
+                <span>Impactos por Programa</span>
+              </a>
+              <a href="tabelas.html" class="nav-subitem active">
+                <span>Tabelas de Preço</span>
+              </a>
+            </div>
+          </div>
+
+          <a href="historico.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Histórico de Propostas</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: #FFFFFF;">Tabela Vigente</div>
+            <div id="sidebar-active-table-name" style="font-size: 10px; color: var(--text-sub);">Outubro/2026</div>
+          </div>
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Conteúdo Principal -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" id="btn-toggle-sidebar" class="btn-toggle-sidebar" title="Ocultar/Exibir Menu Lateral">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
+            Tabelas RedeTV!
+          </div>
+        </div>
+
+        <div class="topbar-actions" style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btn-toggle-edit-mode" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Editar preços e coeficientes da tabela">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <span id="btn-edit-mode-label">Editar Tabela</span>
+          </button>
+          <button type="button" id="btn-cancel-edit-mode" class="btn btn-secondary btn-sm" style="display: none; align-items: center; gap: 4px;">
+            ✕ Cancelar
+          </button>
+          <a href="templates/modelo_tabela_precos_redetv.xlsx" download="Modelo_Tabela_Precos_RedeTV.xlsx" id="btn-download-template-xlsx" class="btn btn-secondary btn-sm" style="text-decoration: none; display: flex; align-items: center; gap: 6px;" title="Baixar modelo XLSX oficial para preenchimento">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Baixar Modelo (XLSX)
+          </a>
+          <button type="button" id="btn-open-upload-modal" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Subir Nova Tabela (CSV)
+          </button>
+          <a href="index.html" class="btn btn-secondary btn-sm" style="text-decoration: none; display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Ir para Planejamento
+          </a>
+        </div>
+      </header>
+
+      <main class="content-container">
+        <!-- Banner Seletor de Tabela Vigente (Menu Suspenso) -->
+        <div class="rate-card-selector-banner" id="rate-card-selector-banner" style="display: flex; align-items: center; background: #FFFFFF; border: 1.5px solid var(--border-card); border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 20px; box-shadow: var(--shadow-sm); gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <select id="select-rate-card-active" class="form-input" style="height: 36px; font-size: 13px; font-weight: 700; color: var(--text-dark); background: #FFFFFF; border: 1.5px solid var(--border-card); border-radius: 6px; padding: 0 12px; cursor: pointer; min-width: 220px;">
+              <!-- Preenchido dinamicamente: Outubro/2026 e Tabelas Customizadas -->
+            </select>
+            <span id="badge-ratecard-active" class="badge-tag" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-weight: 700; font-size: 11px; padding: 5px 10px; border-radius: 6px;">
+              ● Tabela Vigente
+            </span>
+            <button type="button" id="btn-delete-selected-custom-table" class="btn btn-secondary btn-sm" style="display: none; height: 32px; font-size: 11px; color: #EF4444; border-color: #FECACA; background: #FEF2F2;" title="Excluir tabela personalizada selecionada">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Excluir Tabela
+            </button>
+          </div>
+        </div>
+
+        <!-- Abas de Navegação -->
+        <div class="tabs-nav">
+          <button type="button" class="tab-btn active" data-tab="tab-programas">
+            📺 Programação
+          </button>
+          <button type="button" class="tab-btn" data-tab="tab-formatos">
+            📐 Formatos e Coeficientes
+          </button>
+          <button type="button" class="tab-btn" data-tab="tab-pracas">
+            📍 Praças & Mercados Regionais
+          </button>
+        </div>
+
+        <!-- Conteúdo Aba 1: Programação -->
+        <section id="tab-programas" class="table-card tab-content">
+          <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="flex: 1; max-width: 360px;">
+              <input type="text" id="input-search-rates" class="form-input" placeholder="BUSCAR PROGRAMA OU GÊNERO..." style="height: 34px; font-size: 12.5px; text-transform: uppercase;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button type="button" id="btn-add-prog-row" class="btn btn-primary btn-sm" style="display: none; height: 32px; font-size: 12px; font-weight: 600;">
+                + Novo Programa
+              </button>
+            </div>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="corporate-table" id="table-programs-grid" style="min-width: max-content; width: 100%;">
+              <thead>
+                <tr id="thead-tr-programs">
+                  <!-- Gerado dinamicamente com todas as 52 praças -->
+                </tr>
+              </thead>
+              <tbody id="tbody-rates-programs">
+                <!-- Preenchido via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Conteúdo Aba 2: Formatos e Coeficientes -->
+        <section id="tab-formatos" class="table-card tab-content" style="display: none;">
+          <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="flex: 1; max-width: 360px;">
+              <input type="text" id="input-search-formats" class="form-input" placeholder="BUSCAR FORMATO OU TEMPO..." style="height: 34px; font-size: 12.5px; text-transform: uppercase;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="font-size: 12px; color: var(--text-muted);">
+                Total: <strong id="stat-formats-count">56</strong> formatos comerciais cadastrados
+              </div>
+              <button type="button" id="btn-add-format-row" class="btn btn-primary btn-sm" style="display: none; height: 32px; font-size: 12px; font-weight: 600;">
+                + Novo Formato
+              </button>
+            </div>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="corporate-table" id="table-formats-grid" style="min-width: 900px; width: 100%;">
+              <thead>
+                <tr id="thead-tr-formats">
+                  <th class="center" style="width: 44px;">#</th>
+                  <th style="min-width: 380px;">FORMATO COMERCIAL</th>
+                  <th class="center" style="min-width: 160px;">COEFICIENTE OFICIAL</th>
+                  <th class="center th-action-col-format" style="width: 60px; display: none;">AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-formats-list">
+                <!-- Preenchido via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Conteúdo Aba 3: Praças -->
+        <section id="tab-pracas" class="table-card tab-content" style="display: none;">
+          <div class="table-toolbar" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="flex: 1; max-width: 360px;">
+              <input type="text" id="input-search-markets" class="form-input" placeholder="BUSCAR PRAÇA OU REGIÃO..." style="height: 34px; font-size: 12.5px; text-transform: uppercase;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="font-size: 12px; color: var(--text-muted);">
+                Total: <strong id="stat-markets-count">52</strong> mercados regionais
+              </div>
+              <button type="button" id="btn-add-market-row" class="btn btn-primary btn-sm" style="display: none; height: 32px; font-size: 12px; font-weight: 600;">
+                + Nova Praça
+              </button>
+            </div>
+          </div>
+
+          <div class="table-scroll-container">
+            <table class="corporate-table" id="table-markets-grid" style="min-width: 800px; width: 100%;">
+              <thead>
+                <tr id="thead-tr-markets">
+                  <th class="center" style="width: 44px;">#</th>
+                  <th style="min-width: 140px;">IDENTIFICADOR</th>
+                  <th style="min-width: 260px;">PRAÇA / MERCADO</th>
+                  <th style="min-width: 200px;">REGIÃO GEOGRÁFICA</th>
+                  <th class="center th-action-col-market" style="width: 60px; display: none;">AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-markets-list">
+                <!-- Preenchido via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Upload Nova Tabela de Preços -->
+  <div id="modal-upload-table" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); padding: 16px;">
+    <div style="background: #FFFFFF; border-radius: var(--radius-lg); width: 100%; max-width: 540px; box-shadow: var(--shadow-xl); border: 1px solid var(--border-card); overflow: hidden; animation: fadeIn 0.2s ease;">
+      <div style="padding: 18px 22px; border-bottom: 1px solid var(--border-card); display: flex; align-items: center; justify-content: space-between; background: #FFFFFF;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(225, 29, 72, 0.1); color: var(--rose-primary); display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-dark);">Subir Nova Tabela de Preços</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-top: 1px;">Atualize valorações e programas a partir de arquivo CSV</p>
+          </div>
+        </div>
+        <button type="button" id="btn-close-upload-modal" style="background: none; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; padding: 4px; line-height: 1;">&times;</button>
+      </div>
+
+      <form id="form-upload-table" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Nome da Tabela -->
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px; text-transform: uppercase;">
+            Nome da Tabela de Preços <span style="color: var(--rose-primary);">*</span>
+          </label>
+          <input type="text" id="input-upload-table-name" class="form-input" placeholder="Ex: Tabela Oficial 2026.2 (Segundo Semestre)" required style="height: 38px;">
+        </div>
+
+        <!-- Arquivo CSV -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label style="font-size: 12px; font-weight: 700; color: var(--text-dark); text-transform: uppercase;">
+              Arquivo CSV da Planilha <span style="color: var(--rose-primary);">*</span>
+            </label>
+            <a href="templates/modelo_tabela_precos_redetv.xlsx" download="Modelo_Tabela_Precos_RedeTV.xlsx" style="font-size: 11.5px; color: var(--rose-primary); text-decoration: none; font-weight: 600;">
+              📥 Baixar Modelo XLSX
+            </a>
+          </div>
+          <div id="dropzone-csv" style="border: 2px dashed var(--border-card); border-radius: var(--radius-md); padding: 22px 16px; text-align: center; background: #F8FAFC; cursor: pointer; transition: all 0.2s ease;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="color: var(--text-muted); margin: 0 auto 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <div id="dropzone-label" style="font-size: 13px; font-weight: 600; color: var(--text-dark);">
+              Clique para selecionar o CSV ou arraste o arquivo aqui
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+              Formato: <strong>.csv</strong> (separador ponto e vírgula ";" ou vírgula ",")
+            </div>
+            <input type="file" id="input-upload-table-file" accept=".csv,text/csv" required style="display: none;">
+          </div>
+          <div id="upload-file-info" style="display: none; margin-top: 6px; font-size: 12px; color: #059669; font-weight: 600;"></div>
+        </div>
+
+        <!-- Checkbox Vigente -->
+        <div style="background: #F8FAFC; border: 1.5px solid var(--border-card); border-radius: var(--radius-md); padding: 12px 14px;">
+          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="check-upload-is-active" checked style="width: 17px; height: 17px; margin-top: 2px; accent-color: var(--rose-primary);">
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--text-dark);">
+                Definir esta planilha como a tabela vigente no sistema
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4;">
+                Ao marcar, o Planejamento de Mídia, simulações de CPM e valorações utilizarão imediatamente estes novos valores.
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
+          <button type="button" id="btn-cancel-upload" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-submit-upload" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Salvar e Aplicar Tabela
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-notification" class="toast" style="display: none;"></div>
+
+  <script src="data/rateCard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Toggle sidebar
+      const btnToggle = document.getElementById('btn-toggle-sidebar');
+      if (btnToggle) {
+        btnToggle.addEventListener('click', () => {
+          document.querySelector('.layout-wrapper')?.classList.toggle('sidebar-collapsed');
+        });
+      }
+
+      // Toast feedback helper
+      const showToast = (message) => {
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.style.display = 'flex';
+        toast.classList.add('visible');
+        setTimeout(() => {
+          toast.classList.remove('visible');
+          setTimeout(() => { toast.style.display = 'none'; }, 300);
+        }, 3200);
+      };
+
+      // Gerenciador de Tabelas de Preço
+      const RateCardsManager = {
+        getCustomTables() {
+          try {
+            return JSON.parse(localStorage.getItem('redetv_custom_rate_cards')) || [];
+          } catch (e) {
+            return [];
+          }
+        },
+
+        saveCustomTables(tables) {
+          localStorage.setItem('redetv_custom_rate_cards', JSON.stringify(tables));
+        },
+
+        getActiveId() {
+          const stored = localStorage.getItem('redetv_active_rate_card_id');
+          if (!stored || stored === '2026.1') return '2026-outubro';
+          return stored;
+        },
+
+        getActiveName() {
+          const stored = localStorage.getItem('redetv_active_rate_card_name');
+          if (!stored || stored.includes('2026.1') || stored.includes('Abril')) return 'Outubro/2026';
+          return stored;
+        },
+
+        setActive(id, name, programs) {
+          localStorage.setItem('redetv_active_rate_card_id', id);
+          localStorage.setItem('redetv_active_rate_card_name', name);
+          if (programs && programs.length > 0) {
+            localStorage.setItem('redetv_active_programs_data', JSON.stringify(programs));
+            window.PROGRAMS_DATA = programs;
+          } else {
+            localStorage.removeItem('redetv_active_programs_data');
+            window.PROGRAMS_DATA = window.PROGRAMS_DATA_DEFAULT ? JSON.parse(JSON.stringify(window.PROGRAMS_DATA_DEFAULT)) : (window.PROGRAMS_DATA || []);
+          }
+
+          // Atualiza sidebar footer
+          const sidebarLabel = document.getElementById('sidebar-active-table-name');
+          if (sidebarLabel) sidebarLabel.textContent = name;
+
+          this.renderSelector();
+          renderPrograms();
+          renderFormats();
+          renderMarkets();
+          showToast(`Tabela "${name}" definida como a tabela vigente no sistema.`);
+        },
+
+        deleteCustomTable(id) {
+          const tables = this.getCustomTables();
+          const target = tables.find(t => t.id === id);
+          if (!target) return;
+          if (!confirm(`Deseja realmente excluir a tabela "${target.name}"?`)) return;
+
+          const updated = tables.filter(t => t.id !== id);
+          this.saveCustomTables(updated);
+
+          // Se a tabela excluída era a ativa, restaura a padrão
+          if (this.getActiveId() === id) {
+            this.setActive('2026-outubro', 'Outubro/2026', null);
+          } else {
+            this.renderSelector();
+            showToast(`Tabela "${target.name}" excluída.`);
+          }
+        },
+
+        renderSelector() {
+          const select = document.getElementById('select-rate-card-active');
+          if (!select) return;
+
+          const activeId = this.getActiveId();
+          const customTables = this.getCustomTables();
+
+          select.innerHTML = '';
+
+          // 1. Tabela Oficial Padrão (Outubro/2026)
+          const optOfficial = document.createElement('option');
+          optOfficial.value = '2026-outubro';
+          optOfficial.textContent = 'Outubro/2026';
+          if (activeId === '2026-outubro' || activeId === '2026.1') {
+            optOfficial.selected = true;
+          }
+          select.appendChild(optOfficial);
+
+          // 2. Tabelas Customizadas (Upload do Usuário)
+          customTables.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.name} (${t.programsCount || (t.programs ? t.programs.length : 0)} programas)`;
+            if (activeId === t.id) opt.selected = true;
+            select.appendChild(opt);
+          });
+
+          // Botão excluir tabela selecionada (apenas para customizadas)
+          const btnDel = document.getElementById('btn-delete-selected-custom-table');
+          const isCustomActive = customTables.some(t => t.id === activeId);
+          if (btnDel) {
+            btnDel.style.display = isCustomActive ? 'inline-flex' : 'none';
+          }
+
+          // Atualiza contadores nas abas
+          const statFormatsCount = document.getElementById('stat-formats-count');
+          const statMarketsCount = document.getElementById('stat-markets-count');
+
+          if (statFormatsCount) statFormatsCount.textContent = (window.MEDIA_FORMATS || []).length;
+          if (statMarketsCount) statMarketsCount.textContent = (window.REGIONAL_MARKETS || []).length;
+
+          // Atualiza sidebar footer
+          const sidebarLabel = document.getElementById('sidebar-active-table-name');
+          if (sidebarLabel) sidebarLabel.textContent = this.getActiveName();
+        }
+      };
+
+      // Eventos do Seletor de Tabela
+      const selectRateCard = document.getElementById('select-rate-card-active');
+      if (selectRateCard) {
+        selectRateCard.addEventListener('change', (e) => {
+          const selectedId = e.target.value;
+          if (selectedId === '2026-outubro') {
+            RateCardsManager.setActive('2026-outubro', 'Outubro/2026', null);
+          } else {
+            const customTables = RateCardsManager.getCustomTables();
+            const target = customTables.find(t => t.id === selectedId);
+            if (target) {
+              RateCardsManager.setActive(target.id, target.name, target.programs);
+            }
+          }
+        });
+      }
+
+      const btnDeleteSelected = document.getElementById('btn-delete-selected-custom-table');
+      if (btnDeleteSelected) {
+        btnDeleteSelected.addEventListener('click', () => {
+          const activeId = RateCardsManager.getActiveId();
+          if (activeId !== '2026-outubro') {
+            RateCardsManager.deleteCustomTable(activeId);
+          }
+        });
+      }
+
+      // Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+          btn.classList.add('active');
+          const targetId = btn.dataset.tab;
+          const target = document.getElementById(targetId);
+          if (target) target.style.display = 'block';
+        });
+      });
+
+      // Modo de Edição
+      let isEditMode = false;
+
+      // Render Cabeçalho Dinâmico de Programas com Todas as 52 Praças
+      const renderTheadPrograms = () => {
+        const theadTr = document.getElementById('thead-tr-programs');
+        if (!theadTr) return;
+        theadTr.innerHTML = '';
+
+        // 1. Colunas Fixas de Identificação e Cobertura Base
+        const fixedCols = [
+          { text: '#', class: 'center sticky-col-1', css: 'width: 44px;' },
+          { text: 'PROGRAMA', class: 'sticky-col-2', css: 'min-width: 230px;' },
+          { text: 'GÊNERO', class: 'center', css: 'min-width: 130px;' },
+          { text: 'EXIBIÇÃO / HORÁRIO', class: '', css: 'min-width: 170px;' },
+          { text: 'BASE 30" NACIONAL', class: 'right', css: 'min-width: 140px;' },
+          { text: 'BASE 30" SAT', class: 'right', css: 'min-width: 130px;' }
+        ];
+
+        fixedCols.forEach(col => {
+          const th = document.createElement('th');
+          if (col.class) th.className = col.class;
+          if (col.css) th.style.cssText = col.css;
+          th.textContent = col.text;
+          theadTr.appendChild(th);
+        });
+
+        // 2. Colunas para as 50 Praças Regionais Cadastradas (Totalizando 52 praças)
+        const regionalMarkets = (window.REGIONAL_MARKETS || []).filter(m => m && m.id !== 'NACIONAL' && m.id !== 'SAT');
+        regionalMarkets.forEach(m => {
+          const th = document.createElement('th');
+          th.className = 'right';
+          th.style.cssText = 'min-width: 145px;';
+          const marketNome = m.nome || m.id || '';
+          th.title = `${marketNome} (${m.regiao || ''}) ${m.emissora ? '• ' + m.emissora : ''}`;
+          th.textContent = `BASE 30" ${marketNome.toUpperCase()}`;
+          theadTr.appendChild(th);
+        });
+
+        // 3. Coluna de Ação (Exibida apenas em Modo de Edição)
+        const thAction = document.createElement('th');
+        thAction.className = 'center th-action-col';
+        thAction.style.cssText = `width: 60px; display: ${isEditMode ? 'table-cell' : 'none'};`;
+        thAction.textContent = 'AÇÃO';
+        theadTr.appendChild(thAction);
+      };
+
+      // Render Programas
+      const tbodyPrograms = document.getElementById('tbody-rates-programs');
+      const renderPrograms = (q = '') => {
+        try {
+          renderTheadPrograms();
+          if (!tbodyPrograms) return;
+          tbodyPrograms.innerHTML = '';
+          const clean = q.toLowerCase().trim();
+          const list = (window.PROGRAMS_DATA || []).filter(p => {
+            if (!clean) return true;
+            return (p.nome && p.nome.toLowerCase().includes(clean)) ||
+                   (p.sigla && p.sigla.toLowerCase().includes(clean)) ||
+                   (p.genero && p.genero.toLowerCase().includes(clean));
+          }).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
+          const btnAdd = document.getElementById('btn-add-prog-row');
+          if (btnAdd) btnAdd.style.display = isEditMode ? 'inline-flex' : 'none';
+
+          const regionalMarkets = (window.REGIONAL_MARKETS || []).filter(m => m && m.id !== 'NACIONAL' && m.id !== 'SAT');
+          const totalCols = 6 + regionalMarkets.length + (isEditMode ? 1 : 0);
+
+          const statProgCount = document.getElementById('stat-programs-count');
+          if (statProgCount) statProgCount.textContent = (window.PROGRAMS_DATA || []).length;
+
+          if (list.length === 0) {
+            tbodyPrograms.innerHTML = `<tr><td colspan="${totalCols}" class="center" style="padding: 24px; color: var(--text-muted);">Nenhum programa encontrado.</td></tr>`;
+            return;
+          }
+
+          list.forEach((p, idx) => {
+            const tr = document.createElement('tr');
+            tr.className = 'row-item';
+            tr.dataset.sigla = p.sigla;
+
+            let regionalCellsHtml = '';
+            regionalMarkets.forEach(m => {
+              const regPrice = p.regional30 ? p.regional30[m.id] : undefined;
+              const marketNome = m.nome || m.id || '';
+              if (isEditMode) {
+                regionalCellsHtml += `
+                  <td class="right">
+                    <input type="number" min="0" step="10" class="form-input font-mono right input-edit-prog-reg" data-prog-id="${p.sigla}" data-market-id="${m.id}" value="${regPrice !== null && regPrice !== undefined ? regPrice : ''}" placeholder="-" style="width: 105px; height: 32px; font-size: 11.5px;">
+                  </td>
+                `;
+              } else {
+                if (regPrice !== null && regPrice !== undefined && regPrice > 0) {
+                  regionalCellsHtml += `
+                    <td class="right font-mono font-semibold" title="${marketNome}: ${window.MediaCalculator.formatCurrency(regPrice)}">
+                      ${window.MediaCalculator.formatCurrency(regPrice)}
+                    </td>
+                  `;
+                } else {
+                  regionalCellsHtml += `
+                    <td class="right font-mono" style="color: var(--text-muted); font-size: 11.5px;" title="${marketNome}: Não Exibido / Não Comercializado">
+                      -
+                    </td>
+                  `;
+                }
+              }
+            });
+
+            if (isEditMode) {
+              tr.innerHTML = `
+                <td class="center font-mono font-semibold sticky-col-1" style="color: var(--text-muted);">${idx + 1}</td>
+                <td class="sticky-col-2">
+                  <input type="text" class="form-input input-edit-prog-nome font-semibold" data-prog-id="${p.sigla}" value="${p.nome || ''}" style="height: 32px; font-size: 12px; text-transform: uppercase; width: 100%;">
+                  <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+                    <span>SIGLA:</span>
+                    <input type="text" class="form-input input-edit-prog-sigla font-mono" data-prog-id="${p.sigla}" value="${p.sigla || ''}" style="height: 22px; font-size: 10px; width: 95px; padding: 1px 4px; text-transform: uppercase;">
+                  </div>
+                </td>
+                <td>
+                  <input type="text" class="form-input input-edit-prog-genero center font-semibold" data-prog-id="${p.sigla}" value="${p.genero || ''}" placeholder="GÊNERO" style="height: 32px; font-size: 11px; text-transform: uppercase; width: 100%;">
+                </td>
+                <td>
+                  <input type="text" class="form-input input-edit-prog-dias" data-prog-id="${p.sigla}" value="${p.diasDesc || ''}" placeholder="DIAS (ex: SEG A SEX)" style="height: 28px; font-size: 11px; text-transform: uppercase; width: 100%; margin-bottom: 3px;">
+                  <div style="display: flex; align-items: center; gap: 4px;">
+                    <input type="text" class="form-input input-edit-prog-inicio center" data-prog-id="${p.sigla}" value="${p.inicio || ''}" placeholder="00:00" style="height: 24px; font-size: 11px; width: 55px;">
+                    <span style="font-size: 10px; color: var(--text-muted);">às</span>
+                    <input type="text" class="form-input input-edit-prog-fim center" data-prog-id="${p.sigla}" value="${p.fim || ''}" placeholder="00:00" style="height: 24px; font-size: 11px; width: 55px;">
+                  </div>
+                </td>
+                <td class="right">
+                  <input type="number" min="0" step="100" class="form-input font-mono right input-edit-prog-nac" data-prog-id="${p.sigla}" value="${p.nacional30 || 0}" style="width: 105px; height: 32px; font-weight: 700; color: var(--rose-primary);">
+                </td>
+                <td class="right">
+                  <input type="number" min="0" step="100" class="form-input font-mono right input-edit-prog-sat" data-prog-id="${p.sigla}" value="${p.sat30 || 0}" style="width: 95px; height: 32px;">
+                </td>
+                ${regionalCellsHtml}
+                <td class="center td-action-col">
+                  <button type="button" class="btn-row-action btn-delete-prog" data-sigla="${p.sigla}" title="Excluir este programa">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+                </td>
+              `;
+            } else {
+              tr.innerHTML = `
+                <td class="center font-mono font-semibold sticky-col-1" style="color: var(--text-muted);">${idx + 1}</td>
+                <td class="sticky-col-2">
+                  <div style="font-weight: 700; color: var(--text-dark); text-transform: uppercase;">${p.nome || ''}</div>
+                  <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${p.sigla || ''}</div>
+                </td>
+                <td>
+                  <span class="badge-tag" style="background: var(--border-subtle); color: var(--text-body); font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                    ${p.genero || '-'}
+                  </span>
+                </td>
+                <td style="font-size: 12px; color: var(--text-muted);">
+                  <div>${(p.diasDesc || '').toUpperCase()}</div>
+                  <div style="font-size: 11px; color: var(--text-sub);">${p.inicio || ''} às ${p.fim || ''}</div>
+                </td>
+                <td class="right font-mono font-bold" style="color: var(--rose-primary);">${p.nacional30 ? window.MediaCalculator.formatCurrency(p.nacional30) : '-'}</td>
+                <td class="right font-mono font-semibold">${p.sat30 ? window.MediaCalculator.formatCurrency(p.sat30) : '-'}</td>
+                ${regionalCellsHtml}
+              `;
+            }
+            tbodyPrograms.appendChild(tr);
+          });
+
+          // Eventos excluir programa
+          if (isEditMode) {
+            tbodyPrograms.querySelectorAll('.btn-delete-prog').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const sigla = btn.dataset.sigla;
+                if (confirm(`Deseja realmente remover o programa "${sigla}" da tabela?`)) {
+                  window.PROGRAMS_DATA = window.PROGRAMS_DATA.filter(p => p.sigla !== sigla);
+                  renderPrograms(document.getElementById('input-search-rates')?.value || '');
+                  RateCardsManager.renderSelector();
+                  showToast(`Programa ${sigla} removido.`);
+                }
+              });
+            });
+          }
+        } catch (err) {
+          console.error('Erro ao renderizar programas:', err);
+        }
+      };
+      renderPrograms();
+
+      const inputSearchRates = document.getElementById('input-search-rates');
+      if (inputSearchRates) {
+        inputSearchRates.addEventListener('input', (e) => renderPrograms(e.target.value));
+      }
+
+      // Adicionar novo programa na grade
+      const btnAddProg = document.getElementById('btn-add-prog-row');
+      if (btnAddProg) {
+        btnAddProg.addEventListener('click', () => {
+          const newSigla = 'PROG_' + (window.PROGRAMS_DATA.length + 1);
+          const initialRegional = {};
+          (window.REGIONAL_MARKETS || []).filter(m => m.id !== 'NACIONAL' && m.id !== 'SAT').forEach(m => {
+            initialRegional[m.id] = 0;
+          });
+          window.PROGRAMS_DATA.unshift({
+            nome: 'NOVO PROGRAMA ' + (window.PROGRAMS_DATA.length + 1),
+            sigla: newSigla,
+            genero: 'VARIEDADES',
+            diasDesc: 'SEG A SEX',
+            inicio: '12:00',
+            fim: '13:00',
+            nacional30: 0,
+            sat30: 0,
+            regional30: initialRegional
+          });
+          renderPrograms(document.getElementById('input-search-rates')?.value || '');
+          RateCardsManager.renderSelector();
+          showToast('Novo programa adicionado no início da lista para edição.');
+        });
+      }
+
+      // Render Formatos
+      const tbodyFormats = document.getElementById('tbody-formats-list');
+      const renderFormats = (q = '') => {
+        if (!tbodyFormats) return;
+        tbodyFormats.innerHTML = '';
+        const clean = q.toLowerCase().trim();
+        const list = (window.MEDIA_FORMATS || []).filter(f => {
+          if (!clean) return true;
+          return (f.nome && f.nome.toLowerCase().includes(clean)) || (f.id && f.id.toLowerCase().includes(clean));
+        });
+
+        const btnAdd = document.getElementById('btn-add-format-row');
+        if (btnAdd) btnAdd.style.display = isEditMode ? 'inline-flex' : 'none';
+
+        document.querySelectorAll('.th-action-col-format').forEach(th => {
+          th.style.display = isEditMode ? 'table-cell' : 'none';
+        });
+
+        const statFormatsCount = document.getElementById('stat-formats-count');
+        if (statFormatsCount) statFormatsCount.textContent = (window.MEDIA_FORMATS || []).length;
+
+        if (list.length === 0) {
+          tbodyFormats.innerHTML = `<tr><td colspan="${isEditMode ? 4 : 3}" class="center" style="padding: 24px; color: var(--text-muted);">Nenhum formato encontrado.</td></tr>`;
+          return;
+        }
+
+        list.forEach((f, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'row-item';
+          const coefVal = f.defaultCoef !== undefined ? f.defaultCoef : (f.coef !== undefined ? f.coef : 1.0);
+
+          if (isEditMode) {
+            tr.innerHTML = `
+              <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+              <td>
+                <input type="text" class="form-input input-edit-format-nome font-bold" data-format-id="${f.id}" value="${f.nome || ''}" style="height: 32px; font-size: 12px; text-transform: uppercase; width: 100%;">
+                <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 3px; display: flex; align-items: center; gap: 4px;">
+                  <span>ID:</span>
+                  <input type="text" class="form-input input-edit-format-id font-mono" data-format-id="${f.id}" value="${f.id || ''}" style="height: 22px; font-size: 10px; width: 160px; padding: 1px 4px; text-transform: uppercase;">
+                </div>
+              </td>
+              <td class="center">
+                <input type="number" step="0.05" min="0.05" max="25" class="form-input font-mono center input-edit-coef" data-format-id="${f.id}" value="${Number(coefVal).toFixed(2)}" style="width: 85px; height: 32px; font-weight: 700; color: var(--rose-primary);">
+              </td>
+              <td class="center td-action-col-format">
+                <button type="button" class="btn-row-action btn-delete-format" data-id="${f.id}" title="Excluir este formato comercial">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+              </td>
+            `;
+          } else {
+            tr.innerHTML = `
+              <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+              <td style="font-weight: 700; text-transform: uppercase;">${f.nome}</td>
+              <td class="center font-mono font-bold" style="color: var(--rose-primary); font-size: 13.5px;">${Number(coefVal).toFixed(2)}</td>
+            `;
+          }
+          tbodyFormats.appendChild(tr);
+        });
+
+        // Eventos excluir formato
+        if (isEditMode) {
+          tbodyFormats.querySelectorAll('.btn-delete-format').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const id = btn.dataset.id;
+              if (confirm(`Deseja realmente remover o formato "${id}"?`)) {
+                window.MEDIA_FORMATS = window.MEDIA_FORMATS.filter(f => f.id !== id);
+                renderFormats(document.getElementById('input-search-formats')?.value || '');
+                RateCardsManager.renderSelector();
+                showToast(`Formato ${id} removido.`);
+              }
+            });
+          });
+        }
+      };
+      renderFormats();
+
+      const inputSearchFormats = document.getElementById('input-search-formats');
+      if (inputSearchFormats) {
+        inputSearchFormats.addEventListener('input', (e) => renderFormats(e.target.value));
+      }
+
+      // Adicionar novo formato comercial
+      const btnAddFormat = document.getElementById('btn-add-format-row');
+      if (btnAddFormat) {
+        btnAddFormat.addEventListener('click', () => {
+          const newFid = 'FORMATO_' + (window.MEDIA_FORMATS.length + 1);
+          window.MEDIA_FORMATS.unshift({
+            id: newFid,
+            nome: 'NOVO FORMATO ' + (window.MEDIA_FORMATS.length + 1),
+            defaultCoef: 1.00,
+            categoria: 'Comercial Padrão'
+          });
+          renderFormats(document.getElementById('input-search-formats')?.value || '');
+          RateCardsManager.renderSelector();
+          showToast('Novo formato adicionado no início da lista para edição.');
+        });
+      }
+
+      // Render Praças e Mercados
+      const tbodyMarkets = document.getElementById('tbody-markets-list');
+      const renderMarkets = (q = '') => {
+        if (!tbodyMarkets) return;
+        tbodyMarkets.innerHTML = '';
+        const clean = q.toLowerCase().trim();
+        const list = (window.REGIONAL_MARKETS || []).filter(m => {
+          if (!clean) return true;
+          return (m.nome && m.nome.toLowerCase().includes(clean)) ||
+                 (m.id && m.id.toLowerCase().includes(clean)) ||
+                 (m.regiao && m.regiao.toLowerCase().includes(clean));
+        });
+
+        const btnAdd = document.getElementById('btn-add-market-row');
+        if (btnAdd) btnAdd.style.display = isEditMode ? 'inline-flex' : 'none';
+
+        document.querySelectorAll('.th-action-col-market').forEach(th => {
+          th.style.display = isEditMode ? 'table-cell' : 'none';
+        });
+
+        const statMarketsCount = document.getElementById('stat-markets-count');
+        if (statMarketsCount) statMarketsCount.textContent = (window.REGIONAL_MARKETS || []).length;
+
+        if (list.length === 0) {
+          tbodyMarkets.innerHTML = `<tr><td colspan="${isEditMode ? 5 : 4}" class="center" style="padding: 24px; color: var(--text-muted);">Nenhum mercado regional encontrado.</td></tr>`;
+          return;
+        }
+
+        list.forEach((m, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'row-item';
+
+          if (isEditMode) {
+            tr.innerHTML = `
+              <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+              <td class="center">
+                <input type="text" class="form-input input-edit-market-id font-mono font-bold center" data-market-id="${m.id}" value="${m.id || ''}" style="height: 32px; font-size: 12px; text-transform: uppercase; width: 95px;">
+              </td>
+              <td>
+                <input type="text" class="form-input input-edit-market-nome font-bold" data-market-id="${m.id}" value="${m.nome || ''}" style="height: 32px; font-size: 12px; text-transform: uppercase; width: 100%;">
+              </td>
+              <td class="center">
+                <input type="text" class="form-input input-edit-market-regiao center" data-market-id="${m.id}" value="${m.regiao || ''}" style="height: 32px; font-size: 12px; text-transform: uppercase; width: 100%;">
+              </td>
+              <td class="center td-action-col-market">
+                <button type="button" class="btn-row-action btn-delete-market" data-id="${m.id}" title="Excluir este mercado regional">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+              </td>
+            `;
+          } else {
+            tr.innerHTML = `
+              <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+              <td class="font-mono font-bold">${m.id}</td>
+              <td style="font-weight: 700; text-transform: uppercase;">${m.nome}</td>
+              <td style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">${m.regiao}</td>
+            `;
+          }
+          tbodyMarkets.appendChild(tr);
+        });
+
+        // Eventos excluir mercado
+        if (isEditMode) {
+          tbodyMarkets.querySelectorAll('.btn-delete-market').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const id = btn.dataset.id;
+              if (confirm(`Deseja realmente remover o mercado "${id}"?`)) {
+                window.REGIONAL_MARKETS = window.REGIONAL_MARKETS.filter(m => m.id !== id);
+                renderMarkets(document.getElementById('input-search-markets')?.value || '');
+                RateCardsManager.renderSelector();
+                showToast(`Mercado ${id} removido.`);
+              }
+            });
+          });
+        }
+      };
+      renderMarkets();
+
+      const inputSearchMarkets = document.getElementById('input-search-markets');
+      if (inputSearchMarkets) {
+        inputSearchMarkets.addEventListener('input', (e) => renderMarkets(e.target.value));
+      }
+
+      // Adicionar novo mercado regional
+      const btnAddMarket = document.getElementById('btn-add-market-row');
+      if (btnAddMarket) {
+        btnAddMarket.addEventListener('click', () => {
+          const newMid = 'PRACA_' + (window.REGIONAL_MARKETS.length + 1);
+          window.REGIONAL_MARKETS.unshift({
+            id: newMid,
+            nome: 'NOVA PRAÇA ' + (window.REGIONAL_MARKETS.length + 1),
+            regiao: 'Nacional'
+          });
+          renderMarkets(document.getElementById('input-search-markets')?.value || '');
+          RateCardsManager.renderSelector();
+          showToast('Novo mercado regional adicionado no início da lista para edição.');
+        });
+      }
+
+      // Botão de Edição da Tabela (Preços, Coeficientes, Nomes, Inclusão/Exclusão)
+      const btnToggleEditMode = document.getElementById('btn-toggle-edit-mode');
+      const btnEditModeLabel = document.getElementById('btn-edit-mode-label');
+      const btnCancelEditMode = document.getElementById('btn-cancel-edit-mode');
+
+      if (btnToggleEditMode) {
+        btnToggleEditMode.addEventListener('click', () => {
+          if (!isEditMode) {
+            // Entrar no Modo de Edição
+            isEditMode = true;
+            btnEditModeLabel.textContent = '💾 Salvar Edição';
+            btnToggleEditMode.classList.remove('btn-secondary');
+            btnToggleEditMode.classList.add('btn-primary');
+            if (btnCancelEditMode) btnCancelEditMode.style.display = 'inline-flex';
+            renderPrograms();
+            renderFormats();
+            renderMarkets();
+            showToast('Modo de edição ativado. Você pode editar todos os campos, adicionar e excluir itens.');
+          } else {
+            // Salvar Alterações
+            // 1. Atualizar e salvar todos os campos de Programas
+            document.querySelectorAll('#tbody-rates-programs tr.row-item').forEach(tr => {
+              const nomeInput = tr.querySelector('.input-edit-prog-nome');
+              const siglaInput = tr.querySelector('.input-edit-prog-sigla');
+              const generoInput = tr.querySelector('.input-edit-prog-genero');
+              const diasInput = tr.querySelector('.input-edit-prog-dias');
+              const inicioInput = tr.querySelector('.input-edit-prog-inicio');
+              const fimInput = tr.querySelector('.input-edit-prog-fim');
+              const nacInput = tr.querySelector('.input-edit-prog-nac');
+              const satInput = tr.querySelector('.input-edit-prog-sat');
+
+              if (nomeInput && siglaInput) {
+                const oldSigla = nomeInput.dataset.progId;
+                const newSigla = siglaInput.value.trim().toUpperCase() || oldSigla;
+                const prog = (window.PROGRAMS_DATA || []).find(p => p.sigla === oldSigla);
+                if (prog) {
+                  prog.nome = nomeInput.value.trim().toUpperCase() || prog.nome;
+                  prog.sigla = newSigla;
+                  if (generoInput) prog.genero = generoInput.value.trim().toUpperCase() || prog.genero;
+                  if (diasInput) prog.diasDesc = diasInput.value.trim().toUpperCase() || prog.diasDesc;
+                  if (inicioInput) prog.inicio = inicioInput.value.trim() || prog.inicio;
+                  if (fimInput) prog.fim = fimInput.value.trim() || prog.fim;
+                  if (nacInput) prog.nacional30 = parseFloat(nacInput.value) || 0;
+                  if (satInput) prog.sat30 = parseFloat(satInput.value) || 0;
+                  if (!prog.regional30) prog.regional30 = {};
+                  
+                  tr.querySelectorAll('.input-edit-prog-reg').forEach(regInput => {
+                    const mId = regInput.dataset.marketId;
+                    const rawVal = regInput.value.trim();
+                    if (rawVal === '' || rawVal.toLowerCase() === 'null' || rawVal === '-') {
+                      prog.regional30[mId] = null;
+                    } else {
+                      prog.regional30[mId] = parseFloat(rawVal) || 0;
+                    }
+                  });
+                }
+              }
+            });
+
+            // 2. Atualizar e salvar todos os campos de Formatos
+            const customCoefsMap = {};
+            document.querySelectorAll('#tbody-formats-list tr.row-item').forEach(tr => {
+              const nomeInput = tr.querySelector('.input-edit-format-nome');
+              const idInput = tr.querySelector('.input-edit-format-id');
+              const coefInput = tr.querySelector('.input-edit-coef');
+
+              if (nomeInput && idInput) {
+                const oldId = nomeInput.dataset.formatId;
+                const newId = idInput.value.trim().toUpperCase() || oldId;
+                const fmt = (window.MEDIA_FORMATS || []).find(f => f.id === oldId);
+                if (fmt) {
+                  fmt.nome = nomeInput.value.trim().toUpperCase() || fmt.nome;
+                  fmt.id = newId;
+                  if (coefInput) {
+                    const coefVal = parseFloat(coefInput.value) || 1.0;
+                    fmt.defaultCoef = coefVal;
+                    customCoefsMap[newId] = coefVal;
+                  }
+                }
+              }
+            });
+
+            // 3. Atualizar e salvar todos os campos de Mercados/Praças
+            document.querySelectorAll('#tbody-markets-list tr.row-item').forEach(tr => {
+              const idInput = tr.querySelector('.input-edit-market-id');
+              const nomeInput = tr.querySelector('.input-edit-market-nome');
+              const regiaoInput = tr.querySelector('.input-edit-market-regiao');
+
+              if (idInput && nomeInput) {
+                const oldId = idInput.dataset.marketId;
+                const newId = idInput.value.trim().toUpperCase() || oldId;
+                const m = (window.REGIONAL_MARKETS || []).find(mk => mk.id === oldId);
+                if (m) {
+                  m.id = newId;
+                  m.nome = nomeInput.value.trim().toUpperCase() || m.nome;
+                  if (regiaoInput) m.regiao = regiaoInput.value.trim().toUpperCase() || m.regiao;
+                }
+              }
+            });
+
+            // Salvar no localStorage
+            try {
+              localStorage.setItem('redetv_active_programs_data', JSON.stringify(window.PROGRAMS_DATA));
+              localStorage.setItem('redetv_custom_formats_list', JSON.stringify(window.MEDIA_FORMATS));
+              localStorage.setItem('redetv_custom_formats_coef', JSON.stringify(customCoefsMap));
+              localStorage.setItem('redetv_custom_regional_markets', JSON.stringify(window.REGIONAL_MARKETS));
+            } catch(e) {
+              console.warn('Erro ao salvar edições:', e);
+            }
+
+            isEditMode = false;
+            btnEditModeLabel.textContent = 'Editar Tabela';
+            btnToggleEditMode.classList.remove('btn-primary');
+            btnToggleEditMode.classList.add('btn-secondary');
+            if (btnCancelEditMode) btnCancelEditMode.style.display = 'none';
+
+            renderPrograms();
+            renderFormats();
+            renderMarkets();
+            RateCardsManager.renderSelector();
+            showToast('✓ Todas as alterações da tabela foram salvas com sucesso!');
+          }
+        });
+      }
+
+      if (btnCancelEditMode) {
+        btnCancelEditMode.addEventListener('click', () => {
+          isEditMode = false;
+          btnEditModeLabel.textContent = 'Editar Tabela';
+          btnToggleEditMode.classList.remove('btn-primary');
+          btnToggleEditMode.classList.add('btn-secondary');
+          btnCancelEditMode.style.display = 'none';
+          
+          // Recarrega bases do localStorage ou padrão
+          try {
+            const savedProg = localStorage.getItem('redetv_active_programs_data');
+            if (savedProg) window.PROGRAMS_DATA = JSON.parse(savedProg);
+            else if (window.PROGRAMS_DATA_DEFAULT) window.PROGRAMS_DATA = JSON.parse(JSON.stringify(window.PROGRAMS_DATA_DEFAULT));
+
+            const savedFmt = localStorage.getItem('redetv_custom_formats_list');
+            if (savedFmt) window.MEDIA_FORMATS = JSON.parse(savedFmt);
+            else if (window.MEDIA_FORMATS_DEFAULT) window.MEDIA_FORMATS = JSON.parse(JSON.stringify(window.MEDIA_FORMATS_DEFAULT));
+
+            const savedMk = localStorage.getItem('redetv_custom_regional_markets');
+            if (savedMk) window.REGIONAL_MARKETS = JSON.parse(savedMk);
+            else if (window.REGIONAL_MARKETS_DEFAULT) window.REGIONAL_MARKETS = JSON.parse(JSON.stringify(window.REGIONAL_MARKETS_DEFAULT));
+          } catch(e) {}
+
+          renderPrograms();
+          renderFormats();
+          renderMarkets();
+          RateCardsManager.renderSelector();
+          showToast('Edição cancelada.');
+        });
+      }
+
+      // Render Inicial do Seletor
+      RateCardsManager.renderSelector();
+
+      // Atualiza texto da tabela vigente no sidebar footer
+      const activeName = RateCardsManager.getActiveName();
+      const sidebarLabel = document.getElementById('sidebar-active-table-name');
+      if (sidebarLabel) sidebarLabel.textContent = activeName;
+
+      // Modal Upload - Eventos e Parser CSV
+      const modalUpload = document.getElementById('modal-upload-table');
+      const btnOpenUpload = document.getElementById('btn-open-upload-modal');
+      const btnCloseUpload = document.getElementById('btn-close-upload-modal');
+      const btnCancelUpload = document.getElementById('btn-cancel-upload');
+      const formUpload = document.getElementById('form-upload-table');
+      const inputName = document.getElementById('input-upload-table-name');
+      const inputFile = document.getElementById('input-upload-table-file');
+      const dropzone = document.getElementById('dropzone-csv');
+      const dropzoneLabel = document.getElementById('dropzone-label');
+      const fileInfo = document.getElementById('upload-file-info');
+      const checkIsActive = document.getElementById('check-upload-is-active');
+
+      const openModal = () => {
+        if (!modalUpload) return;
+        formUpload.reset();
+        checkIsActive.checked = true;
+        dropzoneLabel.textContent = 'Clique para selecionar o CSV ou arraste o arquivo aqui';
+        fileInfo.style.display = 'none';
+        modalUpload.style.display = 'flex';
+        inputName.focus();
+      };
+
+      const closeModal = () => {
+        if (!modalUpload) return;
+        modalUpload.style.display = 'none';
+      };
+
+      if (btnOpenUpload) btnOpenUpload.addEventListener('click', openModal);
+      if (btnCloseUpload) btnCloseUpload.addEventListener('click', closeModal);
+      if (btnCancelUpload) btnCancelUpload.addEventListener('click', closeModal);
+      modalUpload?.addEventListener('click', (e) => {
+        if (e.target === modalUpload) closeModal();
+      });
+
+      // Dropzone
+      dropzone?.addEventListener('click', () => inputFile.click());
+      dropzone?.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+      dropzone?.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+      });
+      dropzone?.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          inputFile.files = e.dataTransfer.files;
+          handleFileSelect(e.dataTransfer.files[0]);
+        }
+      });
+      inputFile?.addEventListener('change', () => {
+        if (inputFile.files && inputFile.files[0]) {
+          handleFileSelect(inputFile.files[0]);
+        }
+      });
+
+      function handleFileSelect(file) {
+        dropzoneLabel.innerHTML = `<strong>Arquivo selecionado:</strong> ${file.name}`;
+        fileInfo.textContent = `Tamanho: ${(file.size / 1024).toFixed(1)} KB • Pronto para importação`;
+        fileInfo.style.display = 'block';
+        if (!inputName.value) {
+          const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+          inputName.value = `Tabela ${cleanName.charAt(0).toUpperCase() + cleanName.slice(1)}`;
+        }
+      }
+
+      // Parser CSV
+      function parseRateCardCsv(text) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length < 2) throw new Error('O arquivo CSV deve conter um cabeçalho e pelo menos uma linha de dados.');
+
+        const headerLine = lines[0];
+        const sep = (headerLine.match(/;/g) || []).length >= (headerLine.match(/,/g) || []).length ? ';' : ',';
+
+        const parseLine = (line) => {
+          const result = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' || char === "'") {
+              inQuotes = !inQuotes;
+            } else if (char === sep && !inQuotes) {
+              result.push(current.trim().replace(/^["']|["']$/g, ''));
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim().replace(/^["']|["']$/g, ''));
+          return result;
+        };
+
+        const headers = parseLine(headerLine).map(h => h.toUpperCase().replace(/\s+/g, '_'));
+
+        const getCol = (possibleNames) => {
+          for (const name of possibleNames) {
+            const idx = headers.indexOf(name);
+            if (idx !== -1) return idx;
+          }
+          return -1;
+        };
+
+        const idxSigla = getCol(['SIGLA', 'CODIGO', 'ID']);
+        const idxNome = getCol(['PROGRAMA', 'NOME', 'PROGRAMA_NOME']);
+        const idxGenero = getCol(['GENERO', 'CATEGORIA']);
+        const idxDias = getCol(['DIAS', 'EXIBICAO', 'DIASDESC']);
+        const idxInicio = getCol(['INICIO', 'HORARIO_INICIO', 'HORA_INICIO']);
+        const idxFim = getCol(['FIM', 'HORARIO_FIM', 'HORA_FIM']);
+        const idxNac = getCol(['NACIONAL_30', 'BASE_30_NACIONAL', 'NACIONAL30', 'BASE_NACIONAL']);
+        const idxSat = getCol(['SAT_30', 'BASE_30_SAT', 'SAT30']);
+        const idxSp = getCol(['SP_30', 'BASE_30_SP', 'SP']);
+        const idxRj = getCol(['RJ_30', 'BASE_30_RJ', 'RJ']);
+        const idxBh = getCol(['BH_30', 'BASE_30_BH', 'BH']);
+        const idxCoef15 = getCol(['COEF_15', 'COEF15']);
+        const idxCoef10 = getCol(['COEF_10', 'COEF10']);
+
+        if (idxSigla === -1 || idxNome === -1) {
+          throw new Error('O arquivo CSV precisa ter as colunas "SIGLA" e "PROGRAMA".');
+        }
+
+        const parseNumber = (val) => {
+          if (!val) return 0;
+          const clean = String(val).replace(/R\$\s?/g, '').replace(/\./g, '').replace(',', '.').trim();
+          const num = parseFloat(clean);
+          return isNaN(num) ? 0 : num;
+        };
+
+        const programs = [];
+        for (let i = 1; i < lines.length; i++) {
+          const cols = parseLine(lines[i]);
+          if (!cols || cols.length === 0 || !cols[idxSigla]) continue;
+
+          const sigla = (cols[idxSigla] || '').toUpperCase();
+          const nome = (cols[idxNome] || sigla).toUpperCase();
+          const genero = idxGenero !== -1 && cols[idxGenero] ? cols[idxGenero].toUpperCase() : 'VARIEDADES';
+          const diasDesc = idxDias !== -1 && cols[idxDias] ? cols[idxDias].toUpperCase() : 'SEG/SEX';
+          const inicio = idxInicio !== -1 && cols[idxInicio] ? cols[idxInicio] : '12h00';
+          const fim = idxFim !== -1 && cols[idxFim] ? cols[idxFim] : '13h00';
+          const nac30 = idxNac !== -1 ? parseNumber(cols[idxNac]) : 0;
+          const sat30 = idxSat !== -1 ? parseNumber(cols[idxSat]) : 0;
+          const sp30 = idxSp !== -1 ? parseNumber(cols[idxSp]) : 0;
+          const rj30 = idxRj !== -1 ? parseNumber(cols[idxRj]) : 0;
+          const bh30 = idxBh !== -1 ? parseNumber(cols[idxBh]) : 0;
+          const coef15 = idxCoef15 !== -1 ? (parseFloat(String(cols[idxCoef15]).replace(',', '.')) || 0.75) : 0.75;
+          const coef10 = idxCoef10 !== -1 ? (parseFloat(String(cols[idxCoef10]).replace(',', '.')) || 0.50) : 0.50;
+
+          const regional30 = { SP: sp30, RJ: rj30, BH: bh30 };
+          headers.forEach((h, hIdx) => {
+            if (h.endsWith('_30')) {
+              const pracaId = h.replace('_30', '');
+              if (pracaId !== 'NACIONAL' && pracaId !== 'SAT' && pracaId !== 'BASE') {
+                regional30[pracaId] = parseNumber(cols[hIdx]);
+              }
+            }
+          });
+
+          programs.push({
+            sigla,
+            nome,
+            genero,
+            diasDesc,
+            inicio,
+            fim,
+            nacional30: nac30,
+            sat30: sat30,
+            coef15,
+            coef10,
+            regional30,
+            branded: { disponivel: true, val60: nac30 * 2, val90: nac30 * 3 }
+          });
+        }
+
+        if (programs.length === 0) throw new Error('Nenhum programa válido foi identificado no arquivo.');
+        return programs;
+      }
+
+      // Submit do Formulário de Upload
+      formUpload?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const tableName = inputName.value.trim();
+        const file = inputFile.files ? inputFile.files[0] : null;
+
+        if (!tableName) {
+          alert('Por favor, informe o nome da tabela.');
+          inputName.focus();
+          return;
+        }
+
+        if (!file) {
+          alert('Por favor, selecione um arquivo CSV.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const csvText = event.target.result;
+            const parsedPrograms = parseRateCardCsv(csvText);
+
+            const newTable = {
+              id: 'custom-' + Date.now(),
+              name: tableName,
+              createdAt: new Date().toLocaleDateString('pt-BR'),
+              programsCount: parsedPrograms.length,
+              programs: parsedPrograms
+            };
+
+            const tables = RateCardsManager.getCustomTables();
+            tables.unshift(newTable);
+            RateCardsManager.saveCustomTables(tables);
+
+            const isVigente = checkIsActive.checked;
+            if (isVigente) {
+              RateCardsManager.setActive(newTable.id, newTable.name, newTable.programs);
+            } else {
+              RateCardsManager.renderSelector();
+              showToast(`Tabela "${tableName}" importada com sucesso! (${parsedPrograms.length} programas)`);
+            }
+
+            closeModal();
+          } catch (err) {
+            alert('Erro ao processar o CSV: ' + err.message);
+          }
+        };
+
+        reader.onerror = () => {
+          alert('Erro ao ler o arquivo CSV. Tente novamente.');
+        };
+
+        reader.readAsText(file, 'utf-8');
+      });
+    });
+  </script>
+</body>
+</html>
+

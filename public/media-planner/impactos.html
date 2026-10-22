@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Impactos por Programa | RedeTV! Media Planner</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.classList.add('in-crm');
+      window.addEventListener('DOMContentLoaded', () => document.body && document.body.classList.add('in-crm'));
+    }
+  </script>
+  <style>
+    .impact-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .impact-stat-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .impact-stat-val {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      font-family: var(--font-mono);
+    }
+    .impact-stat-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .btn-edit-impact:hover {
+      background: var(--surface-secondary) !important;
+      border-color: var(--primary) !important;
+      color: var(--primary) !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout-wrapper">
+    <!-- 1. Menu Lateral Esquerdo -->
+    <aside class="sidebar" id="app-sidebar">
+      <div>
+        <div class="sidebar-header">
+          <div class="sidebar-logo">RedeTV!</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="index.html" class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Planejamento de Mídia</span>
+          </a>
+
+          <a href="media-ai.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L21.6 12l-7.2 2.4L12 21.6l-2.4-7.2L2.4 12l7.2-2.4z"></path></svg>
+            <span>Med.IA Planner</span>
+          </a>
+
+          <div class="nav-group open active-group">
+            <button type="button" class="nav-group-toggle" onclick="this.closest('.nav-group').classList.toggle('open')">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                <span>Banco de Dados</span>
+              </div>
+              <svg class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="nav-subitems">
+              <a href="formatos.html" class="nav-subitem">
+                <span>Formatos e Programas</span>
+              </a>
+              <a href="impactos.html" class="nav-subitem active">
+                <span>Impactos por Programa</span>
+              </a>
+              <a href="tabelas.html" class="nav-subitem">
+                <span>Tabelas de Preço</span>
+              </a>
+            </div>
+          </div>
+
+          <a href="historico.html" class="nav-item" style="cursor: pointer;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>Histórico de Propostas</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-size: 11px; font-weight: 600; color: #FFFFFF;">Tabela Vigente</div>
+            <div id="sidebar-active-table-name" style="font-size: 10px; color: var(--text-sub);">Outubro/2026</div>
+          </div>
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. Conteúdo Principal -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <button type="button" id="btn-toggle-sidebar" class="btn-toggle-sidebar" title="Ocultar/Exibir Menu Lateral">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
+            Impactos por Programa (Mercado Nacional)
+          </div>
+        </div>
+
+        <div class="topbar-actions" style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btn-toggle-edit-impacts" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Editar valores de impacto dos programas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            <span id="btn-edit-impacts-label">Editar Impactos</span>
+          </button>
+          <button type="button" id="btn-cancel-edit-impacts" class="btn btn-secondary btn-sm" style="display: none; align-items: center; gap: 4px;">
+            ✕ Cancelar
+          </button>
+          <button type="button" id="btn-import-impacts-csv" class="btn btn-secondary btn-sm">
+            📥 Importar CSV
+          </button>
+          <button type="button" id="btn-export-impacts-csv" class="btn btn-secondary btn-sm">
+            📤 Exportar CSV
+          </button>
+          <button type="button" id="btn-reset-impacts-defaults" class="btn btn-secondary btn-sm" title="Restaurar valores de impacto padrão">
+            ↺ Restaurar Padrão
+          </button>
+          <a href="index.html" class="btn btn-secondary btn-sm" style="text-decoration: none; display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Ir para Planejamento
+          </a>
+          <input type="file" id="input-file-impacts-csv" accept=".csv,text/csv" style="display: none;">
+        </div>
+      </header>
+
+      <main class="content-container">
+        <!-- Card da Tabela de Impactos -->
+        <section class="table-card">
+          <div class="table-toolbar" style="flex-wrap: wrap; gap: 12px;">
+            <div style="flex: 1; min-width: 260px;">
+              <input type="text" id="input-search-impacts" class="form-input" placeholder="BUSCAR POR PROGRAMA OU SIGLA..." style="height: 36px; font-size: 12.5px; text-transform: uppercase;">
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="corporate-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th class="center" style="width: 44px;">#</th>
+                  <th style="min-width: 260px;">PROGRAMA</th>
+                  <th style="min-width: 220px;">EXIBIÇÃO / HORÁRIO</th>
+                  <th class="right" style="min-width: 220px;">IMPACTOS / MINUTO (NACIONAL)</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-impacts">
+                <!-- Preenchido via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-notification" class="toast"></div>
+
+  <script src="data/rateCard.js"></script>
+  <script src="js/calculator.js"></script>
+  <script>
+    class ImpactsApp {
+      constructor() {
+        this.programImpacts = {};
+        this.isGlobalEditing = false;
+        this.init();
+      }
+
+      init() {
+        let activeName = localStorage.getItem('redetv_active_rate_card_name');
+        if (!activeName || activeName.includes('2026.1') || activeName.includes('Abril')) {
+          activeName = 'Outubro/2026';
+          localStorage.setItem('redetv_active_rate_card_name', activeName);
+          localStorage.setItem('redetv_active_rate_card_id', '2026-outubro');
+        }
+        const lbl = document.getElementById('sidebar-active-table-name');
+        if (lbl) lbl.textContent = activeName;
+        this.loadImpacts();
+        this.bindEvents();
+        this.renderTable();
+        this.updateStats();
+      }
+
+      getDefaultImpacts() {
+        const defaults = {};
+        (window.PROGRAMS_DATA || []).forEach(p => {
+          let base = Math.round((p.nacional30 || 20000) * 3.8);
+          if (p.sigla === 'FGEN') base = 605427;
+          else if (p.sigla === 'OPERACAO_DE_RISCO') base = 420000;
+          else if (p.sigla === 'A_TARDE_E_SUA') base = 380000;
+          else if (p.sigla === 'REDETV_NEWS') base = 310000;
+          else if (p.sigla === 'SUPERPOP') base = 280000;
+          else if (p.sigla === 'LEITURA_DINAMICA') base = 195000;
+          else if (p.sigla === 'MEGA_SENHA_POWER') base = 260000;
+          else if (p.sigla === 'DOC_REDETV') base = 180000;
+          else if (p.sigla === 'MANHA_VOCE') base = 120000;
+          else if (p.sigla === 'VOLEI') base = 350000;
+          else if (p.sigla === 'NFL') base = 290000;
+          else if (base < 50000) base = 65000;
+          defaults[p.sigla] = base;
+        });
+        return defaults;
+      }
+
+      loadImpacts() {
+        const saved = localStorage.getItem('redetv_program_impacts_nacional');
+        if (saved) {
+          try {
+            this.programImpacts = JSON.parse(saved);
+            const defaults = this.getDefaultImpacts();
+            Object.keys(defaults).forEach(k => {
+              if (this.programImpacts[k] === undefined) {
+                this.programImpacts[k] = defaults[k];
+              }
+            });
+            return;
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+        this.programImpacts = this.getDefaultImpacts();
+      }
+
+      saveImpacts() {
+        try {
+          localStorage.setItem('redetv_program_impacts_nacional', JSON.stringify(this.programImpacts));
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
+      showToast(msg) {
+        const toast = document.getElementById('toast-notification');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2600);
+      }
+
+      bindEvents() {
+        const btnToggle = document.getElementById('btn-toggle-sidebar');
+        if (btnToggle) {
+          btnToggle.addEventListener('click', () => {
+            document.querySelector('.layout-wrapper')?.classList.toggle('sidebar-collapsed');
+          });
+        }
+
+        const searchInput = document.getElementById('input-search-impacts');
+        if (searchInput) {
+          searchInput.addEventListener('input', (e) => {
+            this.renderTable(e.target.value);
+          });
+        }
+
+        const btnExportCsv = document.getElementById('btn-export-impacts-csv');
+        if (btnExportCsv) {
+          btnExportCsv.addEventListener('click', () => this.exportCsv());
+        }
+
+        const btnImportCsv = document.getElementById('btn-import-impacts-csv');
+        const inputFile = document.getElementById('input-file-impacts-csv');
+        if (btnImportCsv && inputFile) {
+          btnImportCsv.addEventListener('click', () => {
+            inputFile.value = '';
+            inputFile.click();
+          });
+          inputFile.addEventListener('change', (e) => this.handleCsvUpload(e));
+        }
+
+        const btnReset = document.getElementById('btn-reset-impacts-defaults');
+        if (btnReset) {
+          btnReset.addEventListener('click', () => {
+            if (confirm('Deseja restaurar todas as médias de impactos para os valores oficiais padrão?')) {
+              this.programImpacts = this.getDefaultImpacts();
+              this.saveImpacts();
+              this.renderTable();
+              this.updateStats();
+              this.showToast('Médias de impactos restauradas para o padrão.');
+            }
+          });
+        }
+
+        const btnToggleEdit = document.getElementById('btn-toggle-edit-impacts');
+        const btnEditLabel = document.getElementById('btn-edit-impacts-label');
+        const btnCancelEdit = document.getElementById('btn-cancel-edit-impacts');
+
+        if (btnToggleEdit) {
+          btnToggleEdit.addEventListener('click', () => {
+            if (!this.isGlobalEditing) {
+              // Ativa Modo de Edição
+              this.isGlobalEditing = true;
+              btnEditLabel.textContent = '💾 Salvar Impactos';
+              btnToggleEdit.classList.remove('btn-secondary');
+              btnToggleEdit.classList.add('btn-primary');
+              if (btnCancelEdit) btnCancelEdit.style.display = 'inline-flex';
+              this.renderTable();
+              this.showToast('Modo de edição ativado. Ajuste as médias de impacto e clique em Salvar.');
+            } else {
+              // Salva Alterações
+              document.querySelectorAll('.input-global-impact').forEach(input => {
+                const sigla = input.dataset.sigla;
+                const val = parseInt(input.value, 10);
+                if (!isNaN(val) && val >= 0) {
+                  this.programImpacts[sigla] = val;
+                }
+              });
+              this.saveImpacts();
+              this.updateStats();
+              this.isGlobalEditing = false;
+              btnEditLabel.textContent = 'Editar Impactos';
+              btnToggleEdit.classList.remove('btn-primary');
+              btnToggleEdit.classList.add('btn-secondary');
+              if (btnCancelEdit) btnCancelEdit.style.display = 'none';
+              this.renderTable();
+              this.showToast('✓ Médias de impacto salvas com sucesso!');
+            }
+          });
+        }
+
+        if (btnCancelEdit) {
+          btnCancelEdit.addEventListener('click', () => {
+            this.isGlobalEditing = false;
+            btnEditLabel.textContent = 'Editar Impactos';
+            btnToggleEdit.classList.remove('btn-primary');
+            btnToggleEdit.classList.add('btn-secondary');
+            btnCancelEdit.style.display = 'none';
+            this.loadImpacts();
+            this.renderTable();
+            this.showToast('Edição de impactos cancelada.');
+          });
+        }
+      }
+
+      renderTable(query = '') {
+        const tbody = document.getElementById('tbody-impacts');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        const clean = query.toLowerCase().trim();
+        const programs = (window.PROGRAMS_DATA || []).filter(p => {
+          if (!clean) return true;
+          return p.nome.toLowerCase().includes(clean) ||
+                 p.sigla.toLowerCase().includes(clean) ||
+                 (p.genero && p.genero.toLowerCase().includes(clean));
+        }).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+
+        if (programs.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="4" class="center" style="padding: 30px; color: var(--text-muted);">
+                Nenhum programa encontrado com o termo pesquisado.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        programs.forEach((p, idx) => {
+          const row = document.createElement('tr');
+          row.className = 'row-item';
+          const impactVal = this.programImpacts[p.sigla] !== undefined ? this.programImpacts[p.sigla] : (this.getDefaultImpacts()[p.sigla] || 0);
+
+          row.innerHTML = `
+            <td class="center font-mono font-semibold" style="color: var(--text-muted);">${idx + 1}</td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-dark); text-transform: uppercase;">${p.nome}</div>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${p.sigla}</div>
+            </td>
+            <td style="font-size: 12px; color: var(--text-muted);">
+              <div>${(p.diasDesc || '').toUpperCase()}</div>
+              <div style="font-size: 11px; color: var(--text-sub);">${p.inicio || ''} às ${p.fim || ''}</div>
+            </td>
+            <td class="right" id="impact-cell-${p.sigla}"></td>
+          `;
+
+          tbody.appendChild(row);
+          this.renderImpactCell(p.sigla, impactVal, p.nome);
+        });
+      }
+
+      renderImpactCell(sigla, impactVal, nome) {
+        const td = document.getElementById(`impact-cell-${sigla}`);
+        if (!td) return;
+
+        if (this.isGlobalEditing) {
+          td.innerHTML = `
+            <div class="impact-cell-edit" style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+              <input type="number" 
+                     min="0" 
+                     step="1000" 
+                     class="form-input font-mono input-global-impact" 
+                     data-sigla="${sigla}" 
+                     value="${impactVal}" 
+                     style="width: 140px; height: 32px; text-align: right; font-weight: 700; font-size: 13px; color: var(--rose-primary);">
+            </div>
+          `;
+          return;
+        }
+
+        td.innerHTML = `
+          <div class="impact-cell-view" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+            <span class="impact-display-val font-mono" style="font-weight: 700; font-size: 14px; color: var(--text-dark); letter-spacing: -0.2px;">
+              ${new Intl.NumberFormat('pt-BR').format(impactVal)}
+            </span>
+            <button type="button" class="btn-edit-impact" data-sigla="${sigla}" title="Editar impactos de ${nome || sigla}" style="background: transparent; border: 1px solid var(--border-subtle); cursor: pointer; padding: 4px 6px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.15s ease;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+            </button>
+          </div>
+        `;
+        const btn = td.querySelector('.btn-edit-impact');
+        if (btn) {
+          btn.addEventListener('click', () => this.openEditCell(sigla, nome));
+        }
+      }
+
+      openEditCell(sigla, nome) {
+        const td = document.getElementById(`impact-cell-${sigla}`);
+        if (!td) return;
+        const currentVal = this.programImpacts[sigla] !== undefined ? this.programImpacts[sigla] : (this.getDefaultImpacts()[sigla] || 0);
+
+        td.innerHTML = `
+          <div class="impact-cell-edit" style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+            <input type="number" 
+                   min="0" 
+                   step="1000" 
+                   class="form-input font-mono input-inline-impact" 
+                   value="${currentVal}" 
+                   style="width: 120px; height: 30px; text-align: right; font-weight: 700; font-size: 13px; padding: 2px 6px;">
+            <button type="button" class="btn btn-primary btn-save-inline-impact" title="Salvar" style="height: 30px; padding: 0 10px; font-size: 11px; font-weight: 600;">Salvar</button>
+            <button type="button" class="btn btn-secondary btn-cancel-inline-impact" title="Cancelar" style="height: 30px; padding: 0 8px; font-size: 11px;">✕</button>
+          </div>
+        `;
+
+        const input = td.querySelector('.input-inline-impact');
+        input.focus();
+        input.select();
+
+        const saveAction = () => {
+          const newVal = parseInt(input.value, 10);
+          const val = isNaN(newVal) || newVal < 0 ? 0 : newVal;
+          this.programImpacts[sigla] = val;
+          this.saveImpacts();
+          this.updateStats();
+          this.renderImpactCell(sigla, val, nome);
+          this.showToast(`Impacto de ${sigla} atualizado.`);
+        };
+
+        const cancelAction = () => {
+          this.renderImpactCell(sigla, currentVal, nome);
+        };
+
+        td.querySelector('.btn-save-inline-impact').addEventListener('click', saveAction);
+        td.querySelector('.btn-cancel-inline-impact').addEventListener('click', cancelAction);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            saveAction();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelAction();
+          }
+        });
+      }
+
+      updateStats() {
+        const programs = window.PROGRAMS_DATA || [];
+        const total = programs.length;
+        let sum = 0;
+        let max = 0;
+
+        programs.forEach(p => {
+          const val = this.programImpacts[p.sigla] !== undefined ? this.programImpacts[p.sigla] : (this.getDefaultImpacts()[p.sigla] || 0);
+          sum += val;
+          if (val > max) max = val;
+        });
+
+        const avg = total > 0 ? Math.round(sum / total) : 0;
+
+        const statTotal = document.getElementById('stat-total-programs');
+        const statAvg = document.getElementById('stat-avg-impacts');
+        const statMax = document.getElementById('stat-max-impacts');
+
+        if (statTotal) statTotal.textContent = total;
+        if (statAvg) statAvg.textContent = new Intl.NumberFormat('pt-BR').format(avg);
+        if (statMax) statMax.textContent = new Intl.NumberFormat('pt-BR').format(max);
+      }
+
+      exportCsv() {
+        const rows = [['SIGLA', 'PROGRAMA', 'GENERO', 'IMPACTOS_MINUTO_NACIONAL']];
+        const progs = [...(window.PROGRAMS_DATA || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
+        progs.forEach(p => {
+          const val = this.programImpacts[p.sigla] !== undefined ? this.programImpacts[p.sigla] : (this.getDefaultImpacts()[p.sigla] || 0);
+          rows.push([p.sigla, `"${p.nome}"`, `"${p.genero || ''}"`, val]);
+        });
+
+        const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + rows.map(e => e.join(';')).join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'redetv_impactos_por_programa_nacional.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        this.showToast('CSV de impactos exportado com sucesso!');
+      }
+
+      handleCsvUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const text = event.target.result;
+            const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+            if (lines.length < 2) {
+              alert('Arquivo CSV vazio ou sem dados.');
+              return;
+            }
+
+            let updatedCount = 0;
+            for (let i = 1; i < lines.length; i++) {
+              const parts = lines[i].split(';').length >= 4 ? lines[i].split(';') : lines[i].split(',');
+              if (parts.length >= 2) {
+                const sigla = parts[0].trim().replace(/^["']|["']$/g, '').toUpperCase();
+                const impactStr = parts[parts.length - 1].trim().replace(/^["']|["']$/g, '').replace(/\./g, '');
+                const val = parseInt(impactStr, 10);
+                if (sigla && !isNaN(val)) {
+                  this.programImpacts[sigla] = val;
+                  updatedCount++;
+                }
+              }
+            }
+
+            this.saveImpacts();
+            this.renderTable();
+            this.updateStats();
+            this.showToast(`CSV importado com sucesso! ${updatedCount} programas atualizados.`);
+          } catch (err) {
+            console.error(err);
+            alert('Erro ao processar arquivo CSV.');
+          }
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      new ImpactsApp();
+    });
+  </script>
+</body>
+</html>
