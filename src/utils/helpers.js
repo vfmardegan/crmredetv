@@ -479,6 +479,7 @@ export const PERMISSIONS = {
     "can_edit_clients",
     "can_view_executivos",
     "can_manage_users",
+    "can_access_media_planner",
     "can_view_audit_logs",
     "can_manage_executivos_links",
     "can_assign_carteira",

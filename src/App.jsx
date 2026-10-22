@@ -322,6 +322,10 @@ export default function App() {
     if (user && !hasPermission(user.perfil, "can_view_dashboard") && view === "dashboard") {
       setView("pipeline");
     }
+    const adminMediaViews = ["mediaPlanner", "mediaAi", "mediaHistory", "midiasFormatos"];
+    if (user && !hasPermission(user.perfil, "can_access_media_planner") && adminMediaViews.includes(view)) {
+      setView("pipeline");
+    }
   }, [user, view]);
 
   const [newAdvForm, setNewAdvForm] = useState({
@@ -1331,7 +1335,7 @@ export default function App() {
   }
 
   function handleOpenValoracaoFromOpp(opp) {
-    if (!opp) return;
+    if (!opp || !hasPermission(user?.perfil, "can_access_media_planner")) return;
     const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
     const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
     const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
@@ -1357,7 +1361,7 @@ export default function App() {
   }
 
   function handleOpenMediaAiFromOpp(opp) {
-    if (!opp) return;
+    if (!opp || !hasPermission(user?.perfil, "can_access_media_planner")) return;
     const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
     const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
     const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
@@ -2797,9 +2801,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       icon: FolderKanban,
       items: [
         { id: "proposals", label: "Tabelas e Propostas", icon: FileText },
-        { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
-        { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
-        { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
       ].filter(Boolean)
     },
     {
@@ -2818,7 +2822,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       items: [
         hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
         hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
-        hasPermission(user?.perfil, "can_manage_users") && { id: "midiasFormatos", label: "Mídias e Formatos", icon: Layers },
+        hasPermission(user?.perfil, "can_access_media_planner") && { id: "midiasFormatos", label: "Mídias e Formatos", icon: Layers },
         hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
       ].filter(Boolean)
     }
@@ -3410,7 +3414,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
-          {view === "mediaPlanner" && (
+          {view === "mediaPlanner" && hasPermission(user.perfil, "can_access_media_planner") && (
             <MediaPlannerTab
               advertisers={advertisers}
               opportunities={opportunities}
@@ -3420,14 +3424,14 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
-          {view === "mediaAi" && (
+          {view === "mediaAi" && hasPermission(user.perfil, "can_access_media_planner") && (
             <MediaAiTab
               setView={setView}
               prefillCampaign={pendingCampaignPrefill}
             />
           )}
 
-          {view === "mediaHistory" && (
+          {view === "mediaHistory" && hasPermission(user.perfil, "can_access_media_planner") && (
             <MediaHistoryTab setView={setView} />
           )}
 
@@ -3476,7 +3480,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
             />
           )}
 
-          {view === "midiasFormatos" && hasPermission(user.perfil, "can_manage_users") && (
+          {view === "midiasFormatos" && hasPermission(user.perfil, "can_access_media_planner") && (
             <MidiasFormatosTab />
           )}
 
@@ -3667,28 +3671,30 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               )}
             </div>
 
-            {/* Ações Rápidas de Valoração e Planejamento */}
-            <div className="mt-6 pt-5 border-t border-slate-200 flex flex-col gap-2">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
-                Projetos & Valoração
+            {/* Ações Rápidas de Valoração e Planejamento (Apenas Admins) */}
+            {hasPermission(user.perfil, "can_access_media_planner") && (
+              <div className="mt-6 pt-5 border-t border-slate-200 flex flex-col gap-2">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                  Projetos & Valoração
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenValoracaoFromOpp(selectedOpp)}
+                  className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  <Calculator size={15} />
+                  + Valoração Online
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenMediaAiFromOpp(selectedOpp)}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  <Bot size={15} />
+                  + Med.IA Planner
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleOpenValoracaoFromOpp(selectedOpp)}
-                className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
-              >
-                <Calculator size={15} />
-                + Valoração Online
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOpenMediaAiFromOpp(selectedOpp)}
-                className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
-              >
-                <Bot size={15} />
-                + Med.IA Planner
-              </button>
-            </div>
+            )}
 
             {hasPermission(user.perfil, "can_delete_opportunities") && (
               <div className="mt-4 pt-4 border-t border-slate-100 shrink-0">
