@@ -18,7 +18,8 @@ import {
   Pencil,
   Menu,
   Activity,
-  Compass
+  Compass,
+  Calculator
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -109,6 +110,7 @@ const AccessTab = lazyWithRetry(() => import("./components/AccessTab"));
 const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketIntelligenceTab"));
 const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
 const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
+const MediaPlannerTab = lazyWithRetry(() => import("./components/MediaPlannerTab"));
 
 function TabLoadingFallback() {
   return (
@@ -2685,6 +2687,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     advertisers: "Clientes",
     contacts: "Contatos",
     proposals: "Tabela e Propostas",
+    mediaPlanner: "Planejador de Mídia",
     executivos: "Executivos",
     engajamento: "Engajamento",
     pipelineEstrategico: "Plano de Ação",
@@ -2699,6 +2702,7 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     { id: "advertisers", label: "Clientes", icon: Building2 },
     { id: "contacts", label: "Contatos", icon: Users },
     { id: "proposals", label: "Tabela e Propostas", icon: FileText },
+    { id: "mediaPlanner", label: "Planejador de Mídia", icon: Calculator },
     hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
     hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
     hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
@@ -3169,6 +3173,14 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               openSendProposal={openSendProposal}
               proposalTemplates={proposalTemplates}
               allProducts={allProducts}
+            />
+          )}
+
+          {view === "mediaPlanner" && (
+            <MediaPlannerTab
+              advertisers={advertisers}
+              opportunities={opportunities}
+              currentUser={user}
             />
           )}
 
