@@ -229,6 +229,7 @@ export default function App() {
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+  const [pendingCampaignPrefill, setPendingCampaignPrefill] = useState(null);
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -1327,6 +1328,59 @@ export default function App() {
       console.error(err);
       setErrorMsg("Não foi possível salvar a oportunidade no servidor: " + (err.message || ""));
     }
+  }
+
+  function handleOpenValoracaoFromOpp(opp) {
+    if (!opp) return;
+    const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
+    const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
+    const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
+    const projectName = opp.title || "";
+
+    const prefill = {
+      client: clientName,
+      agency: agencyName,
+      projectName: projectName,
+      opportunityId: opp.id,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem("redetv_prefill_campaign", JSON.stringify(prefill));
+    } catch (e) {
+      console.warn("Falha ao salvar redetv_prefill_campaign:", e);
+    }
+
+    setPendingCampaignPrefill(prefill);
+    setSelectedOppId(null);
+    setView("mediaPlanner");
+  }
+
+  function handleOpenMediaAiFromOpp(opp) {
+    if (!opp) return;
+    const clientName = (advertisers.find((a) => a.id === opp.advertiserId)?.name) || opp.advertiserName || "";
+    const agencyObj = opp.agencyId && opp.agencyId !== DIRECT_CLIENT_ID ? advertisers.find((a) => a.id === opp.agencyId) : null;
+    const agencyName = agencyObj ? agencyObj.name : (opp.agencyName || "");
+    const projectName = opp.title || "";
+
+    const prefill = {
+      client: clientName,
+      agency: agencyName,
+      projectName: projectName,
+      opportunityId: opp.id,
+      timestamp: Date.now()
+    };
+
+    try {
+      localStorage.setItem("redetv_media_ai_prefill", JSON.stringify(prefill));
+      localStorage.setItem("redetv_prefill_campaign", JSON.stringify(prefill));
+    } catch (e) {
+      console.warn("Falha ao salvar redetv_media_ai_prefill:", e);
+    }
+
+    setPendingCampaignPrefill(prefill);
+    setSelectedOppId(null);
+    setView("mediaAi");
   }
 
   async function deleteOpportunity(oppId) {
@@ -3362,11 +3416,15 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               opportunities={opportunities}
               currentUser={user}
               setView={setView}
+              prefillCampaign={pendingCampaignPrefill}
             />
           )}
 
           {view === "mediaAi" && (
-            <MediaAiTab setView={setView} />
+            <MediaAiTab
+              setView={setView}
+              prefillCampaign={pendingCampaignPrefill}
+            />
           )}
 
           {view === "mediaHistory" && (
@@ -3609,12 +3667,35 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               )}
             </div>
 
+            {/* Ações Rápidas de Valoração e Planejamento */}
+            <div className="mt-6 pt-5 border-t border-slate-200 flex flex-col gap-2">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                Projetos & Valoração
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenValoracaoFromOpp(selectedOpp)}
+                className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                <Calculator size={15} />
+                + Valoração Online
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenMediaAiFromOpp(selectedOpp)}
+                className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all cursor-pointer"
+              >
+                <Bot size={15} />
+                + Med.IA Planner
+              </button>
+            </div>
+
             {hasPermission(user.perfil, "can_delete_opportunities") && (
-              <div className="mt-8 pt-4 border-t border-slate-100 shrink-0">
+              <div className="mt-4 pt-4 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => deleteOpportunity(selectedOpp.id)}
-                  className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-md py-2.5 text-xs font-bold uppercase tracking-wider shadow-sm hover:shadow transition-all"
+                  className="w-full bg-slate-100 hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-md py-2.5 text-xs font-bold uppercase tracking-wider transition-all"
                 >
                   Excluir Oportunidade
                 </button>

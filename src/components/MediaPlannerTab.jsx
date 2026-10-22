@@ -1,5 +1,6 @@
 // src/components/MediaPlannerTab.jsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import * as XLSX from "xlsx";
 import {
   Download,
@@ -70,10 +71,175 @@ function getProgramImpact(sigla) {
   return defaultImpacts[sigla] || defaultImpacts.DEFAULT;
 }
 
+/**
+ * Componente de Digitação com Busca Inteligente (Smart Autocomplete)
+ * Fiel ao projeto original: dropdown flutuante via Portal imune a cortes de scroll
+ */
+function SmartAutocompleteCell({
+  value = "",
+  placeholder = "",
+  disabled = false,
+  className = "form-input",
+  style = {},
+  options = [],
+  filterFn,
+  renderItem,
+  onSelect,
+  onCommitCustom,
+  onClear
+}) {
+  const [query, setQuery] = useState(value || "");
+  const [isOpen, setIsOpen] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState({});
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  const matches = useMemo(() => {
+    if (!isOpen || !query.trim()) return [];
+    return filterFn ? filterFn(options, query.trim().toLowerCase()) : [];
+  }, [isOpen, query, options, filterFn]);
+
+  function updateCoords() {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const coords = {
+      position: "fixed",
+      left: `${rect.left}px`,
+      width: `${Math.max(rect.width, 320)}px`,
+      zIndex: 999999,
+    };
+
+    if (spaceBelow < 240 && spaceAbove > spaceBelow) {
+      coords.bottom = `${window.innerHeight - rect.top + 4}px`;
+      coords.top = "auto";
+      coords.maxHeight = `${Math.min(spaceAbove - 16, 260)}px`;
+    } else {
+      coords.top = `${rect.bottom + 4}px`;
+      coords.bottom = "auto";
+      coords.maxHeight = `${Math.min(spaceBelow - 16, 260)}px`;
+    }
+    setDropdownCoords(coords);
+  }
+
+  function handleOpen() {
+    if (disabled) return;
+    updateCoords();
+    setIsOpen(true);
+  }
+
+  function handleSelect(item) {
+    onSelect(item);
+    setIsOpen(false);
+  }
+
+  function handleCommit() {
+    setIsOpen(false);
+    const trimmed = query.trim();
+    if (!trimmed) {
+      if (onClear) onClear();
+      return;
+    }
+    if (onCommitCustom) {
+      onCommitCustom(trimmed);
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(e) {
+      if (inputRef.current && !inputRef.current.contains(e.target)) {
+        handleCommit();
+      }
+    }
+    function handleScrollOrResize() {
+      updateCoords();
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [isOpen, query]);
+
+  return (
+    <div className="autocomplete-container cell-control-container" style={{ width: "100%", position: "relative" }}>
+      <input
+        ref={inputRef}
+        type="text"
+        disabled={disabled}
+        className={className}
+        value={query}
+        placeholder={placeholder}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!isOpen) {
+            updateCoords();
+            setIsOpen(true);
+          }
+        }}
+        onFocus={handleOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Tab") {
+            setIsOpen(false);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (matches.length > 0) {
+              handleSelect(matches[0]);
+            } else {
+              handleCommit();
+            }
+          }
+        }}
+        autoComplete="off"
+        style={{
+          height: "34px",
+          padding: "0 10px",
+          fontSize: "12px",
+          textTransform: "uppercase",
+          ...style,
+        }}
+      />
+
+      {isOpen && matches.length > 0 && createPortal(
+        <div
+          className="autocomplete-dropdown"
+          style={{ ...dropdownCoords, display: "flex" }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {matches.map((item, idx) => (
+            <div
+              key={idx}
+              className="autocomplete-item"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(item);
+              }}
+            >
+              {renderItem(item)}
+            </div>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 function MediaPlannerTabContent({
   advertisers = [],
   opportunities = [],
-  currentUser = null
+  currentUser = null,
+  prefillCampaign = null
 }) {
   // Toast
   const [toastMessage, setToastMessage] = useState("");
@@ -127,7 +293,7 @@ function MediaPlannerTabContent({
     }
   });
 
-  // Interconexão com Med.IA Planner e Histórico de Propostas
+  // Interconexão com Med.IA Planner, Pipeline e Histórico de Propostas
   useEffect(() => {
     try {
       const loadProp = localStorage.getItem("redetv_load_proposal");
@@ -147,10 +313,12 @@ function MediaPlannerTabContent({
         localStorage.removeItem("redetv_pending_ai_plan");
         const plan = JSON.parse(pendingAi);
         if (plan) {
-          if (plan.projectName) {
+          if (plan.client || plan.agency || plan.projectName) {
             setCampaign((prev) => ({
               ...prev,
-              projectName: plan.projectName,
+              client: plan.client || prev.client,
+              agency: plan.agency || prev.agency,
+              projectName: plan.projectName || prev.projectName,
               startDate: plan.period?.startDate || prev.startDate,
               endDate: plan.period?.endDate || prev.endDate,
               periodPreset: plan.period?.periodPreset || prev.periodPreset
@@ -175,7 +343,35 @@ function MediaPlannerTabContent({
         }
       }
     } catch (e) {}
+
+    try {
+      const prefillStored = localStorage.getItem("redetv_prefill_campaign");
+      if (prefillStored) {
+        const pf = JSON.parse(prefillStored);
+        if (pf && (pf.client || pf.agency || pf.projectName)) {
+          setCampaign((prev) => ({
+            ...prev,
+            client: pf.client || prev.client,
+            agency: pf.agency || prev.agency,
+            projectName: pf.projectName || prev.projectName,
+          }));
+          showToast(`Dados da oportunidade "${pf.projectName || pf.client}" aplicados!`);
+        }
+      }
+    } catch (e) {}
   }, []);
+
+  useEffect(() => {
+    if (prefillCampaign && (prefillCampaign.client || prefillCampaign.agency || prefillCampaign.projectName)) {
+      setCampaign((prev) => ({
+        ...prev,
+        client: prefillCampaign.client || prev.client,
+        agency: prefillCampaign.agency || prev.agency,
+        projectName: prefillCampaign.projectName || prev.projectName,
+      }));
+      showToast(`Dados da oportunidade "${prefillCampaign.projectName || prefillCampaign.client}" aplicados!`);
+    }
+  }, [prefillCampaign]);
 
   // Recálculo de Linha
   function calculateLine(line) {
@@ -354,9 +550,15 @@ function MediaPlannerTabContent({
     showToast("Todas as linhas foram limpas.");
   }
 
-  function updateLine(id, field, value) {
+  function updateLine(id, fieldOrObj, value) {
     setLines((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, [field]: value } : l))
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        if (typeof fieldOrObj === "object" && fieldOrObj !== null) {
+          return { ...l, ...fieldOrObj };
+        }
+        return { ...l, [fieldOrObj]: value };
+      })
     );
   }
 
@@ -781,6 +983,10 @@ function MediaPlannerTabContent({
             <tbody id="table-body">
               {calculatedLines.map((line, idx) => {
                 const c = line.calculo || {};
+                const prog = MediaCalculator.getProgram(line.sigla);
+                const market = MediaCalculator.getMarket(line.marketId);
+                const formatObj = MediaCalculator.getFormat(line.formatId);
+
                 return (
                   <tr key={line.id} className="row-item">
                     {/* 1. # */}
@@ -788,53 +994,205 @@ function MediaPlannerTabContent({
                       {idx + 1}
                     </td>
 
-                    {/* 2. PRODUTO */}
-                    <td>
-                      <select
-                        value={line.sigla}
-                        onChange={(e) => updateLine(line.id, "sigla", e.target.value)}
-                        className="form-input"
-                        style={{ height: "34px", fontSize: "0.82rem", textTransform: "uppercase" }}
-                      >
-                        <option value="">DIGITE PARA BUSCAR PRODUTO...</option>
-                        {(PROGRAMS_DATA || []).map((p) => (
-                          <option key={p.sigla} value={p.sigla}>
-                            {p.nome}
-                          </option>
-                        ))}
-                      </select>
+                    {/* 2. PRODUTO (Busca Inteligente) */}
+                    <td style={{ minWidth: "220px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <SmartAutocompleteCell
+                          value={line.isCustomProduct ? line.customProductName : (prog?.nome || line.sigla || "")}
+                          placeholder="DIGITE PARA BUSCAR PRODUTO..."
+                          className="form-input autocomplete-prod-input font-semibold"
+                          options={PROGRAMS_DATA || []}
+                          filterFn={(opts, q) =>
+                            opts.filter(
+                              (p) =>
+                                (p.nome && p.nome.toLowerCase().includes(q)) ||
+                                (p.sigla && p.sigla.toLowerCase().includes(q)) ||
+                                (p.genero && p.genero.toLowerCase().includes(q))
+                            )
+                          }
+                          renderItem={(p) => (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                              <div>
+                                <span className="autocomplete-item-title">{p.nome.toUpperCase()}</span>
+                                <span style={{ fontSize: "10px", color: "var(--text-sub)", marginLeft: "4px" }}>({p.sigla.toUpperCase()})</span>
+                                <div className="autocomplete-item-sub">{(p.diasDesc || "").toUpperCase()} • {p.inicio || ""} ÀS {p.fim || ""}</div>
+                              </div>
+                              <span style={{ fontSize: "10px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>{p.genero.toUpperCase()}</span>
+                            </div>
+                          )}
+                          onSelect={(p) => {
+                            updateLine(line.id, {
+                              sigla: p.sigla,
+                              isCustomProduct: false,
+                              customProductName: ""
+                            });
+                          }}
+                          onCommitCustom={(text) => {
+                            const found = (PROGRAMS_DATA || []).find(
+                              (p) =>
+                                p.nome.toLowerCase() === text.toLowerCase() ||
+                                p.sigla.toLowerCase() === text.toLowerCase()
+                            );
+                            if (found) {
+                              updateLine(line.id, {
+                                sigla: found.sigla,
+                                isCustomProduct: false,
+                                customProductName: ""
+                              });
+                            } else {
+                              updateLine(line.id, {
+                                sigla: "CUSTOM",
+                                isCustomProduct: true,
+                                customProductName: text.toUpperCase()
+                              });
+                            }
+                          }}
+                          onClear={() => {
+                            updateLine(line.id, {
+                              sigla: "",
+                              isCustomProduct: false,
+                              customProductName: ""
+                            });
+                          }}
+                        />
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap", minHeight: "18px", fontSize: "11px", marginTop: "2px" }}>
+                          {line.isCustomProduct ? (
+                            <span style={{ fontWeight: "700", color: "var(--text-dark)", textTransform: "uppercase" }}>PROJETO ESPECIAL</span>
+                          ) : prog ? (
+                            <>
+                              <span style={{ color: "var(--text-muted)" }}>{(prog.diasDesc || "").toUpperCase()} • {prog.inicio || ""} ÀS {prog.fim || ""}</span>
+                              {prog.obs && <span style={{ fontWeight: "700", fontSize: "13px", color: "inherit", cursor: "help" }} title={prog.obs}>*</span>}
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
                     </td>
 
-                    {/* 3. PRAÇA */}
-                    <td>
-                      <select
-                        value={line.marketId}
-                        onChange={(e) => updateLine(line.id, "marketId", e.target.value)}
-                        className="form-input"
-                        style={{ height: "34px", fontSize: "0.82rem" }}
-                      >
-                        {(REGIONAL_MARKETS || []).map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.nome}
-                          </option>
-                        ))}
-                      </select>
+                    {/* 3. PRAÇA (Busca Inteligente) */}
+                    <td style={{ minWidth: "140px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <SmartAutocompleteCell
+                          value={line.isCustomMarket ? line.customMarketName : (market?.nome || (line.marketId ? line.marketId : ""))}
+                          placeholder="DIGITE PARA BUSCAR PRAÇA..."
+                          className="form-input autocomplete-market-input"
+                          disabled={line.formatType === "BRANDED"}
+                          options={REGIONAL_MARKETS || []}
+                          filterFn={(opts, q) =>
+                            opts.filter(
+                              (m) =>
+                                (m.nome && m.nome.toLowerCase().includes(q)) ||
+                                (m.id && m.id.toLowerCase().includes(q)) ||
+                                (m.regiao && m.regiao.toLowerCase().includes(q))
+                            )
+                          }
+                          renderItem={(m) => {
+                            const isAired = prog && prog.regional30 ? prog.regional30[m.id] !== null : true;
+                            return (
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                                <div>
+                                  <span className="autocomplete-item-title">{m.nome.toUpperCase()}</span>
+                                  {!isAired && <span style={{ fontSize: "10px", color: "#EF4444", marginLeft: "4px" }}>(NÃO EXIBIDO)</span>}
+                                </div>
+                                <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase" }}>{m.regiao.toUpperCase()}</span>
+                              </div>
+                            );
+                          }}
+                          onSelect={(m) => {
+                            updateLine(line.id, {
+                              marketId: m.id,
+                              isCustomMarket: false,
+                              customMarketName: ""
+                            });
+                          }}
+                          onCommitCustom={(text) => {
+                            const found = (REGIONAL_MARKETS || []).find(
+                              (m) =>
+                                m.nome.toLowerCase() === text.toLowerCase() ||
+                                m.id.toLowerCase() === text.toLowerCase() ||
+                                m.nome.toLowerCase().startsWith(text.toLowerCase())
+                            );
+                            if (found) {
+                              updateLine(line.id, {
+                                marketId: found.id,
+                                isCustomMarket: false,
+                                customMarketName: ""
+                              });
+                            }
+                          }}
+                          onClear={() => {
+                            updateLine(line.id, { marketId: "" });
+                          }}
+                        />
+                        {c.motivo && (
+                          <div className="alert-not-aired" style={{ marginTop: "2px" }}>
+                            <span>⚠️ {c.motivo}</span>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
-                    {/* 4. FORMATO */}
-                    <td>
-                      <select
-                        value={line.formatId}
-                        onChange={(e) => updateLine(line.id, "formatId", e.target.value)}
-                        className="form-input"
-                        style={{ height: "34px", fontSize: "0.82rem" }}
-                      >
-                        {(MEDIA_FORMATS || []).map((f) => (
-                          <option key={f.id} value={f.id}>
-                            {f.nome}
-                          </option>
-                        ))}
-                      </select>
+                    {/* 4. FORMATO (Busca Inteligente) */}
+                    <td style={{ minWidth: "180px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <SmartAutocompleteCell
+                          value={line.isCustomFormat ? line.customFormatName : (formatObj?.nome || line.formatId || "")}
+                          placeholder="DIGITE O FORMATO..."
+                          className="form-input autocomplete-format-input"
+                          options={MEDIA_FORMATS || []}
+                          filterFn={(opts, q) =>
+                            opts.filter(
+                              (f) =>
+                                (f.nome && f.nome.toLowerCase().includes(q)) ||
+                                (f.id && f.id.toLowerCase().includes(q))
+                            )
+                          }
+                          renderItem={(f) => (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+                              <span className="autocomplete-item-title">{f.nome.toUpperCase()}</span>
+                              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", fontWeight: "700", color: "var(--text-sub)" }}>
+                                {Number(f.coef).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          onSelect={(f) => {
+                            updateLine(line.id, {
+                              formatId: f.id,
+                              customCoef: null,
+                              isCustomFormat: false,
+                              customFormatName: ""
+                            });
+                          }}
+                          onCommitCustom={(text) => {
+                            const found = (MEDIA_FORMATS || []).find(
+                              (f) =>
+                                f.nome.toLowerCase() === text.toLowerCase() ||
+                                f.id.toLowerCase() === text.toLowerCase()
+                            );
+                            if (found) {
+                              updateLine(line.id, {
+                                formatId: found.id,
+                                customCoef: null,
+                                isCustomFormat: false,
+                                customFormatName: ""
+                              });
+                            } else {
+                              updateLine(line.id, {
+                                formatId: "CUSTOM",
+                                isCustomFormat: true,
+                                customFormatName: text.toUpperCase()
+                              });
+                            }
+                          }}
+                          onClear={() => {
+                            updateLine(line.id, {
+                              formatId: "",
+                              customCoef: null,
+                              isCustomFormat: false,
+                              customFormatName: ""
+                            });
+                          }}
+                        />
+                      </div>
                     </td>
 
                     {/* 5. BASE 30" */}
