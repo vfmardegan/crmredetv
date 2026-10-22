@@ -127,6 +127,56 @@ function MediaPlannerTabContent({
     }
   });
 
+  // Interconexão com Med.IA Planner e Histórico de Propostas
+  useEffect(() => {
+    try {
+      const loadProp = localStorage.getItem("redetv_load_proposal");
+      if (loadProp) {
+        localStorage.removeItem("redetv_load_proposal");
+        const parsed = JSON.parse(loadProp);
+        if (parsed.campaign) setCampaign(parsed.campaign);
+        if (parsed.lines && parsed.lines.length > 0) setLines(parsed.lines);
+        showToast(`Campanha "${parsed.projectName || parsed.client}" carregada do histórico!`);
+        return;
+      }
+    } catch (e) {}
+
+    try {
+      const pendingAi = localStorage.getItem("redetv_pending_ai_plan");
+      if (pendingAi) {
+        localStorage.removeItem("redetv_pending_ai_plan");
+        const plan = JSON.parse(pendingAi);
+        if (plan) {
+          if (plan.projectName) {
+            setCampaign((prev) => ({
+              ...prev,
+              projectName: plan.projectName,
+              startDate: plan.period?.startDate || prev.startDate,
+              endDate: plan.period?.endDate || prev.endDate,
+              periodPreset: plan.period?.periodPreset || prev.periodPreset
+            }));
+          }
+          if (Array.isArray(plan.items) && plan.items.length > 0) {
+            const mapped = plan.items.map((it, idx) => ({
+              id: `line-ai-${idx}-${Date.now()}`,
+              sigla: it.program || "",
+              marketId: "NACIONAL",
+              formatId: it.format || "COMERCIAL_30",
+              customCoef: null,
+              insertionMode: "TOTAL",
+              totalDirect: it.totalInsertions || 10,
+              freqDias: "",
+              freqPorDia: it.dailyFrequency || "",
+              discountPercent: campaign.defaultDiscount || 70.0
+            }));
+            setLines(mapped);
+            showToast("Plano gerado pela Med.IA importado com sucesso!");
+          }
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   // Recálculo de Linha
   function calculateLine(line) {
     try {

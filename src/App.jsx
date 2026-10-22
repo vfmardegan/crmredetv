@@ -19,7 +19,10 @@ import {
   Menu,
   Activity,
   Compass,
-  Calculator
+  Calculator,
+  Bot,
+  History,
+  Layers
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -111,6 +114,9 @@ const MarketIntelligenceTab = lazyWithRetry(() => import("./components/MarketInt
 const EngajamentoTab = lazyWithRetry(() => import("./components/EngajamentoTab"));
 const PipelineEstrategicoTab = lazyWithRetry(() => import("./components/PipelineEstrategicoTab"));
 const MediaPlannerTab = lazyWithRetry(() => import("./components/MediaPlannerTab"));
+const MediaAiTab = lazyWithRetry(() => import("./components/MediaAiTab"));
+const MediaHistoryTab = lazyWithRetry(() => import("./components/MediaHistoryTab"));
+const MidiasFormatosTab = lazyWithRetry(() => import("./components/MidiasFormatosTab"));
 
 function TabLoadingFallback() {
   return (
@@ -2681,33 +2687,65 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
 
   const viewTitles = {
     dashboard: "Visão Geral",
-    intelligence: "Radar de Mercado",
+    pipelineEstrategico: "Plano de Ação",
     pipeline: "Pipeline comercial",
-    planning: "Pipeline Planejamento",
+    intelligence: "Radar de Mercado",
     advertisers: "Clientes",
     contacts: "Contatos",
-    proposals: "Tabela e Propostas",
-    mediaPlanner: "Planejador de Mídia",
-    executivos: "Executivos",
+    mediaPlanner: "Valoração Online",
+    mediaAi: "Med.IA Planner (IA)",
+    proposals: "Tabelas e Propostas",
+    mediaHistory: "Histórico de Propostas",
+    planning: "Pipeline Planejamento",
     engajamento: "Engajamento",
-    pipelineEstrategico: "Plano de Ação",
+    executivos: "Executivos",
+    midiasFormatos: "Mídias e Formatos",
     access: "Gestão e Acessos",
   };
 
-  const navItems = [
-    hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
-    user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
-    { id: "intelligence", label: "Radar de Mercado", icon: Sparkles },
-    { id: "pipeline", label: "Pipeline", icon: GitBranch },
-    { id: "advertisers", label: "Clientes", icon: Building2 },
-    { id: "contacts", label: "Contatos", icon: Users },
-    { id: "proposals", label: "Tabela e Propostas", icon: FileText },
-    { id: "mediaPlanner", label: "Planejador de Mídia", icon: Calculator },
-    hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
-    hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
-    hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
-    hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
-  ].filter(Boolean);
+  const navSections = [
+    {
+      title: "VENDAS",
+      items: [
+        hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
+        user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
+        { id: "pipeline", label: "Pipeline", icon: GitBranch },
+      ].filter(Boolean)
+    },
+    {
+      title: "MERCADO",
+      items: [
+        { id: "intelligence", label: "Radar", icon: Sparkles },
+        { id: "advertisers", label: "Clientes", icon: Building2 },
+        { id: "contacts", label: "Contatos", icon: Users },
+      ].filter(Boolean)
+    },
+    {
+      title: "MÍDIA",
+      items: [
+        { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
+        { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
+        { id: "proposals", label: "Tabelas e Propostas", icon: FileText },
+        { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
+      ].filter(Boolean)
+    },
+    {
+      title: "PLANEJAMENTO",
+      isStandalone: true,
+      items: [
+        hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
+      ].filter(Boolean)
+    },
+    {
+      title: "ADMINISTRAÇÃO",
+      items: [
+        hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
+        hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
+        hasPermission(user?.perfil, "can_manage_users") && { id: "midiasFormatos", label: "Mídias e Formatos", icon: Layers },
+        hasPermission(user?.perfil, "can_manage_users") && { id: "access", label: "Gestão e Acessos", icon: Shield },
+      ].filter(Boolean)
+    }
+  ].filter(section => section.items.length > 0);
 
   return (
     <div className="w-full min-h-screen bg-slate-50 text-slate-900 flex flex-col md:flex-row">
@@ -2744,24 +2782,33 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </button>
             </div>
 
-            <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setView(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm text-left transition-colors " +
-                    (view === item.id
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                  }
-                >
-                  <item.icon size={18} />
-                  {item.label}
-                </button>
+            <nav className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
+              {navSections.map((section, sIdx) => (
+                <div key={section.title || sIdx} className="flex flex-col gap-0.5">
+                  {!section.isStandalone && (
+                    <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3 pt-2 pb-1 select-none">
+                      {section.title}
+                    </div>
+                  )}
+                  {section.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setView(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={
+                        "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                        (view === item.id
+                          ? "bg-slate-800 text-white font-medium"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                      }
+                    >
+                      <item.icon size={18} />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
               ))}
             </nav>
 
@@ -2799,21 +2846,30 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           </div>
           <div className="text-xs text-slate-400 mt-1">Mercado anunciante</div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-1">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setView(item.id)}
-              className={
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                (view === item.id
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-              }
-            >
-              <item.icon size={16} />
-              {item.label}
-            </button>
+        <nav className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
+          {navSections.map((section, sIdx) => (
+            <div key={section.title || sIdx} className="flex flex-col gap-0.5">
+              {!section.isStandalone && (
+                <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3 pt-2 pb-1 select-none">
+                  {section.title}
+                </div>
+              )}
+              {section.items.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id)}
+                  className={
+                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
+                    (view === item.id
+                      ? "bg-slate-800 text-white font-medium"
+                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                  }
+                >
+                  <item.icon size={16} />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
@@ -3181,7 +3237,16 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               advertisers={advertisers}
               opportunities={opportunities}
               currentUser={user}
+              setView={setView}
             />
+          )}
+
+          {view === "mediaAi" && (
+            <MediaAiTab setView={setView} />
+          )}
+
+          {view === "mediaHistory" && (
+            <MediaHistoryTab setView={setView} />
           )}
 
           {view === "executivos" && hasPermission(user.perfil, "can_view_executivos") && (
@@ -3227,6 +3292,10 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               newlyCreatedClient={newlyCreatedPlanoAcaoClient}
               addInteraction={addInteraction}
             />
+          )}
+
+          {view === "midiasFormatos" && hasPermission(user.perfil, "can_manage_users") && (
+            <MidiasFormatosTab />
           )}
 
           {view === "access" && hasPermission(user.perfil, "can_manage_users") && (
