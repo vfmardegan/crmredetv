@@ -22,7 +22,8 @@ import {
   Calculator,
   Bot,
   History,
-  Layers
+  Layers,
+  ChevronDown
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -2692,9 +2693,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     intelligence: "Radar de Mercado",
     advertisers: "Clientes",
     contacts: "Contatos",
+    proposals: "Tabelas e Projetos",
     mediaPlanner: "Valoração Online",
     mediaAi: "Med.IA Planner (IA)",
-    proposals: "Tabelas e Propostas",
     mediaHistory: "Histórico de Propostas",
     planning: "Pipeline Planejamento",
     engajamento: "Engajamento",
@@ -2702,6 +2703,15 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     midiasFormatos: "Mídias e Formatos",
     access: "Gestão e Acessos",
   };
+
+  const [collapsedSections, setCollapsedSections] = useState({});
+
+  function toggleSection(sectionTitle) {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionTitle]: !prev[sectionTitle]
+    }));
+  }
 
   const navSections = [
     {
@@ -2723,9 +2733,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     {
       title: "MÍDIA",
       items: [
+        { id: "proposals", label: "Tabelas e Projetos", icon: FileText },
         { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
         { id: "mediaAi", label: "Med.IA Planner (IA)", icon: Bot },
-        { id: "proposals", label: "Tabelas e Propostas", icon: FileText },
         { id: "mediaHistory", label: "Histórico de Propostas", icon: History },
       ].filter(Boolean)
     },
@@ -2782,32 +2792,67 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </button>
             </div>
 
-            <nav className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
+            <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
               {navSections.map((section, sIdx) => (
-                <div key={section.title || sIdx} className="flex flex-col gap-0.5">
-                  {!section.isStandalone && (
-                    <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3 pt-2 pb-1 select-none">
-                      {section.title}
+                <div key={section.title || sIdx} className="flex flex-col">
+                  {!section.isStandalone ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(section.title)}
+                        className="flex items-center justify-between w-full text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase px-3 pt-2 pb-1 select-none transition-colors"
+                      >
+                        <span>{section.title}</span>
+                        <ChevronDown
+                          size={13}
+                          className={`transition-transform duration-200 text-slate-500 ${collapsedSections[section.title] ? "-rotate-90" : "rotate-0"}`}
+                        />
+                      </button>
+                      {!collapsedSections[section.title] && (
+                        <div className="flex flex-col gap-0.5">
+                          {section.items.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setView(item.id);
+                                setMobileMenuOpen(false);
+                              }}
+                              className={
+                                "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                                (view === item.id
+                                  ? "bg-slate-800 text-white font-medium"
+                                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                              }
+                            >
+                              <item.icon size={18} />
+                              <span>{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-0.5">
+                      {section.items.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setView(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={
+                            "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                            (view === item.id
+                              ? "bg-slate-800 text-white font-medium"
+                              : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                          }
+                        >
+                          <item.icon size={18} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
                     </div>
                   )}
-                  {section.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setView(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={
-                        "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                        (view === item.id
-                          ? "bg-slate-800 text-white font-medium"
-                          : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                      }
-                    >
-                      <item.icon size={18} />
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
                 </div>
               ))}
             </nav>
@@ -2846,29 +2891,61 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           </div>
           <div className="text-xs text-slate-400 mt-1">Mercado anunciante</div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-2.5 overflow-y-auto">
+        <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
           {navSections.map((section, sIdx) => (
-            <div key={section.title || sIdx} className="flex flex-col gap-0.5">
-              {!section.isStandalone && (
-                <div className="text-[10px] font-bold tracking-wider text-slate-400 uppercase px-3 pt-2 pb-1 select-none">
-                  {section.title}
+            <div key={section.title || sIdx} className="flex flex-col">
+              {!section.isStandalone ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.title)}
+                    className="flex items-center justify-between w-full text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase px-3 pt-2 pb-1 select-none transition-colors"
+                  >
+                    <span>{section.title}</span>
+                    <ChevronDown
+                      size={13}
+                      className={`transition-transform duration-200 text-slate-500 ${collapsedSections[section.title] ? "-rotate-90" : "rotate-0"}`}
+                    />
+                  </button>
+                  {!collapsedSections[section.title] && (
+                    <div className="flex flex-col gap-0.5">
+                      {section.items.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setView(item.id)}
+                          className={
+                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
+                            (view === item.id
+                              ? "bg-slate-800 text-white font-medium"
+                              : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                          }
+                        >
+                          <item.icon size={16} />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setView(item.id)}
+                      className={
+                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
+                        (view === item.id
+                          ? "bg-slate-800 text-white font-medium"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                      }
+                    >
+                      <item.icon size={16} />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
                 </div>
               )}
-              {section.items.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setView(item.id)}
-                  className={
-                    "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
-                    (view === item.id
-                      ? "bg-slate-800 text-white font-medium"
-                      : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                  }
-                >
-                  <item.icon size={16} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
             </div>
           ))}
         </nav>
