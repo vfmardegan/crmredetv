@@ -54,6 +54,43 @@ class MediaApp {
     this.initDefaultLines();
     this.bindEvents();
     this.render();
+    this.loadServerRateCard();
+  }
+
+  async loadServerRateCard() {
+    try {
+      const token = (typeof window !== "undefined" && (
+        localStorage.getItem("crm_session_token") || 
+        (window.parent && window.parent.localStorage && window.parent.localStorage.getItem("crm_session_token"))
+      )) || "";
+
+      if (!token) return;
+
+      const res = await fetch("/api/v1/media-planner/rate-card", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.hasDynamicCard && data.rateCard && data.rateCard.dados_json) {
+          const dynamicCard = data.rateCard.dados_json;
+          if (dynamicCard.programs && Array.isArray(dynamicCard.programs)) {
+            window.PROGRAMS_DATA = dynamicCard.programs;
+          }
+          if (dynamicCard.rateCard) {
+            window.RATE_CARD = dynamicCard.rateCard;
+          }
+          if (data.rateCard.nome) {
+            this.campaign.tableVersionName = data.rateCard.nome;
+            const btnTable = document.getElementById('btn-table-version');
+            if (btnTable) btnTable.textContent = `⚙️ Tabela ${data.rateCard.nome}`;
+            const sidebarTable = document.getElementById('sidebar-active-table-name');
+            if (sidebarTable) sidebarTable.textContent = data.rateCard.nome;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Utilizando tabela de preços padrão:", e);
+    }
   }
 
   initDefaultLines() {

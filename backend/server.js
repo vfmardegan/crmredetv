@@ -20,6 +20,7 @@ const uploadsRoutes = require("./routes/uploads");
 const engajamentoRoutes = require("./routes/engajamento");
 const pipelineEstrategicoRoutes = require("./routes/pipelineEstrategico");
 const mediaProposalsRoutes = require("./routes/mediaProposals");
+const mediaPlannerAiRoutes = require("./routes/mediaPlannerAi");
 
 const authRoutes = require("./routes/auth");
 const requireAuth = require("./routes/authMiddleware");
@@ -180,6 +181,7 @@ protectedRouter.use(notificationsRoutes);
 protectedRouter.use(engajamentoRoutes);
 protectedRouter.use(pipelineEstrategicoRoutes);
 protectedRouter.use(mediaProposalsRoutes);
+protectedRouter.use(mediaPlannerAiRoutes);
 app.use("/api/v1", protectedRouter);
 
 // Cria o servidor HTTP e inicializa o WebSocketServer acoplado

@@ -1,7 +1,11 @@
 const express = require("express");
 const { pool } = require("../db");
+const { requirePermission } = require("../utils/acl");
 
 const router = express.Router();
+
+// Blindagem estrita de acesso: apenas administradores com permissão podem consultar ou gravar propostas de mídia
+router.use(requirePermission("can_access_media_planner"));
 
 /**
  * GET /api/v1/media-proposals — Lista todas as propostas salvas na central corporativa

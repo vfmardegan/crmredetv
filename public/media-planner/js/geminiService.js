@@ -201,18 +201,46 @@ FORMATO EXATO DO JSON DE RESPOSTA:
   },
 
   /**
-   * Envia o prompt para a API do Gemini com fallback resiliente
+   * Envia o prompt para a API do Gemini com prioridade para o Proxy Backend Seguro
    */
   async plan(promptText) {
     let geminiData = null;
     let modelUsed = this.primaryModel;
 
-    // 1. Tenta o modelo primário: gemini-3.5-flash-lite
+    // 1. Prioridade Arquitetural de Segurança: Executa via Proxy Backend Seguro do CRM
+    const token = (typeof window !== "undefined" && (
+      localStorage.getItem("crm_session_token") || 
+      (window.parent && window.parent.localStorage && window.parent.localStorage.getItem("crm_session_token"))
+    )) || "";
+
+    if (token) {
+      try {
+        const res = await fetch("/api/v1/ia/media-plan", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ prompt: promptText })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.plan) {
+            console.log(`✓ Planejamento estruturado com sucesso via Backend Proxy seguro (${data.modelUsed || "Gemini"})`);
+            const plan = this.buildPlanFromGemini(data.plan, promptText, data.modelUsed || "gemini-3.5-flash-lite");
+            return { success: true, plan };
+          }
+        }
+      } catch (errProxy) {
+        console.warn("Proxy backend de IA indisponível, acionando canal de contingência:", errProxy);
+      }
+    }
+
+    // 2. Canal de contingência direta
     try {
       geminiData = await this.callModelApi(this.primaryModel, promptText);
     } catch (errPrim) {
       console.warn(`Aviso: ${this.primaryModel} indisponível ou instável. Acionando backup ${this.backupModel}...`, errPrim);
-      // 2. Fallback automático para gemini-3.8-flash
       try {
         modelUsed = this.backupModel;
         geminiData = await this.callModelApi(this.backupModel, promptText);

@@ -676,6 +676,20 @@ const initDb = async () => {
       CREATE INDEX IF NOT EXISTS idx_propostas_midia_cliente ON tabelas_propostas_midia(LOWER(cliente));
     `);
 
+    // 22. Tabela corporativa de catálogo e tabelas de preços de mídia (Rate Cards)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS media_rate_cards (
+        id VARCHAR(255) PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        vigencia VARCHAR(100) NOT NULL,
+        ativo BOOLEAN DEFAULT TRUE,
+        dados_json JSONB NOT NULL,
+        atualizado_por VARCHAR(255),
+        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_media_rate_cards_ativo ON media_rate_cards(ativo);
+    `);
+
     console.log("Banco de dados inicializado: tabelas de interações, credenciais Google, notificações, logs de auditoria, produtos, alocações de oportunidades, inteligência de mercado e pipeline estratégico verificados.");
   } catch (err) {
     console.error("Erro ao inicializar o banco de dados:", err);
