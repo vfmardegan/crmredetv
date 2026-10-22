@@ -23,7 +23,10 @@ import {
   Bot,
   History,
   Layers,
-  ChevronDown
+  ChevronDown,
+  TrendingUp,
+  Globe,
+  Tv
 } from "lucide-react";
 
 import { apiGet, apiPost, apiPut, apiDelete, iaSummarize, requestGoogleScopes } from "./services/api";
@@ -224,7 +227,7 @@ export default function App() {
     return "dashboard";
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState({});
+  const [expandedSections, setExpandedSections] = useState({});
   const [selectedAdvertiserId, setSelectedAdvertiserId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState(null);
   const [showNewAdvertiser, setShowNewAdvertiser] = useState(false);
@@ -2705,16 +2708,18 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
     access: "Gestão e Acessos",
   };
 
-  function toggleSection(sectionTitle) {
-    setCollapsedSections((prev) => ({
+  function toggleSection(sectionId) {
+    setExpandedSections((prev) => ({
       ...prev,
-      [sectionTitle]: !prev[sectionTitle]
+      [sectionId]: !prev[sectionId]
     }));
   }
 
   const navSections = [
     {
-      title: "VENDAS",
+      id: "vendas",
+      title: "Vendas",
+      icon: TrendingUp,
       items: [
         hasPermission(user?.perfil, "can_view_dashboard") && { id: "dashboard", label: "Visão Geral", icon: LayoutDashboard },
         user?.email === "vitor.mardegan@redetv.com.br" && { id: "pipelineEstrategico", label: "Plano de Ação", icon: Compass },
@@ -2722,7 +2727,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       ].filter(Boolean)
     },
     {
-      title: "MERCADO",
+      id: "mercado",
+      title: "Mercado",
+      icon: Globe,
       items: [
         { id: "intelligence", label: "Radar", icon: Sparkles },
         { id: "advertisers", label: "Clientes", icon: Building2 },
@@ -2730,7 +2737,9 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       ].filter(Boolean)
     },
     {
-      title: "MÍDIA",
+      id: "midia",
+      title: "Mídia",
+      icon: Tv,
       items: [
         { id: "proposals", label: "Tabelas e Projetos", icon: FileText },
         { id: "mediaPlanner", label: "Valoração Online", icon: Calculator },
@@ -2739,14 +2748,18 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
       ].filter(Boolean)
     },
     {
-      title: "PLANEJAMENTO",
+      id: "planning",
+      title: "Pipeline Planejamento",
+      icon: ClipboardList,
       isStandalone: true,
       items: [
         hasPermission(user?.perfil, "can_view_planning") && { id: "planning", label: "Pipeline Planejamento", icon: ClipboardList },
       ].filter(Boolean)
     },
     {
-      title: "ADMINISTRAÇÃO",
+      id: "administracao",
+      title: "Administração",
+      icon: Shield,
       items: [
         hasPermission(user?.perfil, "can_view_engajamento") && { id: "engajamento", label: "Engajamento", icon: Activity },
         hasPermission(user?.perfil, "can_view_executivos") && { id: "executivos", label: "Executivos", icon: Briefcase },
@@ -2791,69 +2804,86 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
               </button>
             </div>
 
-            <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
-              {navSections.map((section, sIdx) => (
-                <div key={section.title || sIdx} className="flex flex-col">
-                  {!section.isStandalone ? (
-                    <>
+            <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
+              {navSections.map((section, sIdx) => {
+                const isExpanded = !!expandedSections[section.id];
+                const hasActiveChild = section.items?.some((it) => it.id === view);
+
+                if (section.isStandalone) {
+                  const item = section.items[0];
+                  if (!item) return null;
+                  const isActive = view === item.id;
+                  return (
+                    <div key={section.id || sIdx} className="flex flex-col">
                       <button
-                        type="button"
-                        onClick={() => toggleSection(section.title)}
-                        className="flex items-center justify-between w-full text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase px-3 pt-2 pb-1 select-none transition-colors"
+                        key={item.id}
+                        onClick={() => {
+                          setView(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={
+                          "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors w-full " +
+                          (isActive
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                        }
                       >
-                        <span>{section.title}</span>
-                        <ChevronDown
-                          size={13}
-                          className={`transition-transform duration-200 text-slate-500 ${collapsedSections[section.title] ? "-rotate-90" : "rotate-0"}`}
-                        />
+                        <item.icon size={18} />
+                        <span>{item.label}</span>
                       </button>
-                      {!collapsedSections[section.title] && (
-                        <div className="flex flex-col gap-0.5">
-                          {section.items.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                setView(item.id);
-                                setMobileMenuOpen(false);
-                              }}
-                              className={
-                                "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                                (view === item.id
-                                  ? "bg-slate-800 text-white font-medium"
-                                  : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                              }
-                            >
-                              <item.icon size={18} />
-                              <span>{item.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex flex-col gap-0.5">
-                      {section.items.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setView(item.id);
-                            setMobileMenuOpen(false);
-                          }}
-                          className={
-                            "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors " +
-                            (view === item.id
-                              ? "bg-slate-800 text-white font-medium"
-                              : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                          }
-                        >
-                          <item.icon size={18} />
-                          <span>{item.label}</span>
-                        </button>
-                      ))}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                }
+
+                return (
+                  <div key={section.id || sIdx} className="flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(section.id)}
+                      className={
+                        "flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                        (hasActiveChild && !isExpanded
+                          ? "text-white font-medium bg-slate-800/40"
+                          : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                      }
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {section.icon && <section.icon size={18} />}
+                        <span>{section.title}</span>
+                        {hasActiveChild && !isExpanded && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-0.5" />
+                        )}
+                      </div>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 text-slate-400 ${isExpanded ? "rotate-0" : "-rotate-90"}`}
+                      />
+                    </button>
+                    {isExpanded && (
+                      <div className="flex flex-col gap-0.5 mt-1 ml-3 pl-3 border-l border-slate-800">
+                        {section.items.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              setView(item.id);
+                              setMobileMenuOpen(false);
+                            }}
+                            className={
+                              "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors " +
+                              (view === item.id
+                                ? "bg-slate-800 text-white font-medium"
+                                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                            }
+                          >
+                            <item.icon size={15} />
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </nav>
 
             <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
@@ -2890,63 +2920,80 @@ ${item.gatilho_comercial || ""}${item.acao_sugerida ? `\n\nAção Sugerida:\n${i
           </div>
           <div className="text-xs text-slate-400 mt-1">Mercado anunciante</div>
         </div>
-        <nav className="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
-          {navSections.map((section, sIdx) => (
-            <div key={section.title || sIdx} className="flex flex-col">
-              {!section.isStandalone ? (
-                <>
+        <nav className="flex-1 p-3 flex flex-col gap-1 overflow-y-auto">
+          {navSections.map((section, sIdx) => {
+            const isExpanded = !!expandedSections[section.id];
+            const hasActiveChild = section.items?.some((it) => it.id === view);
+
+            if (section.isStandalone) {
+              const item = section.items[0];
+              if (!item) return null;
+              const isActive = view === item.id;
+              return (
+                <div key={section.id || sIdx} className="flex flex-col">
                   <button
-                    type="button"
-                    onClick={() => toggleSection(section.title)}
-                    className="flex items-center justify-between w-full text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase px-3 pt-2 pb-1 select-none transition-colors"
+                    key={item.id}
+                    onClick={() => setView(item.id)}
+                    className={
+                      "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors w-full " +
+                      (isActive
+                        ? "bg-slate-800 text-white font-medium"
+                        : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                    }
                   >
-                    <span>{section.title}</span>
-                    <ChevronDown
-                      size={13}
-                      className={`transition-transform duration-200 text-slate-500 ${collapsedSections[section.title] ? "-rotate-90" : "rotate-0"}`}
-                    />
+                    <item.icon size={16} />
+                    <span>{item.label}</span>
                   </button>
-                  {!collapsedSections[section.title] && (
-                    <div className="flex flex-col gap-0.5">
-                      {section.items.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setView(item.id)}
-                          className={
-                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
-                            (view === item.id
-                              ? "bg-slate-800 text-white font-medium"
-                              : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                          }
-                        >
-                          <item.icon size={16} />
-                          <span>{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex flex-col gap-0.5">
-                  {section.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setView(item.id)}
-                      className={
-                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-left transition-colors " +
-                        (view === item.id
-                          ? "bg-slate-800 text-white font-medium"
-                          : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
-                      }
-                    >
-                      <item.icon size={16} />
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            }
+
+            return (
+              <div key={section.id || sIdx} className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.id)}
+                  className={
+                    "flex items-center justify-between w-full px-3 py-2 rounded-md text-sm text-left transition-colors " +
+                    (hasActiveChild && !isExpanded
+                      ? "text-white font-medium bg-slate-800/40"
+                      : "text-slate-300 hover:bg-slate-800/60 hover:text-white")
+                  }
+                >
+                  <div className="flex items-center gap-2.5">
+                    {section.icon && <section.icon size={16} />}
+                    <span>{section.title}</span>
+                    {hasActiveChild && !isExpanded && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 ml-0.5" />
+                    )}
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 text-slate-400 ${isExpanded ? "rotate-0" : "-rotate-90"}`}
+                  />
+                </button>
+                {isExpanded && (
+                  <div className="flex flex-col gap-0.5 mt-1 ml-3 pl-3 border-l border-slate-800">
+                    {section.items.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setView(item.id)}
+                        className={
+                          "flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs text-left transition-colors " +
+                          (view === item.id
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")
+                        }
+                      >
+                        <item.icon size={14} />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
         <div className="p-4 border-t border-slate-800 flex flex-col gap-3">
           <div className="flex items-center gap-2">
